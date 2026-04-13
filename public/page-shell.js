@@ -17,19 +17,71 @@
     return mode === "register" || mode === "login" ? mode : null
   }
 
-  function animateAuthIncoming(direction) {
+  function createOutgoingClone() {
+    const clone = shellContent.cloneNode(true)
+    clone.id = ""
+    clone.style.position = "absolute"
+    clone.style.inset = "0"
+    clone.style.zIndex = "20"
+    clone.style.pointerEvents = "none"
+    clone.style.background = "transparent"
+    clone.style.transform = "translate3d(0, 0, 0)"
+    clone.style.willChange = "transform"
+    return clone
+  }
+
+  async function animateAuthSwitch(direction) {
+    const shellParent = shellContent.parentElement
+    if (!shellParent) {
+      return
+    }
+
+    const outgoingOffset = direction === "right" ? "100%" : "-100%"
     const incomingOffset = direction === "right" ? "-100%" : "100%"
-    return shellContent.animate(
+
+    const outgoingClone = createOutgoingClone()
+    shellParent.appendChild(outgoingClone)
+
+    shellContent.style.transform = `translate3d(${incomingOffset}, 0, 0)`
+    shellContent.style.willChange = "transform"
+
+    // Force layout so both layers start from their initial positions.
+    shellContent.getBoundingClientRect()
+
+    const easing = "cubic-bezier(0.22, 1, 0.36, 1)"
+    const duration = 360
+
+    const incomingAnimation = shellContent.animate(
       [
         { transform: `translate3d(${incomingOffset}, 0, 0)` },
         { transform: "translate3d(0, 0, 0)" },
       ],
       {
-        duration: 320,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        duration,
+        easing,
         fill: "forwards",
       }
-    ).finished
+    )
+
+    const outgoingAnimation = outgoingClone.animate(
+      [
+        { transform: "translate3d(0, 0, 0)" },
+        { transform: `translate3d(${outgoingOffset}, 0, 0)` },
+      ],
+      {
+        duration,
+        easing,
+        fill: "forwards",
+      }
+    )
+
+    try {
+      await Promise.all([incomingAnimation.finished, outgoingAnimation.finished])
+    } finally {
+      outgoingClone.remove()
+      shellContent.style.transform = ""
+      shellContent.style.willChange = ""
+    }
   }
 
   function isInternalUrl(url) {
@@ -118,7 +170,7 @@
 
       if (authDirection) {
         shellContent.style.pointerEvents = "none"
-        await animateAuthIncoming(authDirection)
+        await animateAuthSwitch(authDirection)
         shellContent.style.pointerEvents = ""
       }
     } catch (error) {
