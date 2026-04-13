@@ -45,19 +45,21 @@ function render_auth_mark(): string
 function render_auth_placeholder(): string
 {
     return '
-      <div class="relative hidden min-h-svh overflow-hidden bg-zinc-100 lg:block">
-        <div class="absolute inset-0 bg-[linear-gradient(to_right,transparent_0,transparent_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%+0.5px),transparent_calc(50%+0.5px)),linear-gradient(to_bottom,transparent_0,transparent_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%+0.5px),transparent_calc(50%+0.5px))]"></div>
-        <div class="absolute left-1/2 top-1/2 h-[248px] w-[248px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300/90"></div>
-        <div class="absolute left-1/2 top-1/2 h-[168px] w-[168px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300/90"></div>
-        <div class="absolute left-1/2 top-1/2 h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300 bg-white shadow-sm"></div>
-        <div class="absolute left-1/2 top-1/2 h-px w-[346px] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-zinc-300/90"></div>
-        <div class="absolute left-1/2 top-1/2 h-px w-[346px] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-zinc-300/90"></div>
-        <div class="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500">
-          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3.5" y="5.5" width="17" height="13" rx="2"></rect>
-            <path d="m7 14 3-3 3 3 4-4 3 3"></path>
-            <circle cx="16.5" cy="9.5" r="1"></circle>
-          </svg>
+      <div class="relative hidden min-h-svh overflow-hidden bg-zinc-200 lg:block">
+        <div
+          class="absolute inset-0"
+          data-matrix-rain
+          data-rain-background="#e4e4e7"
+          data-rain-color="rgba(24,24,27,0.58)"
+          data-rain-head-color="rgba(9,9,11,0.96)"
+        ></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_58%),linear-gradient(to_right,rgba(255,255,255,0.18),transparent_18%,transparent_82%,rgba(24,24,27,0.06))]"></div>
+        <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(24,24,27,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(24,24,27,0.04)_1px,transparent_1px)] bg-[size:34px_34px] opacity-35"></div>
+        <div class="absolute left-8 top-8 rounded-full border border-zinc-800/10 bg-white/55 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-700 backdrop-blur-sm">
+          Secure Rain
+        </div>
+        <div class="absolute bottom-8 right-8 max-w-xs rounded-3xl border border-zinc-950/10 bg-white/45 p-5 text-sm leading-6 text-zinc-700 shadow-[0_24px_80px_-44px_rgba(24,24,27,0.55)] backdrop-blur-sm">
+          Matrix rain adapted for the auth preview with a soft gray field and near-black glyphs.
         </div>
       </div>';
 }
@@ -83,7 +85,7 @@ function render_auth_field(
           type="' . escape_html($type) . '"
           autocomplete="' . escape_html($autocomplete) . '"
           placeholder="' . escape_html($placeholder) . '"
-          class="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200/70"' . $requiredAttribute . '
+          class="flex h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none transition placeholder:text-zinc-400 hover:border-zinc-500 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-500/45"' . $requiredAttribute . '
         >' . $hintMarkup . '
       </div>';
 }
@@ -177,6 +179,7 @@ function render_layout(string $title, string $content): string
     <title>' . escape_html($title) . '</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
+    <script src="/matrix-rain.js" defer></script>
   </head>
   <body class="min-h-screen bg-background text-foreground">
     <main>
