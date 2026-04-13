@@ -17,31 +17,15 @@
     return mode === "register" || mode === "login" ? mode : null
   }
 
-  function animateShellTransition(direction, phase) {
-    const outgoingOffset = direction === "right" ? "100%" : "-100%"
+  function animateAuthIncoming(direction) {
     const incomingOffset = direction === "right" ? "-100%" : "100%"
-
-    if (phase === "out") {
-      return shellContent.animate(
-        [
-          { transform: "translate3d(0, 0, 0)" },
-          { transform: `translate3d(${outgoingOffset}, 0, 0)` },
-        ],
-        {
-          duration: 260,
-          easing: "cubic-bezier(0.32, 0, 0.16, 1)",
-          fill: "forwards",
-        }
-      ).finished
-    }
-
     return shellContent.animate(
       [
         { transform: `translate3d(${incomingOffset}, 0, 0)` },
         { transform: "translate3d(0, 0, 0)" },
       ],
       {
-        duration: 280,
+        duration: 320,
         easing: "cubic-bezier(0.22, 1, 0.36, 1)",
         fill: "forwards",
       }
@@ -117,11 +101,6 @@
         return
       }
 
-      if (authDirection) {
-        shellContent.style.pointerEvents = "none"
-        await animateShellTransition(authDirection, "out")
-      }
-
       shellContent.className = nextContent.className
       shellContent.innerHTML = nextContent.innerHTML
       document.title = nextDocument.title || document.title
@@ -138,7 +117,8 @@
       }
 
       if (authDirection) {
-        await animateShellTransition(authDirection, "in")
+        shellContent.style.pointerEvents = "none"
+        await animateAuthIncoming(authDirection)
         shellContent.style.pointerEvents = ""
       }
     } catch (error) {
