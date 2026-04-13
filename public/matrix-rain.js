@@ -34,9 +34,9 @@
       charArrays: [
         "⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿⡀⡁⡂⡃⡄⡅⡆⡇⡈⡉⡊⡋⡌⡍⡎⡏⡐⡑⡒⡓⡔⡕⡖⡗⡘⡙⡚⡛⡜⡝⡞⡟⡠⡡⡢⡣⡤⡥⡦⡧⡨⡩⡪⡫⡬⡭⡮⡯⡰⡱⡲⡳⡴⡵⡶⡷⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂⢃⢄⢅⢆⢇⢈⢉⢊⢋⢌⢍⢎⢏⢐⢑⢒⢓⢔⢕⢖⢗⢘⢙⢚⢛⢜⢝⢞⢟⢠⢡⢢⢣⢤⢥⢦⢧⢨⢩⢪⢫⢬⢭⢮⢯⢰⢱⢲⢳⢴⢵⢶⢷⢸⢹⢺⢻⢼⢽⢾⢿⣀⣁⣂⣃⣄⣅⣆⣇⣈⣉⣊⣋⣌⣍⣎⣏⣐⣑⣒⣓⣔⣕⣖⣗⣘⣙⣚⣛⣜⣝⣞⣟⣠⣡⣢⣣⣤⣥⣦⣧⣨⣩⣪⣫⣬⣭⣮⣯⣰⣱⣲⣳⣴⣵⣶⣷⣸⣹⣺⣻⣼⣽⣾⣿",
       ],
-      headColor: "rgba(255,255,255,0.8)",
-      trailColor: "rgba(62,225,78,1.00)",
-      fontSize: 1,
+      headColor: "rgba(9,9,11,0.92)",
+      trailColor: "rgba(24,24,27,0.74)",
+      fontSize: 14,
       fontFamily: "Backwards",
       randomizePosition: true,
       frameDelay: 50,
@@ -48,13 +48,13 @@
       jitterUpStrength: 0,
       jitterDownStrength: 10,
     },
-    trailBloomSize: 8,
-    trailBloomColor: "#82ffa9",
-    headBloomSize: 4,
-    headBloomColor: "#ffffff",
+    trailBloomSize: 2,
+    trailBloomColor: "rgba(24,24,27,0.24)",
+    headBloomSize: 1,
+    headBloomColor: "rgba(9,9,11,0.28)",
     warmupIterations: 50,
-    fadeStrength: 0.03,
-    fadeColor: "rgba(244,244,245,0.03)",
+    fadeStrength: 0.12,
+    fadeColor: "rgba(255,255,255,0.12)",
   }
 
   function initializeMatrixRain(container) {
@@ -67,10 +67,10 @@
     config.rainDrop.headColor = container.dataset.rainHeadColor ?? config.rainDrop.headColor
     config.rainDrop.trailColor = container.dataset.rainColor ?? config.rainDrop.trailColor
 
-    container.style.backgroundColor = container.dataset.rainBackground ?? "#f4f4f5"
+    container.style.backgroundColor = container.dataset.rainBackground ?? "#ffffff"
 
     const instance = new MatrixAnimationCtor(container, config)
-    instance.ctx.fillStyle = container.dataset.rainBackground ?? "#f4f4f5"
+    instance.ctx.fillStyle = container.dataset.rainBackground ?? "#ffffff"
     instance.ctx.fillRect(0, 0, instance.canvasWidth, instance.canvasHeight)
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {

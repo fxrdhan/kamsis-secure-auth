@@ -45,14 +45,14 @@ function render_auth_mark(): string
 function render_auth_placeholder(): string
 {
     return '
-      <div class="relative hidden min-h-svh overflow-hidden bg-zinc-100 lg:block">
+      <div class="relative hidden min-h-svh overflow-hidden bg-white lg:block">
         <div
           class="absolute inset-0"
           data-matrix-rain
-          data-rain-background="#f4f4f5"
-          data-rain-fade-color="rgba(244,244,245,0.03)"
-          data-rain-color="rgba(62,225,78,1.00)"
-          data-rain-head-color="rgba(255,255,255,0.8)"
+          data-rain-background="#ffffff"
+          data-rain-fade-color="rgba(255,255,255,0.12)"
+          data-rain-color="rgba(24,24,27,0.74)"
+          data-rain-head-color="rgba(9,9,11,0.92)"
         ></div>
       </div>';
 }
@@ -97,20 +97,7 @@ function render_auth_form_card(string $mode, ?array $flash): string
     $switchLabel = $isRegister ? 'Already have an account?' : 'Don\'t have an account?';
     $switchAction = $isRegister ? 'Sign in' : 'Create one';
     $passwordAutocomplete = $isRegister ? 'new-password' : 'current-password';
-    $switchText = $isRegister ? 'sign in' : 'register';
     $topMarginClass = $flash === null ? 'mt-0' : 'mt-4';
-
-    $emailField = $isRegister
-        ? render_auth_field(
-            'Email',
-            'contact_email',
-            'email',
-            'email',
-            'm@example.com',
-            'Optional untuk tampilan. Tidak dipakai pada proses login demo ini.',
-            false
-        )
-        : '';
 
     $confirmField = $isRegister
         ? render_auth_field(
@@ -133,14 +120,12 @@ function render_auth_form_card(string $mode, ?array $flash): string
         <form class="mt-8 space-y-6" method="post" action="' . escape_html($action) . '" autocomplete="off">
           <input type="hidden" name="csrf_token" value="' . escape_html($csrfToken) . '">
           ' . render_auth_field(
-              'Full Name',
+              'Username',
               'username',
               'text',
-              'name',
-              'John Doe',
-              $isRegister ? 'Nama ini dipakai sebagai username saat halaman welcome ditampilkan.' : null
+              'username',
+              'johndoe'
           ) . '
-          ' . $emailField . '
           ' . render_auth_field(
               'Password',
               'password',
@@ -174,11 +159,22 @@ function render_layout(string $title, string $content): string
     <link rel="stylesheet" href="/styles.css">
     <script src="/vendor/matrix-animation.js" defer></script>
     <script src="/matrix-rain.js" defer></script>
+    <script src="/page-shell.js" defer></script>
   </head>
-  <body class="min-h-screen bg-background text-foreground">
-    <main>
+  <body class="min-h-screen bg-white text-foreground">
+    <div class="relative min-h-screen overflow-hidden bg-white">
+      <div
+        class="pointer-events-none fixed inset-0"
+        data-matrix-rain
+        data-rain-background="#ffffff"
+        data-rain-fade-color="rgba(255,255,255,0.12)"
+        data-rain-color="rgba(24,24,27,0.74)"
+        data-rain-head-color="rgba(9,9,11,0.92)"
+      ></div>
+      <main id="page-shell-content" class="relative z-10 min-h-screen">
       ' . $content . '
-    </main>
+      </main>
+    </div>
   </body>
 </html>';
 }
@@ -188,16 +184,15 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
     $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
 
     $content = '
-      <section class="grid min-h-svh bg-white lg:grid-cols-2">
-        <div class="flex min-h-svh flex-col p-7 md:p-8">
-          <div class="flex items-center justify-start">
+      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
+        <div class="w-full max-w-md rounded-[2rem] bg-white/96 p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-sm md:p-10">
+          <div class="mb-10 flex items-center justify-start">
             ' . render_auth_mark() . '
           </div>
-          <div class="flex flex-1 items-center justify-center">
+          <div>
             ' . render_auth_form_card($mode, $flash) . '
           </div>
         </div>
-        ' . render_auth_placeholder() . '
       </section>';
 
     return render_layout('Kamsis Secure Login', $content);
@@ -206,48 +201,23 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
 function render_welcome_page(string $username): string
 {
     $content = '
-      <section class="flex min-h-svh items-center justify-center bg-muted/40 p-6 md:p-10">
-        <div class="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border bg-background shadow-soft lg:grid-cols-[1.15fr_0.85fr]">
-          <div class="relative overflow-hidden bg-zinc-950 p-8 text-zinc-50 md:p-10">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_26%),linear-gradient(155deg,#09090b_10%,#18181b_52%,#27272a_100%)]"></div>
-            <div class="relative flex h-full flex-col justify-between gap-10">
-              <div class="space-y-5">
-                ' . render_brand(true) . '
-                <div class="space-y-3">
-                  <p class="text-sm font-medium uppercase tracking-[0.24em] text-zinc-400">Autentikasi Berhasil</p>
-                  <h1 class="text-4xl font-semibold tracking-tight">Selamat datang, ' . escape_html($username) . '</h1>
-                  <p class="max-w-xl text-sm leading-7 text-zinc-300">
-                    Session kamu sudah aktif dan disimpan aman memakai cookie <span class="font-medium text-white">HttpOnly</span>,
-                    <span class="font-medium text-white">Secure</span>, dan <span class="font-medium text-white">SameSite=Strict</span>.
-                  </p>
-                </div>
-              </div>
-              <div class="rounded-3xl border border-white/10 bg-white/10 p-6 text-sm leading-7 text-zinc-200 backdrop-blur">
-                Username berhasil didekripsi dari data terenkripsi di database, jadi landing page tetap personal tanpa menyimpan
-                data akun dalam bentuk asli.
-              </div>
+      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
+        <div class="w-full max-w-2xl rounded-[2rem] bg-white/96 p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-sm md:p-10">
+          <div class="space-y-8">
+            <div class="flex items-center justify-start">
+              ' . render_brand(false) . '
             </div>
-          </div>
-
-          <div class="flex items-center p-8 md:p-10">
-            <div class="w-full space-y-6">
-              <div class="space-y-2">
-                <p class="text-sm font-medium text-muted-foreground">Status sistem</p>
-                <h2 class="text-2xl font-semibold tracking-tight">Akun valid dan sesi aktif</h2>
-                <p class="text-sm leading-6 text-muted-foreground">
-                  Halaman ini menjadi bukti bahwa proses login, verifikasi password, dan pembacaan user dari MySQL berjalan normal.
-                </p>
-              </div>
-              <div class="grid gap-3 text-sm text-muted-foreground">
-                <div class="rounded-2xl border bg-card px-4 py-3">HTTPS aktif dan tersaji dengan sertifikat trusted untuk localhost.</div>
-                <div class="rounded-2xl border bg-card px-4 py-3">Query user dilakukan dengan prepared statement PDO MySQL.</div>
-                <div class="rounded-2xl border bg-card px-4 py-3">Input/output dibatasi dan di-escape untuk membantu mitigasi abuse dan XSS.</div>
-              </div>
-              <form method="post" action="/logout.php">
-                <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
-                <button class="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-95" type="submit">Logout</button>
-              </form>
+            <div class="space-y-3">
+              <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Autentikasi berhasil</p>
+              <h1 class="text-4xl font-semibold tracking-tight text-zinc-950">Selamat datang, ' . escape_html($username) . '</h1>
+              <p class="max-w-xl text-sm leading-7 text-muted-foreground">
+                Login berhasil. Session aktif dan user berhasil dibaca dari database MySQL dengan aman.
+              </p>
             </div>
+            <form method="post" action="/logout.php" class="pt-2">
+              <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
+              <button class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" type="submit">Logout</button>
+            </form>
           </div>
         </div>
       </section>';
@@ -258,22 +228,17 @@ function render_welcome_page(string $username): string
 function render_not_registered_page(): string
 {
     $content = '
-      <section class="flex min-h-svh items-center justify-center bg-muted/40 p-6 md:p-10">
-        <div class="w-full max-w-2xl rounded-[2rem] border bg-background p-8 shadow-soft md:p-10">
+      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
+        <div class="w-full max-w-xl rounded-[2rem] bg-white/96 p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-sm md:p-10">
           <div class="space-y-4">
-            <div class="inline-flex items-center rounded-full border bg-muted px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              Autentikasi Gagal
-            </div>
+            <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Autentikasi gagal</p>
             <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Anda belum terdaftar</h1>
             <p class="text-sm leading-7 text-muted-foreground">
-              Username/password tidak cocok. Halaman ini sengaja tetap generik agar tidak membocorkan akun mana yang valid.
+              Username atau password tidak cocok. Coba login lagi atau register akun baru.
             </p>
           </div>
-          <div class="mt-8 rounded-2xl border bg-muted/40 p-5 text-sm leading-7 text-muted-foreground">
-            Kalau ingin lanjut ngetes, kembali ke form lalu coba register akun baru atau login dengan kredensial yang benar.
-          </div>
           <div class="mt-8">
-            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-95" href="/">Kembali ke form</a>
+            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Kembali ke form</a>
           </div>
         </div>
       </section>';
@@ -284,14 +249,12 @@ function render_not_registered_page(): string
 function render_error_page(string $title, string $description): string
 {
     $content = '
-      <section class="flex min-h-svh items-center justify-center bg-muted/40 p-6 md:p-10">
-        <div class="w-full max-w-xl rounded-[2rem] border bg-background p-8 shadow-soft md:p-10">
-          <div class="inline-flex items-center rounded-full border bg-muted px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            Akses Ditolak
-          </div>
+      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
+        <div class="w-full max-w-xl rounded-[2rem] bg-white/96 p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-sm md:p-10">
+          <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Akses ditolak</p>
           <h1 class="mt-4 text-3xl font-semibold tracking-tight">' . escape_html($title) . '</h1>
           <p class="mt-3 text-sm leading-7 text-muted-foreground">' . escape_html($description) . '</p>
-          <a class="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-95" href="/">Kembali</a>
+          <a class="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Kembali</a>
         </div>
       </section>';
 
