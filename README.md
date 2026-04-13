@@ -17,14 +17,14 @@ Au7h adalah aplikasi autentikasi berbasis PHP yang menyediakan proses registrasi
 - Apache
 - MySQL
 - Docker
-- Tailwind CSS untuk aset antarmuka statis
+- Tailwind CSS
 
 ## Menjalankan Aplikasi
 
 Prasyarat:
 
 - Docker
-- Node.js dan npm hanya diperlukan jika ingin membangun ulang file CSS
+- Node.js dan npm
 
 Build image:
 
