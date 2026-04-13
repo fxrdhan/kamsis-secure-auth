@@ -7,6 +7,46 @@
 
   let navigationToken = 0
 
+  function getAuthMode(urlLike) {
+    const url = new URL(urlLike, window.location.href)
+    if (url.pathname !== "/") {
+      return null
+    }
+
+    const mode = url.searchParams.get("mode") ?? "register"
+    return mode === "register" || mode === "login" ? mode : null
+  }
+
+  function animateShellTransition(direction, phase) {
+    const distance = direction === "right" ? 64 : -64
+
+    if (phase === "out") {
+      return shellContent.animate(
+        [
+          { opacity: 1, transform: "translate3d(0, 0, 0)" },
+          { opacity: 0, transform: `translate3d(${distance * -1}px, 0, 0)` },
+        ],
+        {
+          duration: 210,
+          easing: "cubic-bezier(0.32, 0, 0.16, 1)",
+          fill: "forwards",
+        }
+      ).finished
+    }
+
+    return shellContent.animate(
+      [
+        { opacity: 0, transform: `translate3d(${distance}px, 0, 0)` },
+        { opacity: 1, transform: "translate3d(0, 0, 0)" },
+      ],
+      {
+        duration: 240,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        fill: "forwards",
+      }
+    ).finished
+  }
+
   function isInternalUrl(url) {
     return url.origin === window.location.origin
   }
@@ -38,6 +78,14 @@
 
   async function swapPage(targetUrl, options = {}) {
     const token = ++navigationToken
+    const currentAuthMode = getAuthMode(window.location.href)
+    const nextAuthMode = getAuthMode(targetUrl)
+    const authDirection =
+      currentAuthMode && nextAuthMode && currentAuthMode !== nextAuthMode
+        ? nextAuthMode === "login"
+          ? "right"
+          : "left"
+        : null
     const requestInit = {
       credentials: "same-origin",
       headers: {
@@ -68,6 +116,11 @@
         return
       }
 
+      if (authDirection) {
+        shellContent.style.pointerEvents = "none"
+        await animateShellTransition(authDirection, "out")
+      }
+
       shellContent.className = nextContent.className
       shellContent.innerHTML = nextContent.innerHTML
       document.title = nextDocument.title || document.title
@@ -81,6 +134,11 @@
 
       if (options.scroll !== false) {
         window.scrollTo(0, 0)
+      }
+
+      if (authDirection) {
+        await animateShellTransition(authDirection, "in")
+        shellContent.style.pointerEvents = ""
       }
     } catch (error) {
       window.location.assign(String(targetUrl))

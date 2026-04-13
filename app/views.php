@@ -184,27 +184,27 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
     $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
     $isRegister = $mode === 'register';
     $registerPanel = '
-      <div class="' . ($isRegister ? 'flex' : 'hidden lg:flex') . ' min-h-svh flex-col bg-white p-7 md:p-8">
-        <div class="flex items-center justify-start">
+      <div class="' . ($isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+        <div class="absolute left-7 top-7 flex items-center justify-start md:left-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
-        <div class="flex flex-1 items-center justify-center">
+        <div class="flex min-h-svh items-center justify-center py-20">
           ' . render_auth_form_card('register', $isRegister ? $flash : null) . '
         </div>
       </div>';
     $loginPanel = '
-      <div class="' . (!$isRegister ? 'flex' : 'hidden lg:flex') . ' min-h-svh flex-col bg-white p-7 md:p-8">
-        <div class="flex items-center justify-start">
+      <div class="' . (!$isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+        <div class="absolute left-7 top-7 flex items-center justify-start md:left-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
-        <div class="flex flex-1 items-center justify-center">
+        <div class="flex min-h-svh items-center justify-center py-20">
           ' . render_auth_form_card('login', !$isRegister ? $flash : null) . '
         </div>
       </div>';
     $matrixSide = '<div class="hidden min-h-svh lg:block"></div>';
 
     $content = '
-      <section class="grid min-h-svh lg:grid-cols-2">
+      <section class="grid min-h-svh lg:grid-cols-2" data-auth-layout="split" data-auth-mode="' . escape_html($mode) . '">
         ' . ($isRegister ? $registerPanel . $matrixSide : $matrixSide . $loginPanel) . '
       </section>';
 
