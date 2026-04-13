@@ -158,6 +158,7 @@ function render_layout(string $title, string $content): string
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
     <script src="/vendor/matrix-animation.js" defer></script>
+    <script src="/vendor/motion.js" defer></script>
     <script src="/matrix-rain.js" defer></script>
     <script src="/page-shell.js" defer></script>
   </head>

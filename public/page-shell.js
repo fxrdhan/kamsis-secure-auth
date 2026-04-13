@@ -1,7 +1,8 @@
 (function () {
   const shellContent = document.getElementById("page-shell-content")
+  const motionApi = window.Motion
 
-  if (!shellContent) {
+  if (!shellContent || !motionApi || typeof motionApi.animate !== "function" || typeof motionApi.spring !== "function") {
     return
   }
 
@@ -15,73 +16,6 @@
 
     const mode = url.searchParams.get("mode") ?? "register"
     return mode === "register" || mode === "login" ? mode : null
-  }
-
-  function createOutgoingClone() {
-    const clone = shellContent.cloneNode(true)
-    clone.id = ""
-    clone.style.position = "absolute"
-    clone.style.inset = "0"
-    clone.style.zIndex = "20"
-    clone.style.pointerEvents = "none"
-    clone.style.background = "transparent"
-    clone.style.transform = "translate3d(0, 0, 0)"
-    clone.style.willChange = "transform"
-    return clone
-  }
-
-  async function animateAuthSwitch(direction) {
-    const shellParent = shellContent.parentElement
-    if (!shellParent) {
-      return
-    }
-
-    const outgoingOffset = direction === "right" ? "100%" : "-100%"
-    const incomingOffset = direction === "right" ? "-100%" : "100%"
-
-    const outgoingClone = createOutgoingClone()
-    shellParent.appendChild(outgoingClone)
-
-    shellContent.style.transform = `translate3d(${incomingOffset}, 0, 0)`
-    shellContent.style.willChange = "transform"
-
-    // Force layout so both layers start from their initial positions.
-    shellContent.getBoundingClientRect()
-
-    const easing = "cubic-bezier(0.22, 1, 0.36, 1)"
-    const duration = 360
-
-    const incomingAnimation = shellContent.animate(
-      [
-        { transform: `translate3d(${incomingOffset}, 0, 0)` },
-        { transform: "translate3d(0, 0, 0)" },
-      ],
-      {
-        duration,
-        easing,
-        fill: "forwards",
-      }
-    )
-
-    const outgoingAnimation = outgoingClone.animate(
-      [
-        { transform: "translate3d(0, 0, 0)" },
-        { transform: `translate3d(${outgoingOffset}, 0, 0)` },
-      ],
-      {
-        duration,
-        easing,
-        fill: "forwards",
-      }
-    )
-
-    try {
-      await Promise.all([incomingAnimation.finished, outgoingAnimation.finished])
-    } finally {
-      outgoingClone.remove()
-      shellContent.style.transform = ""
-      shellContent.style.willChange = ""
-    }
   }
 
   function isInternalUrl(url) {
@@ -113,6 +47,68 @@
     return true
   }
 
+  function createOutgoingClone() {
+    const clone = shellContent.cloneNode(true)
+    clone.id = ""
+    clone.style.position = "absolute"
+    clone.style.inset = "0"
+    clone.style.zIndex = "20"
+    clone.style.pointerEvents = "none"
+    clone.style.background = "transparent"
+    clone.style.transform = "translate3d(0, 0, 0)"
+    clone.style.willChange = "transform"
+    return clone
+  }
+
+  async function animateAuthSwitch(direction) {
+    const shellParent = shellContent.parentElement
+    if (!shellParent) {
+      return
+    }
+
+    const outgoingOffset = direction === "right" ? "100%" : "-100%"
+    const incomingOffset = direction === "right" ? "-100%" : "100%"
+    const transition = {
+      easing: motionApi.spring({
+        bounce: 0.18,
+        visualDuration: 0.5,
+      }),
+    }
+
+    const outgoingClone = createOutgoingClone()
+    shellParent.appendChild(outgoingClone)
+
+    shellContent.style.transform = `translate3d(${incomingOffset}, 0, 0)`
+    shellContent.style.willChange = "transform"
+
+    // Force layout so Motion starts from the offset state we just applied.
+    shellContent.getBoundingClientRect()
+
+    const incoming = motionApi.animate(
+      shellContent,
+      {
+        transform: [`translate3d(${incomingOffset}, 0, 0)`, "translate3d(0, 0, 0)"],
+      },
+      transition
+    )
+
+    const outgoing = motionApi.animate(
+      outgoingClone,
+      {
+        transform: ["translate3d(0, 0, 0)", `translate3d(${outgoingOffset}, 0, 0)`],
+      },
+      transition
+    )
+
+    try {
+      await Promise.all([incoming.finished, outgoing.finished])
+    } finally {
+      outgoingClone.remove()
+      shellContent.style.transform = ""
+      shellContent.style.willChange = ""
+    }
+  }
+
   async function swapPage(targetUrl, options = {}) {
     const token = ++navigationToken
     const currentAuthMode = getAuthMode(window.location.href)
@@ -123,6 +119,7 @@
           ? "right"
           : "left"
         : null
+
     const requestInit = {
       credentials: "same-origin",
       headers: {
