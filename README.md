@@ -7,11 +7,13 @@ Project ini sekarang memakai PHP, bukan JavaScript, dengan satu container saja: 
 - PHP 8.4
 - Apache
 - MySQL
+- Tailwind CSS
 - Docker
 
 ## Fitur
 
 - Form `register` dan `login` yang bisa diakses lewat browser.
+- Tampilan auth bergaya `shadcn/ui` tetapi tetap dirender dari PHP biasa.
 - Landing page sukses: `Selamat datang, <username>`.
 - Landing page gagal: `Anda belum terdaftar`.
 - HTTPS aktif dengan sertifikat self-signed yang dibuat otomatis saat container pertama kali jalan.
@@ -47,6 +49,16 @@ Buka di browser:
 
 ```text
 https://localhost:8443
+```
+
+## Build Frontend CSS
+
+Tailwind dikompilasi lokal menjadi file statis [public/styles.css](/srv/kamsis-secure-auth/public/styles.css), jadi saat runtime container tidak butuh Node.js.
+
+```bash
+cd /srv/kamsis-secure-auth
+npm install
+npm run build:css
 ```
 
 Kalau port host HTTPS ingin diganti, misalnya ke `28443`, pakai env `PUBLIC_HTTPS_PORT` agar redirect dari HTTP tetap benar:

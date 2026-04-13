@@ -4,6 +4,7 @@
   "description": "Dev tooling for the PHP-based secure auth container app.",
   "private": true,
   "scripts": {
+    "build:css": "tailwindcss -i ./resources/tailwind.css -o ./public/styles.css --minify",
     "commitlint": "commitlint --config commitlint.config.cjs"
   },
   "keywords": [
@@ -13,6 +14,7 @@
   "license": "ISC",
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0"
+    "@commitlint/config-conventional": "^20.5.0",
+    "tailwindcss": "^3.4.17"
   }
 }

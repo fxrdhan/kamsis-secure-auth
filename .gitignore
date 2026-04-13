@@ -1,5 +1,7 @@
 node_modules/
 data/
 certs/
+.playwright-cli/
+output/playwright/
 .DS_Store
 npm-debug.log*
