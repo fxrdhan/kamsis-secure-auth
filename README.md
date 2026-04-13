@@ -62,6 +62,34 @@ docker run --name kamsis-secure-auth \
   kamsis-secure-auth
 ```
 
+## Sertifikat Trusted di Localhost
+
+Kalau browser masih menampilkan `Not secure`, itu berarti sertifikat HTTPS masih self-signed. Untuk localhost tanpa warning, pakai `mkcert` di host:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y mkcert libnss3-tools
+mkcert -install
+mkcert \
+  -cert-file /srv/kamsis-secure-auth/certs/server.crt \
+  -key-file /srv/kamsis-secure-auth/certs/server.key \
+  localhost 127.0.0.1 ::1
+```
+
+Lalu jalankan container dengan bind mount folder cert lokal:
+
+```bash
+docker run --name kamsis-secure-auth \
+  -p 8080:8080 \
+  -p 8443:8443 \
+  -v kamsis-secure-auth-data:/var/www/data \
+  -v /srv/kamsis-secure-auth/certs:/var/www/certs \
+  -v kamsis-secure-auth-mysql:/var/lib/mysql \
+  kamsis-secure-auth
+```
+
+Setelah `mkcert -install`, restart browser agar trust store baru terbaca.
+
 ## Mapping Keamanan
 
 - `HTTPS`: Apache melayani TLS dengan minimum `TLSv1.2`.

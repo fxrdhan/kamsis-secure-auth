@@ -103,7 +103,7 @@ envsubst '${APP_PORT_HTTPS} ${TLS_CERT_PATH} ${TLS_KEY_PATH}' \
   > /etc/apache2/sites-available/app-ssl.conf
 
 a2ensite http-redirect app-ssl >/dev/null
-chown -R www-data:www-data "${APP_DATA_DIR}" "${CERT_DIR}"
+chown -R www-data:www-data "${APP_DATA_DIR}"
 chown -R mysql:mysql "${MYSQL_DATA_DIR}" /var/run/mysqld
 
 MYSQL_BOOTSTRAP_REQUIRED=0
