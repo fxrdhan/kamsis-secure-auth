@@ -46,8 +46,8 @@ function validate_username(string $username): array
         return ['ok' => false, 'message' => 'Username harus 3-32 karakter.'];
     }
 
-    if (!preg_match('/^[A-Za-z0-9_.-]+$/', $trimmed)) {
-        return ['ok' => false, 'message' => 'Username hanya boleh huruf, angka, titik, strip, atau underscore.'];
+    if (!preg_match('/^[A-Za-z0-9_. -]+$/', $trimmed)) {
+        return ['ok' => false, 'message' => 'Username hanya boleh huruf, angka, spasi, titik, strip, atau underscore.'];
     }
 
     return ['ok' => true, 'value' => $trimmed];

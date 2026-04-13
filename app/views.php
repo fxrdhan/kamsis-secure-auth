@@ -33,62 +33,138 @@ function render_brand(bool $inverse = false): string
       </a>';
 }
 
-function render_auth_form(
-    string $title,
-    string $description,
-    string $action,
-    string $submitLabel,
-    string $passwordAutocomplete
+function render_auth_mark(): string
+{
+    return '
+      <a href="/?mode=register" class="inline-flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+        <span class="flex h-5 w-5 items-center justify-center rounded-md border border-zinc-300 text-[11px] leading-none text-zinc-900">K</span>
+        <span>Acme Inc.</span>
+      </a>';
+}
+
+function render_auth_placeholder(): string
+{
+    return '
+      <div class="relative hidden min-h-svh overflow-hidden bg-zinc-100 lg:block">
+        <div class="absolute inset-0 bg-[linear-gradient(to_right,transparent_0,transparent_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%+0.5px),transparent_calc(50%+0.5px)),linear-gradient(to_bottom,transparent_0,transparent_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%-0.5px),rgba(24,24,27,0.06)_calc(50%+0.5px),transparent_calc(50%+0.5px))]"></div>
+        <div class="absolute left-1/2 top-1/2 h-[248px] w-[248px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300/90"></div>
+        <div class="absolute left-1/2 top-1/2 h-[168px] w-[168px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300/90"></div>
+        <div class="absolute left-1/2 top-1/2 h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-300 bg-white shadow-sm"></div>
+        <div class="absolute left-1/2 top-1/2 h-px w-[346px] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-zinc-300/90"></div>
+        <div class="absolute left-1/2 top-1/2 h-px w-[346px] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-zinc-300/90"></div>
+        <div class="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500">
+          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3.5" y="5.5" width="17" height="13" rx="2"></rect>
+            <path d="m7 14 3-3 3 3 4-4 3 3"></path>
+            <circle cx="16.5" cy="9.5" r="1"></circle>
+          </svg>
+        </div>
+      </div>';
+}
+
+function render_auth_field(
+    string $label,
+    string $name,
+    string $type,
+    string $autocomplete,
+    string $placeholder,
+    ?string $hint = null,
+    bool $required = true
 ): string {
-    $csrfToken = csrf_token();
-    $formKey = preg_replace('/[^a-z0-9]+/i', '-', trim($action, '/')) ?: 'auth';
+    $requiredAttribute = $required ? ' required' : '';
+    $hintMarkup = $hint === null ? '' : '<p class="pt-2 text-xs leading-5 text-muted-foreground">' . escape_html($hint) . '</p>';
 
     return '
-      <section class="rounded-2xl border bg-card p-6 shadow-soft">
-        <div class="space-y-1">
-          <h2 class="text-xl font-semibold tracking-tight">' . escape_html($title) . '</h2>
+      <div class="space-y-2.5">
+        <label class="block text-[13px] font-semibold text-foreground" for="' . escape_html($name) . '">' . escape_html($label) . '</label>
+        <input
+          id="' . escape_html($name) . '"
+          name="' . escape_html($name) . '"
+          type="' . escape_html($type) . '"
+          autocomplete="' . escape_html($autocomplete) . '"
+          placeholder="' . escape_html($placeholder) . '"
+          class="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200/70"' . $requiredAttribute . '
+        >' . $hintMarkup . '
+      </div>';
+}
+
+function render_auth_form_card(string $mode, ?array $flash): string
+{
+    $csrfToken = csrf_token();
+    $isRegister = $mode === 'register';
+    $title = $isRegister ? 'Create your account' : 'Sign in to your account';
+    $description = $isRegister
+        ? 'Fill in the form below to create your account'
+        : 'Enter your credentials below to sign in to your account';
+    $action = $isRegister ? '/register.php' : '/login.php';
+    $submitLabel = $isRegister ? 'Create Account' : 'Sign In';
+    $switchHref = $isRegister ? '/?mode=login' : '/?mode=register';
+    $switchLabel = $isRegister ? 'Already have an account?' : 'Don\'t have an account?';
+    $switchAction = $isRegister ? 'Sign in' : 'Create one';
+    $passwordAutocomplete = $isRegister ? 'new-password' : 'current-password';
+    $switchText = $isRegister ? 'sign in' : 'register';
+    $topMarginClass = $flash === null ? 'mt-0' : 'mt-4';
+
+    $emailField = $isRegister
+        ? render_auth_field(
+            'Email',
+            'contact_email',
+            'email',
+            'email',
+            'm@example.com',
+            'Optional untuk tampilan. Tidak dipakai pada proses login demo ini.',
+            false
+        )
+        : '';
+
+    $confirmField = $isRegister
+        ? render_auth_field(
+            'Confirm Password',
+            'confirm_password',
+            'password',
+            'new-password',
+            '',
+            'Please confirm your password.'
+        )
+        : '';
+
+    return '
+      <div class="w-full max-w-sm">
+        <div class="space-y-1 text-left">
+          <h1 class="text-[2rem] font-semibold tracking-[-0.035em] text-zinc-950">' . escape_html($title) . '</h1>
           <p class="text-sm text-muted-foreground">' . escape_html($description) . '</p>
         </div>
-        <form class="mt-6 space-y-4" method="post" action="' . escape_html($action) . '" autocomplete="off">
+        <div class="' . $topMarginClass . '">' . render_flash($flash) . '</div>
+        <form class="mt-8 space-y-6" method="post" action="' . escape_html($action) . '" autocomplete="off">
           <input type="hidden" name="csrf_token" value="' . escape_html($csrfToken) . '">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-foreground" for="' . escape_html($formKey) . '-username">Username</label>
-            <input
-              class="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
-              id="' . escape_html($formKey) . '-username"
-              name="username"
-              type="text"
-              minlength="3"
-              maxlength="32"
-              pattern="[A-Za-z0-9_.-]+"
-              autocomplete="username"
-              placeholder="mis. fxrdhan"
-              required
-            >
-          </div>
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-4">
-              <label class="text-sm font-medium text-foreground" for="' . escape_html($formKey) . '-password">Password</label>
-              <span class="text-xs text-muted-foreground">10-72 karakter</span>
-            </div>
-            <input
-              class="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
-              id="' . escape_html($formKey) . '-password"
-              name="password"
-              type="password"
-              minlength="10"
-              maxlength="72"
-              autocomplete="' . escape_html($passwordAutocomplete) . '"
-              placeholder="Minimal 1 huruf besar, kecil, dan angka"
-              required
-            >
-          </div>
+          ' . render_auth_field(
+              'Full Name',
+              'username',
+              'text',
+              'name',
+              'John Doe',
+              $isRegister ? 'Nama ini dipakai sebagai username saat halaman welcome ditampilkan.' : null
+          ) . '
+          ' . $emailField . '
+          ' . render_auth_field(
+              'Password',
+              'password',
+              'password',
+              $passwordAutocomplete,
+              '',
+              $isRegister ? 'Must be at least 10 characters long, with uppercase, lowercase, and number.' : null
+          ) . '
+          ' . $confirmField . '
           <button
-            class="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            class="inline-flex h-10 w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300"
             type="submit"
           >' . escape_html($submitLabel) . '</button>
         </form>
-      </section>';
+        <p class="mt-4 text-center text-sm text-muted-foreground">
+          ' . escape_html($switchLabel) . '
+          <a class="font-medium text-foreground underline underline-offset-4" href="' . escape_html($switchHref) . '">' . escape_html($switchAction) . '</a>
+        </p>
+      </div>';
 }
 
 function render_layout(string $title, string $content): string
@@ -110,81 +186,21 @@ function render_layout(string $title, string $content): string
 </html>';
 }
 
-function render_auth_page(?array $flash): string
+function render_auth_page(?array $flash, string $mode = 'register'): string
 {
+    $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
+
     $content = '
-      <section class="grid min-h-svh lg:grid-cols-2">
-        <div class="flex flex-col gap-6 p-6 md:p-10">
-          <div class="flex justify-center lg:justify-start">
-            ' . render_brand() . '
+      <section class="grid min-h-svh bg-white lg:grid-cols-2">
+        <div class="flex min-h-svh flex-col p-7 md:p-8">
+          <div class="flex items-center justify-start">
+            ' . render_auth_mark() . '
           </div>
           <div class="flex flex-1 items-center justify-center">
-            <div class="w-full max-w-md space-y-5">
-              <div class="space-y-2 text-center lg:text-left">
-                <p class="text-sm font-medium text-muted-foreground">Tampilan auth modern ala shadcn/ui, tetap jalan penuh di PHP.</p>
-                <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Masuk atau buat akun baru</h1>
-                <p class="text-sm leading-6 text-muted-foreground">
-                  Form tetap aman dengan HTTPS, CSRF, prepared statements, penyimpanan password <span class="font-medium text-foreground">Argon2id</span>,
-                  dan enkripsi username di database.
-                </p>
-              </div>
-              ' . render_flash($flash) . '
-              <div class="space-y-4">
-                ' . render_auth_form(
-                    'Login',
-                    'Masuk untuk melihat halaman sambutan dengan username kamu.',
-                    '/login.php',
-                    'Masuk',
-                    'current-password'
-                ) . '
-                ' . render_auth_form(
-                    'Register',
-                    'Buat akun baru dengan username unik dan password yang kuat.',
-                    '/register.php',
-                    'Daftar',
-                    'new-password'
-                ) . '
-              </div>
-              <p class="text-center text-xs leading-5 text-muted-foreground lg:text-left">
-                Dengan melanjutkan, kamu sedang menguji implementasi keamanan login dalam satu container
-                <span class="font-medium text-foreground">PHP + MySQL + HTTPS</span>.
-              </p>
-            </div>
+            ' . render_auth_form_card($mode, $flash) . '
           </div>
         </div>
-
-        <div class="relative hidden overflow-hidden border-l bg-zinc-950 text-zinc-50 lg:block">
-          <div class="absolute inset-0 bg-auth-pattern bg-auth-grid opacity-40"></div>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.22),transparent_24%),linear-gradient(160deg,#09090b_5%,#18181b_45%,#27272a_100%)]"></div>
-          <div class="relative flex h-full flex-col justify-between p-10">
-            <div class="space-y-4">
-              <div class="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-zinc-200">
-                Secure Auth Demo
-              </div>
-              <div class="max-w-xl space-y-4">
-                <h2 class="text-4xl font-semibold tracking-tight">Autentikasi yang terasa modern, tapi backend-nya tetap PHP.</h2>
-                <p class="text-base leading-7 text-zinc-300">
-                  Saya dekatkan tampilannya ke auth template shadcn: tipografi rapat, card clean, split layout,
-                  dan nuansa design system netral yang rapi saat dibuka di desktop maupun mobile.
-                </p>
-              </div>
-            </div>
-
-            <div class="max-w-xl rounded-3xl border border-white/10 bg-white/10 p-7 shadow-soft backdrop-blur">
-              <p class="text-sm font-medium uppercase tracking-[0.22em] text-zinc-300">Security Snapshot</p>
-              <ul class="mt-5 space-y-4 text-sm leading-6 text-zinc-100">
-                <li class="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Prepared statement untuk cegah SQL injection.</li>
-                <li class="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Password di-hash dengan Argon2id plus pepper.</li>
-                <li class="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Username disimpan terenkripsi dan lookup via HMAC.</li>
-                <li class="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">CSP, cookie aman, dan CSRF token aktif di semua form.</li>
-              </ul>
-              <blockquote class="mt-6 border-l border-white/20 pl-4 text-sm italic leading-6 text-zinc-300">
-                “UI-nya mirip komponen modern, tapi tetap gampang dipresentasikan karena alurnya sederhana:
-                register, login, lalu landing page sesuai hasil autentikasi.”
-              </blockquote>
-            </div>
-          </div>
-        </div>
+        ' . render_auth_placeholder() . '
       </section>';
 
     return render_layout('Kamsis Secure Login', $content);

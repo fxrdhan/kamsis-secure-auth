@@ -10,10 +10,16 @@ verify_csrf_or_fail($_POST['csrf_token'] ?? null);
 
 $usernameValidation = validate_username((string) ($_POST['username'] ?? ''));
 $passwordValidation = validate_password((string) ($_POST['password'] ?? ''));
+$confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
 if (!$usernameValidation['ok'] || !$passwordValidation['ok']) {
     set_flash('error', (string) ($usernameValidation['message'] ?? $passwordValidation['message']));
-    redirect_to('/');
+    redirect_to('/?mode=register');
+}
+
+if (!hash_equals((string) $passwordValidation['value'], $confirmPassword)) {
+    set_flash('error', 'Konfirmasi password tidak cocok.');
+    redirect_to('/?mode=register');
 }
 
 $username = (string) $usernameValidation['value'];
@@ -22,7 +28,7 @@ $lookup = username_lookup($username);
 
 if (find_user_by_lookup($lookup) !== null) {
     set_flash('error', 'Username sudah terdaftar. Silakan login.');
-    redirect_to('/');
+    redirect_to('/?mode=login');
 }
 
 try {
@@ -33,7 +39,7 @@ try {
     );
 
     set_flash('success', 'Registrasi berhasil. Silakan login.');
-    redirect_to('/');
+    redirect_to('/?mode=login');
 } catch (Throwable $exception) {
     error_log($exception->getMessage());
     render_page_response(500, render_error_page('Registrasi gagal', 'Server gagal menyimpan akun baru.'));
