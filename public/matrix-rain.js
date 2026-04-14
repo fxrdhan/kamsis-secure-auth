@@ -114,8 +114,8 @@
     headBloomSize: 0,
     headBloomColor: "rgba(9,9,11,0)",
     warmupIterations: 50,
-    fadeStrength: 0.12,
-    fadeColor: "rgba(255,255,255,0.2)",
+    fadeStrength: 0.03,
+    fadeColor: "rgba(255,255,255,0.03)",
   }
 
   function initializeMatrixRain(container) {
