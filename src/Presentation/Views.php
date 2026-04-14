@@ -205,7 +205,7 @@ function render_welcome_page(string $username): string
               <div class="flex items-center justify-start">
                 ' . render_brand(false) . '
               </div>
-              <h1 class="text-4xl font-semibold tracking-tight text-zinc-950">Selamat datang, ' . escape_html($username) . '!</h1>
+              <h1 class="text-4xl font-semibold tracking-tight text-zinc-950">Welcome, ' . escape_html($username) . '!</h1>
             </div>
             <form method="post" action="/logout.php" class="shrink-0 pt-1">
               <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
@@ -215,7 +215,7 @@ function render_welcome_page(string $username): string
         </div>
       </section>';
 
-    return render_layout('Selamat Datang | Au7h', $content);
+    return render_layout('Welcome | Au7h', $content);
 }
 
 function render_not_registered_page(): string
@@ -224,19 +224,19 @@ function render_not_registered_page(): string
       <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
         <div class="w-full max-w-xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
           <div class="space-y-4">
-            <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Anda belum terdaftar</h1>
-            <p class="text-sm leading-7 text-muted-foreground">
-              <span class="block">Username atau password tidak cocok.</span>
-              <span class="block">Coba login lagi atau daftarkan akun baru.</span>
+            <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">You are not registered yet</h1>
+            <p class="text-sm leading-6 text-muted-foreground">
+              <span class="block">The username or password is incorrect.</span>
+              <span class="block">Try logging in again or create a new account.</span>
             </p>
           </div>
           <div class="mt-8">
-            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Kembali ke form</a>
+            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Back to form</a>
           </div>
         </div>
       </section>';
 
-    return render_layout('Anda Belum Terdaftar', $content);
+    return render_layout('Not Registered Yet', $content);
 }
 
 function render_error_page(string $title, string $description): string
@@ -244,10 +244,10 @@ function render_error_page(string $title, string $description): string
     $content = '
       <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
         <div class="w-full max-w-xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
-          <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Akses ditolak</p>
+          <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Access denied</p>
           <h1 class="mt-4 text-3xl font-semibold tracking-tight">' . escape_html($title) . '</h1>
           <p class="mt-3 text-sm leading-7 text-muted-foreground">' . escape_html($description) . '</p>
-          <a class="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Kembali</a>
+          <a class="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Back</a>
         </div>
       </section>';
 
