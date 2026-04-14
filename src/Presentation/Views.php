@@ -168,7 +168,7 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
     $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
     $isRegister = $mode === 'register';
     $registerPanel = '
-      <div data-auth-panel="register" class="' . ($isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+      <div data-auth-panel="register" data-page-surface="auth-panel" class="' . ($isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
         <div class="absolute left-7 top-7 flex items-center justify-start md:left-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
@@ -177,7 +177,7 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
         </div>
       </div>';
     $loginPanel = '
-      <div data-auth-panel="login" class="' . (!$isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+      <div data-auth-panel="login" data-page-surface="auth-panel" class="' . (!$isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
         <div class="absolute right-7 top-7 flex items-center justify-end md:right-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
@@ -199,7 +199,7 @@ function render_welcome_page(string $username): string
 {
     $content = '
       <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div class="w-full max-w-2xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
+        <div data-page-surface="result-card" class="w-full max-w-2xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
           <div class="flex items-start justify-between gap-6">
             <div class="space-y-6">
               <div class="flex items-center justify-start">
@@ -222,7 +222,7 @@ function render_not_registered_page(): string
 {
     $content = '
       <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div class="w-full max-w-xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
+        <div data-page-surface="result-card" class="w-full max-w-xl rounded-[2rem] bg-white/[0.99] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg md:p-10">
           <div class="space-y-4">
             <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">You are not registered yet</h1>
             <p class="text-sm leading-6 text-muted-foreground">
@@ -231,7 +231,7 @@ function render_not_registered_page(): string
             </p>
           </div>
           <div class="mt-8">
-            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/">Back to form</a>
+            <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white transition hover:bg-zinc-800" href="/?mode=register">Back to form</a>
           </div>
         </div>
       </section>';
