@@ -1,5 +1,8 @@
+name: au7h
+
 services:
   app:
+    image: au7h
     build:
       context: .
     ports:

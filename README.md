@@ -7,6 +7,40 @@ Autentikasi berbasis PHP dengan Apache HTTPS, MySQL, dan Tailwind CSS.
 - Docker
 - Bun
 
+Install:
+
+- Docker Desktop: https://www.docker.com/products/docker-desktop/
+- Docker Engine + Docker Compose plugin: https://docs.docker.com/engine/install/
+- Bun: https://bun.sh/docs/installation
+
+One-line install:
+
+```bash
+# Debian / Ubuntu
+curl -fsSL https://get.docker.com | sh && curl -fsSL https://bun.sh/install | bash
+
+# macOS (Homebrew)
+brew install --cask docker && brew install bun
+```
+
+```powershell
+# Windows PowerShell
+winget install -e --id Docker.DockerDesktop; powershell -c "irm bun.sh/install.ps1 | iex"
+```
+
+Catatan:
+
+- di macOS dan Windows, buka Docker Desktop sekali setelah install agar daemon aktif
+- di Debian atau Ubuntu, mungkin perlu login ulang setelah instalasi Docker sebelum perintah `docker` bisa dipakai tanpa `sudo`
+
+Pastikan perintah ini sudah tersedia:
+
+```bash
+docker --version
+docker compose version
+bun --version
+```
+
 ## Development
 
 ```bash
