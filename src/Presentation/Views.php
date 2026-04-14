@@ -46,21 +46,6 @@ function render_auth_mark(): string
       </a>';
 }
 
-function render_auth_placeholder(): string
-{
-    return '
-      <div class="relative hidden min-h-svh overflow-hidden bg-white lg:block">
-        <div
-          class="absolute inset-0"
-          data-matrix-rain
-          data-rain-background="#ffffff"
-          data-rain-fade-color="rgba(255,255,255,0.12)"
-          data-rain-color="rgba(24,24,27,0.74)"
-          data-rain-head-color="rgba(9,9,11,0.92)"
-        ></div>
-      </div>';
-}
-
 function render_auth_field(
     string $label,
     string $name,

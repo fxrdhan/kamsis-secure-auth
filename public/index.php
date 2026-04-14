@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/config/bootstrap.php';
 
 if (current_user() !== null) {
     redirect_to('/welcome.php');

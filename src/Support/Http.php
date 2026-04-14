@@ -2,49 +2,6 @@
 
 declare(strict_types=1);
 
-const APP_ROOT = __DIR__ . '/..';
-
-function env_string(string $name, string $fallback): string
-{
-    $value = getenv($name);
-
-    return $value === false || $value === '' ? $fallback : $value;
-}
-
-function app_config(): array
-{
-    static $config = null;
-
-    if ($config !== null) {
-        return $config;
-    }
-
-    $dataDir = env_string('APP_DATA_DIR', APP_ROOT . '/data');
-    if (!is_dir($dataDir)) {
-        mkdir($dataDir, 0700, true);
-    }
-
-    $config = [
-        'db_host' => env_string('DB_HOST', '127.0.0.1'),
-        'db_port' => env_string('DB_PORT', '3306'),
-        'db_name' => env_string('DB_NAME', 'au7h_auth'),
-        'db_user' => env_string('DB_USER', 'au7h_app'),
-        'db_password' => env_string('DB_PASSWORD', 'change-me'),
-        'pepper_secret' => env_string('PEPPER_SECRET', 'replace-me-demo-pepper'),
-        'encryption_key' => hash('sha256', env_string('ENCRYPTION_KEY', 'replace-me-demo-key'), true),
-        'rate_limit_max_attempts' => 10,
-        'rate_limit_window_seconds' => 600,
-        'session_name' => 'au7h_sid',
-        'session_ttl' => 1800,
-    ];
-
-    return $config;
-}
-
-require_once APP_ROOT . '/app/database.php';
-require_once APP_ROOT . '/app/security.php';
-require_once APP_ROOT . '/app/views.php';
-
 function start_secure_session(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
@@ -150,5 +107,3 @@ function require_post_method(): void
         render_page_response(405, render_error_page('Metode tidak diizinkan', 'Gunakan request POST untuk aksi ini.'));
     }
 }
-
-ensure_app_booted();

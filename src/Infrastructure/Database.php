@@ -121,16 +121,16 @@ function consume_rate_limit(string $bucket): bool
     $record = $select->fetch();
 
     if ($record === false || ($now - (int) $record['window_start']) >= $windowSeconds) {
-      $upsert = $pdo->prepare(
-          'INSERT INTO auth_rate_limits (rate_key, attempts, window_start)
-           VALUES (:rate_key, 1, :window_start)
-           ON DUPLICATE KEY UPDATE attempts = VALUES(attempts), window_start = VALUES(window_start)'
-      );
-      $upsert->execute([
-          'rate_key' => $rateKey,
-          'window_start' => $now,
-      ]);
-      return true;
+        $upsert = $pdo->prepare(
+            'INSERT INTO auth_rate_limits (rate_key, attempts, window_start)
+             VALUES (:rate_key, 1, :window_start)
+             ON DUPLICATE KEY UPDATE attempts = VALUES(attempts), window_start = VALUES(window_start)'
+        );
+        $upsert->execute([
+            'rate_key' => $rateKey,
+            'window_start' => $now,
+        ]);
+        return true;
     }
 
     if ((int) $record['attempts'] >= $maxAttempts) {

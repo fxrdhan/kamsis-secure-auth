@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/config/bootstrap.php';
 
 require_post_method();
 verify_csrf_or_fail($_POST['csrf_token'] ?? null);
