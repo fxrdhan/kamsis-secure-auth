@@ -47,27 +47,29 @@
     return true
   }
 
-  function createOutgoingClone() {
-    const clone = shellContent.cloneNode(true)
-    clone.id = ""
-    clone.style.position = "absolute"
-    clone.style.inset = "0"
-    clone.style.zIndex = "20"
-    clone.style.pointerEvents = "none"
-    clone.style.background = "transparent"
-    clone.style.transform = "translate3d(0, 0, 0)"
-    clone.style.willChange = "transform"
-    return clone
+  function getAuthPanel(root) {
+    if (!root || typeof root.querySelector !== "function") {
+      return null
+    }
+
+    const panel = root.querySelector("[data-auth-panel]")
+    return panel instanceof HTMLElement ? panel : null
   }
 
-  async function animateAuthSwitch(direction) {
-    const shellParent = shellContent.parentElement
-    if (!shellParent) {
+  async function animateAuthSwitch(previousPanelRect) {
+    const incomingPanel = getAuthPanel(shellContent)
+    if (!incomingPanel || !previousPanelRect) {
       return
     }
 
-    const outgoingOffset = direction === "right" ? "100%" : "-100%"
-    const incomingOffset = direction === "right" ? "-100%" : "100%"
+    const incomingRect = incomingPanel.getBoundingClientRect()
+    const deltaX = previousPanelRect.left - incomingRect.left
+    const deltaY = previousPanelRect.top - incomingRect.top
+
+    if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) {
+      return
+    }
+
     const transition = {
       easing: motionApi.spring({
         bounce: 0.18,
@@ -75,50 +77,33 @@
       }),
     }
 
-    const outgoingClone = createOutgoingClone()
-    shellParent.appendChild(outgoingClone)
-
-    shellContent.style.transform = `translate3d(${incomingOffset}, 0, 0)`
-    shellContent.style.willChange = "transform"
+    incomingPanel.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
+    incomingPanel.style.willChange = "transform"
 
     // Force layout so Motion starts from the offset state we just applied.
-    shellContent.getBoundingClientRect()
+    incomingPanel.getBoundingClientRect()
 
     const incoming = motionApi.animate(
-      shellContent,
+      incomingPanel,
       {
-        transform: [`translate3d(${incomingOffset}, 0, 0)`, "translate3d(0, 0, 0)"],
-      },
-      transition
-    )
-
-    const outgoing = motionApi.animate(
-      outgoingClone,
-      {
-        transform: ["translate3d(0, 0, 0)", `translate3d(${outgoingOffset}, 0, 0)`],
+        transform: [`translate3d(${deltaX}px, ${deltaY}px, 0)`, "translate3d(0, 0, 0)"],
       },
       transition
     )
 
     try {
-      await Promise.all([incoming.finished, outgoing.finished])
+      await incoming.finished
     } finally {
-      outgoingClone.remove()
-      shellContent.style.transform = ""
-      shellContent.style.willChange = ""
+      incomingPanel.style.transform = ""
+      incomingPanel.style.willChange = ""
     }
   }
 
   async function swapPage(targetUrl, options = {}) {
     const token = ++navigationToken
     const currentAuthMode = getAuthMode(window.location.href)
-    const nextAuthMode = getAuthMode(targetUrl)
-    const authDirection =
-      currentAuthMode && nextAuthMode && currentAuthMode !== nextAuthMode
-        ? nextAuthMode === "login"
-          ? "right"
-          : "left"
-        : null
+    const previousAuthPanel = currentAuthMode ? getAuthPanel(shellContent) : null
+    const previousPanelRect = previousAuthPanel?.getBoundingClientRect() ?? null
 
     const requestInit = {
       credentials: "same-origin",
@@ -150,11 +135,19 @@
         return
       }
 
+      const finalUrl = response.url || String(targetUrl)
+      const nextAuthMode = getAuthMode(finalUrl)
+      const authDirection =
+        currentAuthMode && nextAuthMode && currentAuthMode !== nextAuthMode
+          ? nextAuthMode === "login"
+            ? "right"
+            : "left"
+          : null
+
       shellContent.className = nextContent.className
       shellContent.innerHTML = nextContent.innerHTML
       document.title = nextDocument.title || document.title
 
-      const finalUrl = response.url || String(targetUrl)
       if (options.historyMode === "replace") {
         window.history.replaceState({}, "", finalUrl)
       } else if (window.location.href !== finalUrl) {
@@ -167,7 +160,7 @@
 
       if (authDirection) {
         shellContent.style.pointerEvents = "none"
-        await animateAuthSwitch(authDirection)
+        await animateAuthSwitch(previousPanelRect)
         shellContent.style.pointerEvents = ""
       }
     } catch (error) {

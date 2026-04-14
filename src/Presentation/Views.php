@@ -168,7 +168,7 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
     $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
     $isRegister = $mode === 'register';
     $registerPanel = '
-      <div class="' . ($isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+      <div data-auth-panel="register" class="' . ($isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
         <div class="absolute left-7 top-7 flex items-center justify-start md:left-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
@@ -177,7 +177,7 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
         </div>
       </div>';
     $loginPanel = '
-      <div class="' . (!$isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
+      <div data-auth-panel="login" class="' . (!$isRegister ? 'block' : 'hidden lg:block') . ' relative min-h-svh bg-white p-7 md:p-8">
         <div class="absolute right-7 top-7 flex items-center justify-end md:right-8 md:top-8">
           ' . render_auth_mark() . '
         </div>
