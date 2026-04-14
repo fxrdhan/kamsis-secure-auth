@@ -150,9 +150,10 @@ function render_layout(string $title, string $content): string
         class="pointer-events-none fixed inset-0"
         data-matrix-rain
         data-rain-background="#ffffff"
-        data-rain-fade-color="rgba(255,255,255,0.12)"
+        data-rain-fade-color="rgba(255,255,255,0.2)"
+        data-rain-erase-color="rgba(255,255,255,0.38)"
         data-rain-color="rgba(24,24,27,0.74)"
-        data-rain-head-color="rgba(9,9,11,0.92)"
+        data-rain-head-color="rgba(9,9,11,0.88)"
       ></div>
       <main id="page-shell-content" class="relative z-10 min-h-screen">
       ' . $content . '
