@@ -67,6 +67,9 @@ Script tambahan:
 - `bun run dev:logs`
 - `bun run dev:rebuild`
 - `bun run dev:stop`
+- `bun run vendor:motion`
+
+`bun run vendor:motion` menyalin bundle browser terbaru dari paket `motion` ke `public/vendor/motion.js`, berguna setelah upgrade dependensi animasi frontend.
 
 Perubahan di `src/`, `config/`, dan `public/` cukup di-refresh di browser. Perubahan di `resources/tailwind.css` akan memperbarui `public/styles.css`.
 

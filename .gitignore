@@ -5,3 +5,5 @@ certs/
 output/playwright/
 .DS_Store
 npm-debug.log*
+DOCUMENTATION.md
+REFERENCES.md

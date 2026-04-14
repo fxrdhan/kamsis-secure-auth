@@ -75,10 +75,12 @@
     }
 
     const transition = {
-      easing: motionApi.spring({
-        bounce: 0.18,
-        visualDuration: 0.5,
-      }),
+      // Motion's modern API expects spring configuration as transition options,
+      // not as a generated easing function.
+      type: "spring",
+      stiffness: 220,
+      damping: 30,
+      mass: 1,
     }
 
     incomingPanel.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
