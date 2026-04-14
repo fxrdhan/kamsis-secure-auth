@@ -148,9 +148,9 @@ function verify_stored_password(string $password, string $storedHash): bool
     return password_verify($password . '|' . app_config()['pepper_secret'], $storedHash);
 }
 
-function enforce_auth_rate_limit(string $bucket): void
+function enforce_auth_rate_limit(string $bucket, ?string $subject = null): void
 {
-    if (!consume_rate_limit($bucket)) {
+    if (auth_rate_limit_exceeded($bucket, $subject)) {
         render_page_response(
             429,
             render_error_page('Terlalu banyak percobaan', 'Coba lagi beberapa menit lagi.')

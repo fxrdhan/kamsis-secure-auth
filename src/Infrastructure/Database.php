@@ -103,24 +103,56 @@ function create_user(string $usernameLookup, string $usernameEncrypted, string $
     ]);
 }
 
-function consume_rate_limit(string $bucket): bool
+function auth_rate_limit_key(string $bucket, ?string $subject = null): string
+{
+    $normalizedSubject = normalize_username((string) $subject);
+    $keySource = client_address() . '|' . $bucket;
+
+    if ($normalizedSubject !== '') {
+        $keySource .= '|' . $normalizedSubject;
+    }
+
+    return hash('sha256', $keySource);
+}
+
+function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?array
+{
+    $select = db_connection()->prepare(
+        'SELECT attempts, window_start
+         FROM auth_rate_limits
+         WHERE rate_key = :rate_key'
+    );
+    $select->execute(['rate_key' => auth_rate_limit_key($bucket, $subject)]);
+    $record = $select->fetch();
+
+    return $record === false ? null : $record;
+}
+
+function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
+{
+    $config = app_config();
+    $now = time();
+    $windowSeconds = (int) $config['rate_limit_window_seconds'];
+    $maxAttempts = (int) $config['rate_limit_max_attempts'];
+    $record = find_auth_rate_limit_record($bucket, $subject);
+
+    if ($record === null || ($now - (int) $record['window_start']) >= $windowSeconds) {
+        return false;
+    }
+
+    return (int) $record['attempts'] >= $maxAttempts;
+}
+
+function record_auth_rate_limit_failure(string $bucket, ?string $subject = null): void
 {
     $config = app_config();
     $pdo = db_connection();
     $now = time();
     $windowSeconds = (int) $config['rate_limit_window_seconds'];
-    $maxAttempts = (int) $config['rate_limit_max_attempts'];
-    $rateKey = hash('sha256', client_address() . '|' . $bucket);
+    $rateKey = auth_rate_limit_key($bucket, $subject);
+    $record = find_auth_rate_limit_record($bucket, $subject);
 
-    $select = $pdo->prepare(
-        'SELECT attempts, window_start
-         FROM auth_rate_limits
-         WHERE rate_key = :rate_key'
-    );
-    $select->execute(['rate_key' => $rateKey]);
-    $record = $select->fetch();
-
-    if ($record === false || ($now - (int) $record['window_start']) >= $windowSeconds) {
+    if ($record === null || ($now - (int) $record['window_start']) >= $windowSeconds) {
         $upsert = $pdo->prepare(
             'INSERT INTO auth_rate_limits (rate_key, attempts, window_start)
              VALUES (:rate_key, 1, :window_start)
@@ -130,11 +162,7 @@ function consume_rate_limit(string $bucket): bool
             'rate_key' => $rateKey,
             'window_start' => $now,
         ]);
-        return true;
-    }
-
-    if ((int) $record['attempts'] >= $maxAttempts) {
-        return false;
+        return;
     }
 
     $update = $pdo->prepare(
@@ -143,6 +171,13 @@ function consume_rate_limit(string $bucket): bool
          WHERE rate_key = :rate_key'
     );
     $update->execute(['rate_key' => $rateKey]);
+}
 
-    return true;
+function clear_auth_rate_limit(string $bucket, ?string $subject = null): void
+{
+    $delete = db_connection()->prepare(
+        'DELETE FROM auth_rate_limits
+         WHERE rate_key = :rate_key'
+    );
+    $delete->execute(['rate_key' => auth_rate_limit_key($bucket, $subject)]);
 }
