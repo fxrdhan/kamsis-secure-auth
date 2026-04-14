@@ -42,10 +42,11 @@
       }
 
       const fontSize = Number(this.config.fontSize ?? 14)
-      const cellWidth = Math.max(fontSize * 1.8, 18)
-      const cellHeight = Math.max(fontSize * 1.55, 20)
+      const cellWidth = Math.max(fontSize * 2.2, 26)
+      const cellHeight = Math.max(fontSize * 1.9, 26)
       const trailColors = Array.isArray(this.config.trailColors) ? this.config.trailColors : null
-      const eraseColor = this.matrixAnimation.options.eraseColor ?? "rgba(255,255,255,0.38)"
+      const backgroundColor = this.matrixAnimation.options.backgroundColor ?? "#ffffff"
+      const eraseColor = this.matrixAnimation.options.eraseColor ?? backgroundColor
 
       ctx.save()
       ctx.font = this.font
@@ -61,7 +62,7 @@
         ctx.fillStyle = eraseColor
         ctx.fillRect(
           trailChar.x - cellWidth / 2,
-          trailChar.y - cellHeight * 0.82,
+          trailChar.y - cellHeight * 0.94,
           cellWidth,
           cellHeight
         )
@@ -82,7 +83,8 @@
     minFrameTime: 48,
     syncFrame: false,
     trailColorLogic: "sequential",
-    eraseColor: "rgba(255,255,255,0.38)",
+    backgroundColor: "#ffffff",
+    eraseColor: "#ffffff",
     rainDrop: {
       direction: "TD",
       charArrays: [
@@ -91,11 +93,11 @@
       headColor: "rgba(9,9,11,0.88)",
       trailColor: "rgba(24,24,27,0.56)",
       trailColors: [
-        "rgba(24,24,27,0.48)",
-        "rgba(24,24,27,0.36)",
-        "rgba(24,24,27,0.27)",
-        "rgba(24,24,27,0.18)",
-        "rgba(24,24,27,0.1)",
+        "rgba(24,24,27,0.62)",
+        "rgba(24,24,27,0.44)",
+        "rgba(24,24,27,0.28)",
+        "rgba(24,24,27,0.16)",
+        "rgba(24,24,27,0.08)",
       ],
       fontSize: 14,
       fontFamily: "Backwards",
@@ -124,16 +126,18 @@
     }
 
     const config = structuredClone(matrixPreset)
+    const backgroundColor = container.dataset.rainBackground ?? config.backgroundColor
+    config.backgroundColor = backgroundColor
     config.fadeColor = container.dataset.rainFadeColor ?? config.fadeColor
-    config.eraseColor = container.dataset.rainEraseColor ?? config.eraseColor
+    config.eraseColor = container.dataset.rainEraseColor ?? backgroundColor
     config.rainDrop.headColor = container.dataset.rainHeadColor ?? config.rainDrop.headColor
     config.rainDrop.trailColor = container.dataset.rainColor ?? config.rainDrop.trailColor
 
-    container.style.backgroundColor = container.dataset.rainBackground ?? "#ffffff"
+    container.style.backgroundColor = backgroundColor
 
     const instance = new MatrixAnimationCtor(container, config)
     refineTrailRenderer(instance)
-    instance.ctx.fillStyle = container.dataset.rainBackground ?? "#ffffff"
+    instance.ctx.fillStyle = backgroundColor
     instance.ctx.fillRect(0, 0, instance.canvasWidth, instance.canvasHeight)
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
