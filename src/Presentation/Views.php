@@ -205,6 +205,26 @@ function render_layout(string $title, string $content): string
 </html>';
 }
 
+function render_result_page_shell(string $innerContent, string $maxWidthClass = 'max-w-xl'): string
+{
+    return '
+      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
+        <div data-page-surface="result-card" class="w-full ' . $maxWidthClass . ' rounded-[2rem] border border-white/70 bg-white/[0.96] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
+          <div class="flex items-start justify-between gap-6">
+            <div class="flex items-center justify-start">
+              ' . render_brand(false, false) . '
+            </div>
+            <div class="shrink-0">
+              ' . render_theme_toggle_button() . '
+            </div>
+          </div>
+          <div class="mt-8">
+            ' . $innerContent . '
+          </div>
+        </div>
+      </section>';
+}
+
 function render_auth_page(?array $flash, string $mode = 'register'): string
 {
     $mode = in_array($mode, ['register', 'login'], true) ? $mode : 'register';
@@ -245,46 +265,24 @@ function render_auth_page(?array $flash, string $mode = 'register'): string
 
 function render_welcome_page(string $username): string
 {
-    $content = '
-      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div data-page-surface="result-card" class="w-full max-w-2xl rounded-[2rem] border border-white/70 bg-white/[0.96] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
-          <div class="flex flex-col">
-            <div class="flex items-start justify-between gap-6">
-              <div class="flex items-center justify-start">
-                ' . render_brand_controls(false, false, false, false) . '
-              </div>
-              <div class="shrink-0">
-                ' . render_theme_toggle_button() . '
-              </div>
-            </div>
-            <div class="mt-8">
-              <h1 class="text-4xl font-semibold tracking-tight text-foreground dark:text-white">Welcome, ' . escape_html($username) . '!</h1>
-            </div>
-            <form method="post" action="/logout.php" class="mt-10">
-              <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
-              <button class="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50 px-5 text-sm font-medium text-rose-700 hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-300 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white dark:focus:ring-rose-400/35" type="submit">Logout</button>
-            </form>
-          </div>
-        </div>
-      </section>';
+    $content = render_result_page_shell(
+        '
+          <h1 class="text-4xl font-semibold tracking-tight text-foreground dark:text-white">Welcome, ' . escape_html($username) . '!</h1>
+          <form method="post" action="/logout.php" class="mt-10">
+            <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
+            <button class="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50 px-5 text-sm font-medium text-rose-700 hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-300 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white dark:focus:ring-rose-400/35" type="submit">Logout</button>
+          </form>
+        ',
+        'max-w-2xl'
+    );
 
     return render_layout('Welcome | Au7h', $content);
 }
 
 function render_not_registered_page(): string
 {
-    $content = '
-      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div data-page-surface="result-card" class="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/[0.96] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
-          <div class="flex items-start justify-between gap-6">
-            <div class="flex items-center justify-start">
-              ' . render_brand_controls(false, false, false, false) . '
-            </div>
-            <div class="shrink-0">
-              ' . render_theme_toggle_button() . '
-            </div>
-          </div>
-          <div class="mt-8 space-y-4">
+    $content = render_result_page_shell('
+          <div class="space-y-4">
             <h1 class="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">You are not registered yet</h1>
             <p class="text-sm leading-6 text-muted-foreground">
               <span class="block">The username or password is incorrect.</span>
@@ -294,26 +292,19 @@ function render_not_registered_page(): string
           <div class="mt-8">
             <a class="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200" href="/?mode=register">Back to form</a>
           </div>
-        </div>
-      </section>';
+        ');
 
     return render_layout('Not Registered Yet', $content);
 }
 
 function render_error_page(string $title, string $description): string
 {
-    $content = '
-      <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div class="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/[0.96] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
-          <div class="flex items-center justify-start">
-            ' . render_brand_controls(false, false) . '
-          </div>
-          <p class="mt-8 text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Access denied</p>
+    $content = render_result_page_shell('
+          <p class="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">Access denied</p>
           <h1 class="mt-4 text-3xl font-semibold tracking-tight text-foreground">' . escape_html($title) . '</h1>
           <p class="mt-3 text-sm leading-7 text-muted-foreground">' . escape_html($description) . '</p>
           <a class="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200" href="/">Back</a>
-        </div>
-      </section>';
+        ');
 
     return render_layout($title, $content);
 }
