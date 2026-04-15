@@ -30,8 +30,20 @@ function app_config(): array
         'db_password' => env_string('DB_PASSWORD', 'change-me'),
         'pepper_secret' => env_string('PEPPER_SECRET', 'replace-me-demo-pepper'),
         'encryption_key' => hash('sha256', env_string('ENCRYPTION_KEY', 'replace-me-demo-key'), true),
-        'rate_limit_max_attempts' => 10,
-        'rate_limit_window_seconds' => 600,
+        'auth_rate_limits' => [
+            'default' => [
+                'max_attempts' => 5,
+                'window_seconds' => 900,
+            ],
+            'login' => [
+                'max_attempts' => 5,
+                'window_seconds' => 900,
+            ],
+            'register' => [
+                'max_attempts' => 3,
+                'window_seconds' => 900,
+            ],
+        ],
         'session_name' => 'au7h_sid',
         'session_ttl' => 1800,
     ];

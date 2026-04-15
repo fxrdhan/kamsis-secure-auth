@@ -67,7 +67,9 @@ Script tambahan:
 - `bun run dev:logs`
 - `bun run dev:rebuild`
 - `bun run dev:stop`
+- `bun run build:css`
 - `bun run vendor:motion`
+- `bun run commitlint`
 
 `bun run vendor:motion` menyalin bundle browser terbaru dari paket `motion` ke `public/vendor/motion.js`, berguna setelah upgrade dependensi animasi frontend.
 
@@ -97,7 +99,8 @@ docker run --name au7h \
 Catatan:
 
 - HTTP akan diarahkan ke HTTPS
-- jika `certs/server.crt` dan `certs/server.key` tidak tersedia, sertifikat self-signed dibuat otomatis
+- contoh di atas memakai volume `au7h-certs`; jika mount `/var/www/certs` belum menyediakan `server.crt` dan `server.key`, container akan membuat sertifikat self-signed otomatis
+- jika ingin memakai sertifikat sendiri, mount folder host yang berisi `server.crt` dan `server.key` ke `/var/www/certs`
 - jika port HTTPS host diubah, sesuaikan `PUBLIC_HTTPS_PORT`
 
 ## Security
@@ -108,4 +111,8 @@ Catatan:
 - password disimpan dengan `Argon2id` + pepper
 - username dienkripsi dengan `AES-256-GCM`
 - lookup username memakai `HMAC-SHA256`
-- rate limit login aktif dan MySQL hanya listen di `127.0.0.1`
+- throttling auth aktif:
+  - login dibatasi `5` percobaan gagal / `15` menit per kombinasi username + IP
+  - register dibatasi `3` percobaan gagal / `15` menit per IP
+  - request yang melewati batas ditolak dengan status `429`
+- image default menjalankan MySQL pada `127.0.0.1`; profile development di `compose.dev.yaml` mempublish MySQL ke host pada `localhost:13306` untuk kebutuhan lokal

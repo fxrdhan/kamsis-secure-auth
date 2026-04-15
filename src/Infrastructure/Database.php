@@ -115,6 +115,24 @@ function auth_rate_limit_key(string $bucket, ?string $subject = null): string
     return hash('sha256', $keySource);
 }
 
+function auth_rate_limit_policy(string $bucket): array
+{
+    $limits = app_config()['auth_rate_limits'] ?? [];
+    $policy = $limits[$bucket] ?? $limits['default'] ?? null;
+
+    if (!is_array($policy)) {
+        return [
+            'max_attempts' => 5,
+            'window_seconds' => 900,
+        ];
+    }
+
+    return [
+        'max_attempts' => (int) ($policy['max_attempts'] ?? 5),
+        'window_seconds' => (int) ($policy['window_seconds'] ?? 900),
+    ];
+}
+
 function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?array
 {
     $select = db_connection()->prepare(
@@ -130,10 +148,10 @@ function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?
 
 function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
 {
-    $config = app_config();
+    $policy = auth_rate_limit_policy($bucket);
     $now = time();
-    $windowSeconds = (int) $config['rate_limit_window_seconds'];
-    $maxAttempts = (int) $config['rate_limit_max_attempts'];
+    $windowSeconds = $policy['window_seconds'];
+    $maxAttempts = $policy['max_attempts'];
     $record = find_auth_rate_limit_record($bucket, $subject);
 
     if ($record === null || ($now - (int) $record['window_start']) >= $windowSeconds) {
@@ -145,10 +163,10 @@ function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
 
 function record_auth_rate_limit_failure(string $bucket, ?string $subject = null): void
 {
-    $config = app_config();
+    $policy = auth_rate_limit_policy($bucket);
     $pdo = db_connection();
     $now = time();
-    $windowSeconds = (int) $config['rate_limit_window_seconds'];
+    $windowSeconds = $policy['window_seconds'];
     $rateKey = auth_rate_limit_key($bucket, $subject);
     $record = find_auth_rate_limit_record($bucket, $subject);
 

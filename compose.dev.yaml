@@ -8,8 +8,11 @@ services:
     ports:
       - "${HOST_HTTP_PORT:-10080}:8080"
       - "${HOST_HTTPS_PORT:-10443}:8443"
+      - "${HOST_MYSQL_PORT:-13306}:3306"
     environment:
       PUBLIC_HTTPS_PORT: ${HOST_HTTPS_PORT:-10443}
+      MYSQL_BIND_ADDRESS: 0.0.0.0
+      MYSQL_ALLOW_REMOTE: "1"
     volumes:
       - ./config:/var/www/html/config
       - ./public:/var/www/html/public
