@@ -5,9 +5,4 @@ certs/
 output/playwright/
 .DS_Store
 npm-debug.log*
-DOCUMENTATION.md
-REFERENCES.md
-PETA_TUTORIAL_PROYEK.md
-LAPORAN_RANCANG_PROYEK_DARI_NOL.md
 *.bak
-STATUS_AUDIT_KUTIPAN_SCRAPE.md

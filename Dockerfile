@@ -1,3 +1,14 @@
+FROM oven/bun:1.3.6 AS frontend-builder
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY resources ./resources
+COPY public ./public
+RUN bun run build:css
+
 FROM ubuntu:25.10
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,6 +46,7 @@ COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect
 COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
 COPY config /var/www/html/config
 COPY public /var/www/html/public
+COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
 COPY src /var/www/html/src
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
 

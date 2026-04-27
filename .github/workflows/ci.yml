@@ -34,7 +34,10 @@ jobs:
         run: |
           while IFS= read -r file; do
             php -l "$file"
-          done < <(find config public src -type f -name '*.php' | sort)
+          done < <(find config public src tests -type f -name '*.php' | sort)
+
+      - name: Run PHP tests
+        run: bun run test:php
 
       - name: Build Docker image
         run: docker build -t au7h-ci .

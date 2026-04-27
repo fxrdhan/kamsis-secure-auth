@@ -2,16 +2,6 @@
 
 declare(strict_types=1);
 
-function escape_html(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
-function client_address(): string
-{
-    return (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-}
-
 function csrf_token(): string
 {
     if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {

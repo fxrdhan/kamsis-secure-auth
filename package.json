@@ -14,6 +14,8 @@
     "dev:css": "tailwindcss -i ./resources/tailwind.css -o ./public/styles.css --watch",
     "build:css": "tailwindcss -i ./resources/tailwind.css -o ./public/styles.css --minify",
     "vendor:motion": "bun ./scripts/sync-motion-vendor.mjs",
+    "test": "bun run test:php",
+    "test:php": "php tests/AuthSecurityTest.php",
     "commitlint": "commitlint --config commitlint.config.cjs"
   },
   "keywords": [

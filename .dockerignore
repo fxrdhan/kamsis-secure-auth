@@ -1,6 +1,17 @@
-node_modules
-npm-debug.log
-data
-certs
-.DS_Store
+node_modules/
+data/
+certs/
+.git/
+.github/
+.playwright-cli/
+output/
 
+.DS_Store
+npm-debug.log*
+
+DOCUMENTATION.md
+REFERENCES.md
+PETA_TUTORIAL_PROYEK.md
+LAPORAN_RANCANG_PROYEK_DARI_NOL.md
+*.bak
+STATUS_AUDIT_KUTIPAN_SCRAPE.md
