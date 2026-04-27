@@ -148,6 +148,23 @@ function render_password_requirements(): string
         </ul>';
 }
 
+function render_confirm_password_status(): string
+{
+    return '
+        <p data-confirm-password-status class="mt-1.5 flex max-h-0 -translate-y-1 items-center gap-1.5 overflow-hidden text-xs font-medium leading-4 opacity-0 transition-[max-height,opacity,transform,color] duration-200 ease-out" aria-live="polite">
+          <span data-confirm-password-mark aria-hidden="true" class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            <svg data-confirm-password-icon="match" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="hidden h-3.5 w-3.5">
+              <path d="M3.5 8.2 6.5 11 12.5 5"></path>
+            </svg>
+            <svg data-confirm-password-icon="mismatch" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5">
+              <path d="M4.5 4.5 11.5 11.5"></path>
+              <path d="M11.5 4.5 4.5 11.5"></path>
+            </svg>
+          </span>
+          <span data-confirm-password-message>tidak cocok dengan password</span>
+        </p>';
+}
+
 function render_auth_form_card(string $mode, ?array $flash): string
 {
     $csrfToken = csrf_token();
@@ -171,7 +188,10 @@ function render_auth_form_card(string $mode, ?array $flash): string
             'password',
             'new-password',
             '',
-            'Please confirm your password.'
+            null,
+            true,
+            'data-confirm-password-input',
+            render_confirm_password_status()
         )
         : '';
 

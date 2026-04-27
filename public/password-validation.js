@@ -89,17 +89,97 @@
     }
   }
 
-  function bindPasswordValidation(root = document) {
-    const inputs = root.querySelectorAll("[data-password-input]")
+  function setConfirmPasswordStatus(status, isVisible, isMatch) {
+    const matchIcon = status.querySelector('[data-confirm-password-icon="match"]')
+    const mismatchIcon = status.querySelector('[data-confirm-password-icon="mismatch"]')
+    const message = status.querySelector("[data-confirm-password-message]")
 
-    for (const input of inputs) {
-      if (!(input instanceof HTMLInputElement) || input.dataset.passwordValidationBound === "true") {
+    status.classList.toggle("max-h-8", isVisible)
+    status.classList.toggle("max-h-0", !isVisible)
+    status.classList.toggle("translate-y-0", isVisible)
+    status.classList.toggle("-translate-y-1", !isVisible)
+    status.classList.toggle("opacity-100", isVisible)
+    status.classList.toggle("opacity-0", !isVisible)
+    status.classList.toggle("text-emerald-700", isVisible && isMatch)
+    status.classList.toggle("dark:text-emerald-200", isVisible && isMatch)
+    status.classList.toggle("text-rose-700", isVisible && !isMatch)
+    status.classList.toggle("dark:text-rose-300", isVisible && !isMatch)
+
+    if (matchIcon instanceof SVGElement) {
+      matchIcon.classList.toggle("hidden", !isMatch)
+    }
+
+    if (mismatchIcon instanceof SVGElement) {
+      mismatchIcon.classList.toggle("hidden", isMatch)
+    }
+
+    if (message instanceof HTMLElement) {
+      message.textContent = isMatch ? "cocok dengan password" : "tidak cocok dengan password"
+    }
+  }
+
+  function updateConfirmPasswordStatus(form) {
+    const password = form.querySelector("[data-password-input]")
+    const confirmPassword = form.querySelector("[data-confirm-password-input]")
+    const status = form.querySelector("[data-confirm-password-status]")
+
+    if (
+      !(password instanceof HTMLInputElement) ||
+      !(confirmPassword instanceof HTMLInputElement) ||
+      !(status instanceof HTMLElement)
+    ) {
+      return true
+    }
+
+    const isVisible = confirmPassword.value.length > 0
+    const isMatch = password.value === confirmPassword.value
+    setConfirmPasswordStatus(status, isVisible, isMatch)
+    confirmPassword.setCustomValidity(isVisible && !isMatch ? "Konfirmasi password tidak cocok." : "")
+
+    return !isVisible || isMatch
+  }
+
+  function bindPasswordValidation(root = document) {
+    const forms = root.querySelectorAll("form")
+
+    for (const form of forms) {
+      if (!(form instanceof HTMLFormElement) || form.dataset.passwordValidationBound === "true") {
         continue
       }
 
-      input.dataset.passwordValidationBound = "true"
-      input.addEventListener("input", () => updatePasswordRequirements(input))
-      updatePasswordRequirements(input)
+      const password = form.querySelector("[data-password-input]")
+      const confirmPassword = form.querySelector("[data-confirm-password-input]")
+
+      if (!(password instanceof HTMLInputElement)) {
+        continue
+      }
+
+      form.dataset.passwordValidationBound = "true"
+      password.addEventListener("input", () => {
+        updatePasswordRequirements(password)
+        updateConfirmPasswordStatus(form)
+      })
+
+      if (confirmPassword instanceof HTMLInputElement) {
+        confirmPassword.addEventListener("input", () => updateConfirmPasswordStatus(form))
+      }
+
+      form.addEventListener(
+        "submit",
+        (event) => {
+          if (updateConfirmPasswordStatus(form)) {
+            return
+          }
+
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          confirmPassword?.focus()
+        },
+        true
+      )
+
+      updatePasswordRequirements(password)
+      updateConfirmPasswordStatus(form)
     }
   }
 
