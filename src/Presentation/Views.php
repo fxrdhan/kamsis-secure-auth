@@ -92,11 +92,14 @@ function render_auth_field(
     string $autocomplete,
     string $placeholder,
     ?string $hint = null,
-    bool $required = true
+    bool $required = true,
+    string $inputAttributes = '',
+    string $afterInputHtml = ''
 ): string {
     $requiredAttribute = $required ? ' required' : '';
     $requiredIndicator = $required ? '<span class="ml-1 text-rose-500 dark:text-rose-300" aria-hidden="true">*</span>' : '';
     $hintMarkup = $hint === null ? '' : '<p class="mt-1.5 text-xs leading-4 text-muted-foreground dark:text-zinc-300">' . escape_html($hint) . '</p>';
+    $extraInputAttributes = $inputAttributes === '' ? '' : ' ' . trim($inputAttributes);
 
     return '
       <div>
@@ -107,9 +110,42 @@ function render_auth_field(
           type="' . escape_html($type) . '"
           autocomplete="' . escape_html($autocomplete) . '"
           placeholder="' . escape_html($placeholder) . '"
-          class="flex h-10 w-full rounded-md border border-zinc-300 bg-white/92 px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-hidden placeholder:text-zinc-400 hover:border-zinc-500 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-400 dark:hover:border-zinc-500 dark:focus:border-zinc-200 dark:focus:ring-zinc-100/45"' . $requiredAttribute . '
-        >' . $hintMarkup . '
+          class="flex h-10 w-full rounded-md border border-zinc-300 bg-white/92 px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-hidden placeholder:text-zinc-400 hover:border-zinc-500 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-400 dark:hover:border-zinc-500 dark:focus:border-zinc-200 dark:focus:ring-zinc-100/45"' . $requiredAttribute . $extraInputAttributes . '
+        >' . $hintMarkup . $afterInputHtml . '
       </div>';
+}
+
+function render_password_requirements(): string
+{
+    $requirements = [
+        ['length', '10 characters long'],
+        ['case', 'Uppercase and lowercase'],
+        ['number', 'Number'],
+    ];
+    $items = '';
+
+    foreach ($requirements as [$rule, $label]) {
+        $items .= '
+          <li data-password-rule="' . escape_html($rule) . '" class="flex items-center gap-2 text-xs leading-4 text-muted-foreground transition-colors dark:text-zinc-300">
+            <span data-password-check aria-hidden="true" class="inline-flex h-4 w-4 shrink-0 scale-100 items-center justify-center rounded-[5px] border border-zinc-400 bg-white text-transparent transition-[background-color,border-color,color,transform] duration-200 ease-out dark:border-zinc-500 dark:bg-zinc-900">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3">
+                <path data-password-check-path class="[stroke-dasharray:18] [stroke-dashoffset:18] transition-[stroke-dashoffset] duration-200 ease-out" d="M3.5 8.2 6.5 11 12.5 5"></path>
+              </svg>
+            </span>
+            <span data-password-label class="relative inline-block transition-colors">
+              ' . escape_html($label) . '
+              <span data-password-strike aria-hidden="true" class="absolute left-0 right-0 top-1/2 h-px origin-left -translate-y-1/2 scale-x-0 bg-current transition-transform duration-200 ease-out"></span>
+            </span>
+          </li>';
+    }
+
+    return '
+        <p id="password-requirements-hint" data-password-requirements-hint class="mt-1.5 max-h-8 translate-y-0 overflow-hidden text-xs leading-4 text-muted-foreground opacity-100 transition-[max-height,opacity,transform] duration-200 ease-out dark:text-zinc-300">
+          Must be at least 10 characters long, with uppercase, lowercase, and number.
+        </p>
+        <ul id="password-requirements" data-password-requirements class="mt-0 max-h-0 translate-y-1 overflow-hidden pl-0.5 space-y-1.5 opacity-0 transition-[max-height,opacity,transform,margin] duration-200 ease-out" aria-label="Password requirements">
+          ' . $items . '
+        </ul>';
 }
 
 function render_auth_form_card(string $mode, ?array $flash): string
@@ -161,7 +197,10 @@ function render_auth_form_card(string $mode, ?array $flash): string
               'password',
               $passwordAutocomplete,
               '',
-              $isRegister ? 'Must be at least 10 characters long, with uppercase, lowercase, and number.' : null
+              null,
+              true,
+              $isRegister ? 'data-password-input aria-describedby="password-requirements"' : '',
+              $isRegister ? render_password_requirements() : ''
           ) . '
           ' . $confirmField . '
           <button
@@ -190,6 +229,7 @@ function render_layout(string $title, string $content): string
     <script src="/vendor/matrix-animation.js" defer></script>
     <script src="/vendor/motion.js" defer></script>
     <script src="/matrix-rain.js" defer></script>
+    <script src="/password-validation.js" defer></script>
     <script src="/page-shell.js" defer></script>
   </head>
   <body class="min-h-svh bg-white text-foreground dark:bg-zinc-950">
