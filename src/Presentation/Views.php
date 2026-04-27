@@ -13,7 +13,7 @@ function render_flash(?array $flash): string
         ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-200'
         : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200';
 
-    return '<div class="rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ' . $className . '" role="status">'
+    return '<div class="rounded-xl border px-4 py-3 text-sm font-medium shadow-xs ' . $className . '" role="status">'
         . escape_html((string) $flash['text'])
         . '</div>';
 }
@@ -51,7 +51,7 @@ function render_theme_toggle_button(): string
         data-theme-toggle
         aria-label="Toggle color theme"
         title="Toggle color theme"
-        class="inline-flex h-10 w-10 items-center justify-center text-zinc-700 transition-colors duration-300 ease-[var(--theme-transition-ease)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 dark:text-zinc-100 dark:focus-visible:ring-zinc-200/30"
+        class="inline-flex h-10 w-10 items-center justify-center text-zinc-700 transition-colors duration-300 ease-(--theme-transition-ease) focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-400/45 dark:text-zinc-100 dark:focus-visible:ring-zinc-200/30"
       >
         <span class="relative h-5 w-5">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-theme-toggle-icon class="theme-toggle-icon theme-toggle-icon-sun">
@@ -106,7 +106,7 @@ function render_auth_field(
           type="' . escape_html($type) . '"
           autocomplete="' . escape_html($autocomplete) . '"
           placeholder="' . escape_html($placeholder) . '"
-          class="flex h-10 w-full rounded-md border border-zinc-300 bg-white/92 px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none placeholder:text-zinc-400 hover:border-zinc-500 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-400 dark:hover:border-zinc-500 dark:focus:border-zinc-200 dark:focus:ring-zinc-100/45"' . $requiredAttribute . '
+          class="flex h-10 w-full rounded-md border border-zinc-300 bg-white/92 px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-hidden placeholder:text-zinc-400 hover:border-zinc-500 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-400 dark:hover:border-zinc-500 dark:focus:border-zinc-200 dark:focus:ring-zinc-100/45"' . $requiredAttribute . '
         >' . $hintMarkup . '
       </div>';
 }
@@ -164,7 +164,7 @@ function render_auth_form_card(string $mode, ?array $flash): string
           ) . '
           ' . $confirmField . '
           <button
-            class="inline-flex h-10 w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-zinc-400/30"
+            class="inline-flex h-10 w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-300 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-zinc-400/30"
             type="submit"
           >' . escape_html($submitLabel) . '</button>
         </form>
@@ -209,7 +209,7 @@ function render_result_page_shell(string $innerContent, string $maxWidthClass = 
 {
     return '
       <section class="flex min-h-svh items-center justify-center p-6 md:p-10">
-        <div data-page-surface="result-card" class="w-full ' . $maxWidthClass . ' rounded-[2rem] border border-white/70 bg-white/[0.96] p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
+        <div data-page-surface="result-card" class="w-full ' . $maxWidthClass . ' rounded-4xl border border-white/70 bg-white/96 p-8 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.3)] backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.82)] md:p-10">
           <div class="flex items-start justify-between gap-6">
             <div class="flex items-center justify-start">
               ' . render_brand(false, false) . '
@@ -270,7 +270,7 @@ function render_welcome_page(string $username): string
           <h1 class="text-4xl font-semibold tracking-tight text-foreground dark:text-white">Welcome, ' . escape_html($username) . '!</h1>
           <form method="post" action="/logout.php" class="mt-10">
             <input type="hidden" name="csrf_token" value="' . escape_html(csrf_token()) . '">
-            <button class="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50 px-5 text-sm font-medium text-rose-700 hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-300 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white dark:focus:ring-rose-400/35" type="submit">Logout</button>
+            <button class="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50 px-5 text-sm font-medium text-rose-700 hover:bg-rose-500 hover:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-300 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white dark:focus:ring-rose-400/35" type="submit">Logout</button>
           </form>
         ',
         'max-w-2xl'
