@@ -95,11 +95,12 @@ function render_auth_field(
     bool $required = true
 ): string {
     $requiredAttribute = $required ? ' required' : '';
-    $hintMarkup = $hint === null ? '' : '<p class="pt-2 text-xs leading-5 text-muted-foreground dark:text-zinc-300">' . escape_html($hint) . '</p>';
+    $requiredIndicator = $required ? '<span class="ml-1 text-rose-500 dark:text-rose-300" aria-hidden="true">*</span>' : '';
+    $hintMarkup = $hint === null ? '' : '<p class="mt-1.5 text-xs leading-4 text-muted-foreground dark:text-zinc-300">' . escape_html($hint) . '</p>';
 
     return '
-      <div class="space-y-2.5">
-        <label class="block text-[13px] font-semibold text-foreground dark:text-zinc-100" for="' . escape_html($name) . '">' . escape_html($label) . '</label>
+      <div>
+        <label class="mb-2.5 block text-[13px] font-semibold text-foreground dark:text-zinc-100" for="' . escape_html($name) . '">' . escape_html($label) . $requiredIndicator . '</label>
         <input
           id="' . escape_html($name) . '"
           name="' . escape_html($name) . '"

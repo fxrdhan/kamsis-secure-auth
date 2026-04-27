@@ -174,9 +174,9 @@
     --border: 218 18% 26%;
     --input: 218 18% 26%;
     --ring: 210 40% 96%;
-    --rain-background: #080c18;
-    --rain-erase-color: #080c18;
-    --rain-fade-color: rgba(8,12,24,0.18);
+    --rain-background: oklch(14.1% 0.005 285.823);
+    --rain-erase-color: oklch(14.1% 0.005 285.823);
+    --rain-fade-color: oklch(14.1% 0.005 285.823 / 0.18);
     --rain-color: rgba(148,163,184,0.22);
     --rain-head-color: rgba(248,250,252,0.7);
     --rain-trail-1: rgba(226,232,240,0.28);
