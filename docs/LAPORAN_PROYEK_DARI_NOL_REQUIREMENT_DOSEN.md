@@ -3728,6 +3728,64 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 | ACL container | `bun run acl:status` | chain `AU7H_INPUT` aktif; HTTP/HTTPS `ACCEPT`; MySQL `3306` dan SSH `22` `REJECT`; ICMP echo request `DROP` |
 | Batas satu container | Review `Dockerfile` dan `compose.dev.yaml` | container `app` memuat Apache/PHP/MySQL; `snort` adalah sidecar IDS, bukan pemisahan web/database |
 
+## Bukti Screenshot Verifikasi
+
+Bagian ini melampirkan bukti visual dari verifikasi aktual yang sudah dijalankan. Screenshot yang dipilih hanya yang menunjukkan hasil berhasil; screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final.
+
+### Screenshot 1 - Container app dan Snort aktif
+
+![Container app dan Snort aktif](assets/screenshots/01-compose-services.png)
+
+Gambar ini menunjukkan `docker compose -f compose.dev.yaml ps` dengan service `app` dan `snort` berstatus `Up`, serta port `10080->8080` dan `10443->8443` terpublish.
+
+### Screenshot 2 - HTTP redirect ke HTTPS
+
+![HTTP redirect ke HTTPS](assets/screenshots/02-http-redirect.png)
+
+Gambar ini menunjukkan request `curl -k -I http://localhost:10080` menerima status `301 Moved Permanently` dan header `Location: https://localhost:10443/`.
+
+### Screenshot 3 - Form register tampil di browser
+
+![Form register tampil di browser](assets/screenshots/03-register-form.png)
+
+Gambar ini menunjukkan halaman utama aplikasi dapat dibuka lewat `https://localhost:10443/` dan menampilkan form pendaftaran akun.
+
+### Screenshot 4 - Login sukses ke welcome page
+
+![Login sukses ke welcome page](assets/screenshots/04-welcome-page.png)
+
+Gambar ini menunjukkan login berhasil dan user diarahkan ke `/welcome.php` dengan username tampil pada halaman welcome.
+
+### Screenshot 5 - Database tidak menyimpan kredensial plaintext
+
+![Database tidak menyimpan kredensial plaintext](assets/screenshots/05-database-privacy.png)
+
+Gambar ini menunjukkan tabel `users` hanya memuat `username_lookup`, `username_encrypted`, dan `password_hash`. Nilai username tidak tampil sebagai plaintext, sedangkan password tersimpan sebagai hash Argon2id.
+
+### Screenshot 6 - Unit security helper lulus
+
+![Unit security helper lulus](assets/screenshots/06-security-test.png)
+
+Gambar ini menunjukkan `bun run test` berhasil menjalankan test helper keamanan dan menghasilkan `Auth security tests passed.`
+
+### Screenshot 7 - Validasi konfigurasi Snort berhasil
+
+![Validasi konfigurasi Snort berhasil](assets/screenshots/07-snort-rules.png)
+
+Gambar ini menunjukkan `bun run snort:test-rules` berhasil memvalidasi konfigurasi Snort, memuat `644` rules, dan berakhir dengan `0 warnings`.
+
+### Screenshot 8 - Alert Snort muncul saat traffic HTTPS
+
+![Alert Snort muncul saat traffic HTTPS](assets/screenshots/08-snort-alert.png)
+
+Gambar ini menunjukkan alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web server"` muncul setelah traffic HTTPS dikirim ke aplikasi.
+
+### Screenshot 9 - ACL container aktif
+
+![ACL container aktif](assets/screenshots/09-acl-status.png)
+
+Gambar ini menunjukkan chain `AU7H_INPUT` aktif, port web `8080,8443` diizinkan, port MySQL `3306` dan SSH `22` ditolak, serta ICMP echo request di-drop.
+
 ## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
@@ -3812,324 +3870,3 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 9. cocokkan satu per satu dengan requirement dosen.
 
 Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat diminta mempertanggungjawabkan alasan teknis di depan dosen.
-
-## 14. Lampiran Referensi Lengkap
-
-Section ini menggabungkan seluruh lampiran referensi ke dokumen utama agar seluruh jejak rujukan berada dalam satu file. Bagian `14.1` sampai `14.9` paling langsung menopang requirement dosen. Bagian setelahnya mencatat resource pendukung proyek yang tetap relevan untuk implementasi penuh repo.
-
-Berbeda dari versi sebelumnya, bukti kutipan literal tidak lagi dipisah sebagai section tersendiri di belakang. Kutipan yang benar-benar dipakai sudah dipindahkan ke `Section 5` dan ke tiap tahap implementasi yang relevan agar alurnya terbaca utuh: requirement -> target -> referensi -> bagian sumber -> implementasi.
-
-### 14.1. Status Cakupan Referensi
-
-- `Tercakup`: backend PHP, keamanan auth, database MySQL, Docker, Apache HTTPS, Tailwind, Bun, GitHub Actions, dan library frontend yang dibundel.
-- `Catatan non-requirement`: font lokal `public/assets/Backwards.ttf` hanya aset visual pendukung UI. Asal upstream font tidak memengaruhi pemenuhan requirement dosen karena requirement inti berada pada container, autentikasi, HTTPS, privasi database, mitigasi input, Snort, dan ACL.
-
-### 14.2. Bootstrap, Session, Cookie, dan HTTP Flow
-
-File repo terkait:
-- `config/bootstrap.php`
-- `src/Support/Http.php`
-- `src/Support/Config.php`
-- `public/index.php`
-- `public/logout.php`
-
-Referensi utama:
-- [PHP `session_start()`](https://www.php.net/manual/en/function.session-start.php)
-- [PHP `session_name()`](https://www.php.net/manual/en/function.session-name.php)
-- [PHP `session_set_cookie_params()`](https://www.php.net/manual/en/function.session-set-cookie-params.php)
-- [PHP `session_get_cookie_params()`](https://www.php.net/manual/en/function.session-get-cookie-params.php)
-- [PHP `session_destroy()`](https://www.php.net/session-destroy)
-- [PHP `session_regenerate_id()`](https://www.php.net/manual/en/function.session-regenerate-id.php)
-- [PHP session reference](https://www.php.net/manual/en/ref.session.php)
-
-Yang ditopang oleh sumber ini:
-- pembuatan secure session
-- pengaturan cookie `secure`, `httponly`, `samesite`
-- ganti nama session
-- hapus cookie session saat logout
-- regenerasi session ID setelah login
-
-### 14.3. Validasi Input, Escaping, Randomness, dan CSRF
-
-File repo terkait:
-- `src/Security/Auth.php`
-- `public/register.php`
-- `public/login.php`
-- `public/logout.php`
-
-Referensi utama:
-- [PHP `htmlspecialchars()`](https://www.php.net/manual/en/function.htmlspecialchars.php)
-- [PHP `random_bytes()`](https://www.php.net/manual/en/function.random-bytes.php)
-- [OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
-
-Yang ditopang oleh sumber ini:
-- output escaping HTML
-- pembangkitan token acak
-- pola CSRF token server-side
-- validasi token pada request `POST`
-
-### 14.4. Password Hashing, Pepper, HMAC Lookup, dan Enkripsi Username
-
-File repo terkait:
-- `src/Security/Auth.php`
-- `public/register.php`
-- `public/login.php`
-- `public/welcome.php`
-
-Referensi utama:
-- [PHP `password_hash()`](https://www.php.net/manual/en/function.password-hash.php)
-- [PHP `password_verify()`](https://www.php.net/manual/en/function.password-verify.php)
-- [PHP `hash_hmac()`](https://www.php.net/manual/en/function.hash-hmac.php)
-- [PHP `openssl_encrypt()`](https://www.php.net/manual/en/function.openssl-encrypt.php)
-- [PHP `openssl_decrypt()`](https://www.php.net/manual/en/function.openssl-decrypt.php)
-- [PHP Password Hashing FAQ](https://php.net/manual/en/faq.passwords.php)
-
-Yang ditopang oleh sumber ini:
-- penggunaan `PASSWORD_ARGON2ID`
-- verifikasi hash password
-- konsep pepper berbasis secret tambahan
-- `HMAC-SHA256` untuk lookup username
-- `AES-256-GCM` untuk enkripsi dan dekripsi username
-
-### 14.5. Database PDO, Prepared Statement, dan Query Auth
-
-File repo terkait:
-- `src/Infrastructure/Database.php`
-
-Referensi utama:
-- [PHP `PDO::prepare()`](https://www.php.net/manual/en/pdo.prepare.php)
-- [PHP PDO overview](https://www.php.net/manual/en/book.pdo.php)
-
-Yang ditopang oleh sumber ini:
-- koneksi PDO ke MySQL
-- prepared statement
-- binding parameter saat `SELECT`, `INSERT`, `UPDATE`, `DELETE`
-- praktik dasar pencegahan SQL injection
-
-### 14.6. Inisialisasi MySQL, User, Privilege, dan Bootstrap Database
-
-File repo terkait:
-- `docker-entrypoint.sh`
-- `src/Infrastructure/Database.php`
-
-Referensi utama:
-- [MySQL data directory initialization](https://dev.mysql.com/doc/refman/en/data-directory-initialization.html)
-- [MySQL `CREATE USER`](https://dev.mysql.com/doc/en/create-user.html)
-- [MySQL `GRANT`](https://dev.mysql.com/doc/en/grant.html)
-- [MySQL `ALTER USER`](https://dev.mysql.com/doc/refman/en/alter-user.html)
-- [MySQL `mysqladmin`](https://dev.mysql.com/doc/refman/en/mysqladmin.html)
-- [MySQL SQL modes](https://dev.mysql.com/doc/refman/en/sql-mode.html)
-
-Yang ditopang oleh sumber ini:
-- `mysqld --initialize-insecure`
-- pembuatan database dan user aplikasi
-- grant privilege ke user aplikasi
-- readiness check dengan `mysqladmin ping`
-- penggunaan strict SQL mode
-
-### 14.7. Docker Image, Container Run, Volume, dan Compose Dev Workflow
-
-File repo terkait:
-- `Dockerfile`
-- `compose.dev.yaml`
-- `docker-entrypoint.sh`
-- `package.json`
-
-Referensi utama:
-- [Dockerfile reference](https://docs.docker.com/reference/dockerfile.md)
-- [Docker build CLI reference](https://docs.docker.com/engine/reference/commandline/build/)
-- [Docker run CLI reference](https://docs.docker.com/reference/cli/docker/container/run)
-- [Docker Compose reference](https://docs.docker.com/compose/reference/)
-- [Docker Compose `up`](https://docs.docker.com/compose/reference/up)
-- [Docker Compose `build`](https://docs.docker.com/compose/reference/build/)
-- [Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
-- [Docker volumes](https://docs.docker.com/storage/volumes/)
-
-Yang ditopang oleh sumber ini:
-- penulisan `FROM`, `RUN`, `COPY`, `ENV`, `EXPOSE`, `VOLUME`, `ENTRYPOINT`, `CMD`
-- urutan dasar Dockerfile yang diawali `FROM`
-- perbedaan `shell form` dan `exec form`, terutama untuk pasangan `ENTRYPOINT` + `CMD`
-- build image lokal
-- run container dengan port dan volume
-- bind mount source code, config, dan certs di development
-- named volume untuk data aplikasi dan MySQL
-- workflow `docker compose up -d --build`
-
-### 14.8. Apache HTTPS, Redirect, dan Response Security Headers
-
-File repo terkait:
-- `docker/apache-global.conf`
-- `docker/apache-http.conf.template`
-- `docker/apache-ssl.conf.template`
-- `docker/php.ini`
-- `docker-entrypoint.sh`
-
-Referensi utama:
-- [Apache SSL/TLS How-To](https://httpd.apache.org/docs/current/ssl/ssl_howto.html)
-- [Apache `mod_rewrite`](https://httpd.apache.org/docs/current/mod/mod_rewrite.html)
-- [Apache `mod_headers`](https://httpd.apache.org/docs/current/mod/mod_headers.html)
-- [MDN Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy)
-- [OWASP Content Security Policy Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
-- [OWASP HSTS Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html)
-- [MDN X-Content-Type-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options)
-- [MDN Referrer-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy)
-- [MDN X-Frame-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options)
-- [MDN Permissions-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy)
-- [MDN Clickjacking guide](https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/Clickjacking)
-
-Yang ditopang oleh sumber ini:
-- virtual host HTTPS Apache
-- redirect HTTP ke HTTPS
-- `Header always set ...`
-- CSP, HSTS, `Referrer-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Permissions-Policy`
-- pembatasan embedding dan clickjacking
-
-### 14.9. Snort IDS, Rule Lokal, Sidecar, dan ACL Jaringan
-
-File repo terkait:
-- `compose.dev.yaml`
-- `Dockerfile`
-- `docker-entrypoint.sh`
-- `docker/acl.sh`
-- `security/snort/snort.lua`
-- `security/snort/rules/au7h.rules`
-- `security/snort/rules/local.rules`
-- `security/snort/rules/community.rules`
-- `scripts/update-snort-community-rules.sh`
-- `package.json`
-
-Referensi utama:
-- [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
-- [Docker Hub - `ciscotalos/snort3`](https://hub.docker.com/r/ciscotalos/snort3)
-- [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
-- [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
-- [Docker Compose services - `network_mode`](https://docs.docker.com/reference/compose-file/services/#network_mode)
-- [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
-
-Yang ditopang oleh sumber ini:
-- penggunaan image `ciscotalos/snort3`
-- capability `NET_ADMIN` dan `NET_RAW` untuk Snort
-- konfigurasi `snort.lua` berbasis Lua
-- pemuatan `au7h.rules` sebagai aggregator untuk `local.rules` dan `community.rules`
-- alert mode `alert_fast`
-- sidecar dengan `network_mode: service:app`
-- ACL container dengan `iptables`
-- allow HTTP/HTTPS, reject MySQL/SSH, dan drop ICMP echo request
-- command `snort:test-rules`, `snort:logs`, `snort:update-rules`, dan `acl:status`
-
-### 14.10. OpenSSL untuk Sertifikat Self-Signed
-
-File repo terkait:
-- `docker-entrypoint.sh`
-
-Referensi utama:
-- [Apache SSL/TLS How-To](https://httpd.apache.org/docs/current/ssl/ssl_howto.html)
-- [OpenSSL `openssl req`](https://docs.openssl.org/master/man1/openssl-req/)
-
-Catatan:
-- Repo ini membuat sertifikat self-signed via `openssl req`.
-- Link manpage OpenSSL sudah dicantumkan karena Tahap 3 memakai opsi `-x509`, `-newkey`, `-keyout`, `-out`, `-subj`, `-days`, dan `-addext`.
-
-### 14.11. Tailwind CSS, Tema, dan Build CSS
-
-File repo terkait:
-- `resources/tailwind.css`
-- `public/styles.css`
-- `package.json`
-
-Referensi utama:
-- [Tailwind CSS v4 CLI installation](https://tailwindcss.com/docs/installation/tailwind-cli)
-- [Tailwind CSS v4 upgrade guide](https://tailwindcss.com/docs/upgrade-guide)
-
-Yang ditopang oleh sumber ini:
-- `@import "tailwindcss"`
-- `@theme`, `@utility`, dan `@custom-variant`
-- CLI build dan watch CSS
-- penggunaan `tailwindcss` + `@tailwindcss/cli` v4.2.2
-- migrasi dari config JavaScript v3 ke pola CSS-first Tailwind v4
-
-### 14.12. Bun untuk Script Development
-
-File repo terkait:
-- `package.json`
-- `.github/workflows/ci.yml`
-
-Referensi utama:
-- [Bun `bun run` / runtime](https://bun.sh/docs/cli/run)
-- [Bun environment variables](https://bun.sh/docs/runtime/environment-variables)
-
-Yang ditopang oleh sumber ini:
-- menjalankan script `package.json`
-- passing env var seperti `HOST_HTTP_PORT=... bun run dev`
-- perilaku `bun run dev`, `bun run build:css`, dan script lain
-
-### 14.13. Frontend Motion dan Page Transition
-
-File repo terkait:
-- `public/page-shell.js`
-- `public/vendor/motion.js`
-
-Referensi utama:
-- [npm package `motion`](https://www.npmjs.com/package/motion)
-- [Motion docs `spring`](https://motion.dev/docs/spring)
-- [Motion tutorial spring](https://motion.dev/tutorials/js-spring)
-- [Motion docs index](https://motion.dev/docs)
-
-Yang ditopang oleh sumber ini:
-- animasi transisi panel
-- penggunaan spring easing
-- pemakaian API Motion di frontend
-- sumber bundle `public/vendor/motion.js` yang aktif
-
-### 14.14. Library Matrix Background yang Dibundel
-
-File repo terkait:
-- `public/matrix-rain.js`
-- `public/vendor/matrix-animation.js`
-
-Referensi utama:
-- [GitHub `knackstedt/matrix-animation`](https://github.com/knackstedt/matrix-animation)
-- [Demo `matrix-animation`](https://matrix.dotglitch.dev)
-
-Yang ditopang oleh sumber ini:
-- asal library `MatrixAnimation`
-- cara inisialisasi instance
-- opsi konfigurasi matrix rain
-
-### 14.15. GitHub Actions dan CI
-
-File repo terkait:
-- `.github/workflows/ci.yml`
-
-Referensi utama:
-- [Workflow syntax for GitHub Actions](https://docs.github.com/actions/reference/workflow-syntax-for-github-actions)
-- [`actions/checkout` v4 README](https://github.com/actions/checkout/blob/v4/README.md)
-- [`shivammathur/setup-php`](https://github.com/shivammathur/setup-php)
-- [`oven-sh/setup-bun`](https://github.com/oven-sh/setup-bun)
-
-Yang ditopang oleh sumber ini:
-- struktur workflow YAML
-- trigger `push` dan `pull_request`
-- `runs-on: ubuntu-latest`
-- checkout repo
-- setup Bun
-- setup PHP
-
-### 14.16. Komponen UI yang Ditulis Sendiri
-
-File repo terkait:
-- `src/Presentation/Views.php`
-- `src/Presentation/Components.php`
-- `src/Presentation/AuthViews.php`
-- `src/Presentation/ResultViews.php`
-- `public/index.php`
-- `public/not-registered.php`
-- `public/welcome.php`
-- `public/login.php`
-- `public/register.php`
-- `public/logout.php`
-
-Catatan:
-- File-file ini adalah implementasi aplikasi sendiri, bukan third-party resource.
-- Untuk area ini, sumber yang paling relevan biasanya adalah referensi konsep yang dipakai, bukan tutorial yang persis sama.
-- Rujukan konsep utamanya tersebar ke dokumentasi session dan security PHP, Tailwind, Motion, dan upstream matrix animation.
