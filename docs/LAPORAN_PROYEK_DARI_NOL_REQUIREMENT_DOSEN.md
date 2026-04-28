@@ -3643,7 +3643,27 @@ Hasil yang diharapkan:
 2. jika suatu saat nilai itu lolos ke tampilan, `escape_html()` tetap mengubahnya menjadi teks aman,
 3. CSP tetap memberi lapisan tambahan.
 
-## Uji 11 - Rate limit
+## Uji 11 - Buffer overflow / oversized input
+
+Langkah uji terarah: kirim input yang sengaja dibuat melewati batas normal aplikasi, lalu cocokkan dengan hardening runtime PHP untuk memastikan request besar tidak diproses bebas.
+
+Contoh input yang diuji:
+
+```text
+username = 80 karakter
+password = lebih dari 72 karakter
+POST body = lebih besar dari post_max_size
+```
+
+Yang harus terlihat:
+
+1. username lebih dari 32 karakter ditolak oleh validasi server-side,
+2. password lebih dari 72 karakter ditolak oleh validasi server-side,
+3. file upload tetap nonaktif,
+4. ukuran POST dibatasi oleh konfigurasi Apache PHP,
+5. tidak ada data oversized yang masuk ke tabel `users`.
+
+## Uji 12 - Rate limit
 
 Lakukan login gagal berulang kali sampai melewati batas.
 
@@ -3652,7 +3672,7 @@ Hasil yang diharapkan:
 1. request berikutnya menerima status `429`,
 2. halaman error menyatakan terlalu banyak percobaan.
 
-## Uji 12 - Snort IDS dan rule lokal
+## Uji 13 - Snort IDS dan rule lokal
 
 Langkah uji terarah: validasi konfigurasi Snort, jalankan traffic HTTP/HTTPS, lalu baca file alert Snort.
 
@@ -3667,7 +3687,7 @@ Yang harus terlihat:
 2. alert HTTP/HTTPS muncul saat browser atau `curl` mengakses aplikasi,
 3. alert MySQL atau SSH muncul saat ada percobaan akses langsung ke port `3306` atau `22`.
 
-## Uji 13 - ACL port jaringan
+## Uji 14 - ACL port jaringan
 
 Langkah uji terarah: tampilkan chain ACL dan pastikan port web diizinkan, sementara MySQL dan SSH ditolak.
 
@@ -3701,8 +3721,10 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 | Privasi database | Query `SELECT username_lookup, username_encrypted, password_hash FROM users ORDER BY id DESC LIMIT 1` | username tampil sebagai HMAC 64 hex, username terenkripsi berbentuk payload `iv.tag.ciphertext`, password berbentuk hash `$argon2id$...` |
 | SQL injection | Payload username `' OR 1=1 --` pada form login | payload tidak membypass login; input ditolak sebagai credential tidak valid dan query auth tetap memakai prepared statement |
 | XSS | Payload username `<script>alert(1)</script>` pada form register | validasi username menolak karakter berbahaya; output dinamis tetap melewati `escape_html()` dan CSP aktif sebagai lapisan tambahan |
+| Buffer overflow / oversized input | Submit register dengan username 80 karakter, lalu cek `/etc/php/8.4/apache2/conf.d/90-au7h-security.ini` di container app | request ditolak kembali ke `/?mode=register`; config Apache PHP memuat `file_uploads = Off`, `post_max_size = 8K`, `upload_max_filesize = 1K`, dan `max_input_vars = 20` |
 | Rate limiting | Login gagal 6 kali beruntun untuk subject yang sama | percobaan 1-5 menghasilkan `302`, percobaan ke-6 menghasilkan `429` |
 | Snort rules | `bun run snort:test-rules` | Snort berhasil validasi konfigurasi, `644` rules loaded, `0 warnings` |
+| Snort live alert | `curl -k -s -o /dev/null https://localhost:10443/` lalu baca `/var/log/snort/alert_fast.txt` | alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web server"` muncul untuk traffic ke port `8443` |
 | ACL container | `bun run acl:status` | chain `AU7H_INPUT` aktif; HTTP/HTTPS `ACCEPT`; MySQL `3306` dan SSH `22` `REJECT`; ICMP echo request `DROP` |
 | Batas satu container | Review `Dockerfile` dan `compose.dev.yaml` | container `app` memuat Apache/PHP/MySQL; `snort` adalah sidecar IDS, bukan pemisahan web/database |
 
@@ -3759,6 +3781,7 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [x] CSP aktif
 [x] input validation aktif
 [x] payload XSS ditolak atau di-escape
+[x] oversized username/password ditolak
 [x] rate limiting aktif
 [x] file upload dimatikan
 [x] ukuran POST dibatasi
@@ -3768,6 +3791,7 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [x] au7h.rules memuat local.rules dan community.rules
 [x] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH
 [x] snort:test-rules berhasil
+[x] Snort alert HTTP/HTTPS muncul di alert_fast.txt
 [x] acl:status menampilkan chain AU7H_INPUT
 [x] HTTP/HTTPS diizinkan ACL
 [x] MySQL 3306 dan SSH 22 ditolak ACL
