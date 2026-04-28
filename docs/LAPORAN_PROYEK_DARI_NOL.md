@@ -530,7 +530,7 @@ Requirement ini dipenuhi pada level **aplikasi tugas** dan **hardening konfigura
 
 ## 7. Blueprint Struktur Proyek Dari Nol
 
-Langkah pembacaan: struktur ini dibangun untuk memisahkan area yang boleh diakses browser, area logika aplikasi, dan area hardening container sebelum satu baris implementasi ditulis.
+Catatan pembacaan: struktur ini dibangun untuk memisahkan area yang boleh diakses browser, area logika aplikasi, dan area hardening container sebelum satu baris implementasi ditulis.
 
 ```text
 au7h/
@@ -658,7 +658,7 @@ Mulai section ini, tiap tahap dibaca dengan alur yang sama: apa yang diminta, ta
 
 Menyediakan fondasi kerja yang rapi sebelum instalasi dependency.
 
-#### Analisis langkah
+#### Analisis alur
 
 Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint akan cepat tercampur. Untuk tugas yang dinilai berdasarkan hasil demonstrasi, struktur jelas memudahkan debugging saat presentasi.
 
@@ -668,7 +668,10 @@ Tahap ini tidak membutuhkan referensi internet baru. Alurnya langsung bergerak d
 
 #### Implementasi
 
-Langkah implementasi terarah: buat seluruh folder dan placeholder file inti lebih dulu agar tahapan berikutnya tinggal mengisi isi file, bukan terus-menerus mengubah struktur proyek.
+**Langkah 1:**
+
+- Buat seluruh folder dan placeholder file inti lebih dulu.
+- Pastikan tahapan berikutnya tinggal mengisi isi file, bukan terus-menerus mengubah struktur proyek.
 
 ```bash
 mkdir -p au7h/{docker,config,src/Infrastructure,src/Security,src/Support,src/Presentation,public,certs}
@@ -690,9 +693,11 @@ Folder proyek siap diisi tanpa perubahan struktur besar di tengah jalan.
 
 Membuat satu image yang memuat Apache, PHP, MySQL, dan OpenSSL.
 
-#### Analisis langkah
+#### Analisis alur
 
 Tugas memperbolehkan satu container untuk server dan database. Karena itu, image harus langsung memasang semua komponen inti. Pemilihan Apache mengurangi kompleksitas dibanding Nginx + PHP-FPM.
+
+#### Jejak referensi sebelum implementasi
 
 Referensi terkait: [Docker Docs - Dockerfile overview](https://docs.docker.com/build/concepts/dockerfile/)
 
@@ -808,11 +813,16 @@ Setelah format image, arti `FROM` dan `RUN`, serta peran `COPY`, `ENV`, `EXPOSE`
 
 #### Implementasi
 
-Langkah implementasi terarah: mulai dari tahap build frontend yang hanya menghasilkan CSS, lalu lanjut ke base image runtime yang stabil untuk paket sistem. Dengan pola ini, Bun dipakai untuk proses build, sedangkan image akhir tetap memuat komponen runtime yang membuat satu container mampu melayani HTTP/HTTPS, mengeksekusi PHP, menjalankan MySQL, dan menerapkan ACL jaringan.
+**Langkah 1:**
 
-Sumber: [Dockerfile:1](/home/fxrdhan/au7h/Dockerfile:1)
+- Mulai dari tahap build frontend yang hanya menghasilkan CSS.
+- Lanjut ke base image runtime yang stabil untuk paket sistem.
+- Pakai Bun untuk proses build CSS.
+- Pastikan image akhir tetap memuat komponen runtime untuk HTTP/HTTPS, PHP, MySQL, dan ACL jaringan.
 
-Alur kode: stage `frontend-builder` menginstall dependency frontend dan membangun CSS. Setelah itu stage runtime dimulai dari Ubuntu, mode instalasi non-interaktif diaktifkan, paket inti web, database, TLS, dan ACL dipasang, modul Apache yang dibutuhkan dinyalakan, dan sisa cache apt dibersihkan agar layer runtime tetap ringkas.
+**Sumber:** [Dockerfile:1](/home/fxrdhan/au7h/Dockerfile:1)
+
+**Alur kode:** stage `frontend-builder` menginstall dependency frontend dan membangun CSS. Setelah itu stage runtime dimulai dari Ubuntu, mode instalasi non-interaktif diaktifkan, paket inti web, database, TLS, dan ACL dipasang, modul Apache yang dibutuhkan dinyalakan, dan sisa cache apt dibersihkan agar layer runtime tetap ringkas.
 
 ```dockerfile
 FROM oven/bun:1.3.6 AS frontend-builder
@@ -845,11 +855,18 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 ```
 
-Langkah implementasi terarah berikutnya adalah menyalin semua file yang dibutuhkan image, memasang script ACL, membawa hasil build CSS dari stage frontend, mengaktifkan konfigurasi global Apache, menyiapkan direktori data persisten, lalu menetapkan proses startup utama container.
+**Langkah 2:**
 
-Sumber: [Dockerfile:44](/home/fxrdhan/au7h/Dockerfile:44)
+- Salin semua file yang dibutuhkan image.
+- Pasang script ACL.
+- Bawa hasil build CSS dari stage frontend.
+- Aktifkan konfigurasi global Apache.
+- Siapkan direktori data persisten.
+- Tetapkan proses startup utama container.
 
-Alur kode: semua file runtime proyek disalin lebih dulu ke image, script ACL ikut dipasang sebagai executable, hasil CSS dari stage frontend disalin ke image final, lalu direktori persisten dan izin file disiapkan. Setelah itu port, volume, entrypoint, dan proses utama container dideklarasikan sebagai urutan startup final.
+**Sumber:** [Dockerfile:44](/home/fxrdhan/au7h/Dockerfile:44)
+
+**Alur kode:** semua file runtime proyek disalin lebih dulu ke image, script ACL ikut dipasang sebagai executable, hasil CSS dari stage frontend disalin ke image final, lalu direktori persisten dan izin file disiapkan. Setelah itu port, volume, entrypoint, dan proses utama container dideklarasikan sebagai urutan startup final.
 
 ```dockerfile
 COPY docker/php.ini /etc/php/8.4/apache2/conf.d/90-au7h-security.ini
@@ -891,7 +908,7 @@ CMD ["apache2ctl", "-D", "FOREGROUND"]
 
 Mendefinisikan port, path data, nama database, dan user aplikasi sejak awal.
 
-#### Analisis langkah
+#### Analisis alur
 
 Environment variable yang eksplisit membuat startup container deterministik dan memudahkan perpindahan antara mode development dan mode demo/presentasi.
 
@@ -967,11 +984,14 @@ Setelah makna `ENV`, efek perubahan nilainya, dan persistensinya jelas, semua po
 
 #### Implementasi
 
-Langkah implementasi terarah: deklarasikan semua variabel lingkungan yang akan dipakai bersama oleh entrypoint, Apache, PHP, dan koneksi database, sehingga tidak ada nilai penting yang terselip hard-code di banyak file.
+**Langkah 1:**
 
-Sumber: [Dockerfile:30](/home/fxrdhan/au7h/Dockerfile:30)
+- Deklarasikan semua variabel lingkungan yang dipakai bersama oleh entrypoint, Apache, PHP, dan koneksi database.
+- Hindari nilai penting yang terselip hard-code di banyak file.
 
-Alur kode: blok ini menetapkan satu set environment variable bersama yang nanti dibaca ulang oleh entrypoint, Apache, PHP, dan MySQL agar seluruh komponen bootstrap memakai nilai yang sama.
+**Sumber:** [Dockerfile:30](/home/fxrdhan/au7h/Dockerfile:30)
+
+**Alur kode:** blok ini menetapkan satu set environment variable bersama yang nanti dibaca ulang oleh entrypoint, Apache, PHP, dan MySQL agar seluruh komponen bootstrap memakai nilai yang sama.
 
 ```dockerfile
 ENV APP_PORT_HTTP=8080 \
@@ -999,11 +1019,11 @@ Semua bagian bootstrap bisa membaca nilai yang konsisten tanpa hard-code terseba
 
 Membuat container bisa menyala dari nol tanpa setup manual tambahan.
 
-#### Analisis langkah
+#### Analisis alur
 
 Tanpa entrypoint, container satu-image akan sulit menghidupkan MySQL lebih dulu, menyiapkan secret runtime, merender template Apache, lalu menyalakan Apache. Entry point menjadi pusat orkestrasi internal container.
 
-#### Referensi
+#### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi bootstrap MySQL, pembuatan user database, grant privilege, readiness check, dan TLS server dasar.
 
@@ -1145,15 +1165,19 @@ Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/3.5/man1/ope
 
 Setelah alur bootstrap, privilege, readiness, dan TLS startup terbaca jelas, entrypoint baru ditulis.
 
-#### Implementasi inti
+#### Implementasi
 
-Langkah 1: buat secret runtime sekali saja pada startup pertama, lalu simpan dalam file yang hak aksesnya ketat agar password dan key tidak dibakar permanen ke image.
+**Langkah 1:**
+
+- Buat secret runtime sekali saja pada startup pertama.
+- Simpan secret dalam file dengan hak akses ketat.
+- Hindari password dan key dibakar permanen ke image.
 
 Shell dibuka dalam mode ketat, lalu secret runtime hanya dibuat saat file belum ada.
 
-Sumber: [docker-entrypoint.sh:50](/home/fxrdhan/au7h/docker-entrypoint.sh:50)
+**Sumber:** [docker-entrypoint.sh:50](/home/fxrdhan/au7h/docker-entrypoint.sh:50)
 
-Alur kode: saat container pertama kali start, skrip mengecek apakah file secret sudah ada; jika belum, skrip membuat semua secret runtime sekaligus lalu menyimpannya ke satu file yang nantinya di-load oleh proses bootstrap berikutnya.
+**Alur kode:** saat container pertama kali start, skrip mengecek apakah file secret sudah ada; jika belum, skrip membuat semua secret runtime sekaligus lalu menyimpannya ke satu file yang nantinya di-load oleh proses bootstrap berikutnya.
 
 ```sh
 if [ ! -f "${SECRET_FILE}" ]; then
@@ -1166,11 +1190,14 @@ if [ ! -f "${SECRET_FILE}" ]; then
 fi
 ```
 
-Langkah 2: setelah secret siap, bangun sertifikat self-signed yang cukup untuk demo lokal agar kanal HTTPS langsung tersedia tanpa provisioning eksternal.
+**Langkah 2:**
 
-Sumber: [docker-entrypoint.sh:77](/home/fxrdhan/au7h/docker-entrypoint.sh:77)
+- Bangun sertifikat self-signed setelah secret siap.
+- Pastikan kanal HTTPS langsung tersedia untuk demo lokal tanpa provisioning eksternal.
 
-Alur kode: skrip hanya membuat sertifikat ketika file cert atau key belum tersedia, lalu `openssl req` dipakai untuk membangkitkan pasangan TLS self-signed yang langsung cocok untuk `localhost`.
+**Sumber:** [docker-entrypoint.sh:77](/home/fxrdhan/au7h/docker-entrypoint.sh:77)
+
+**Alur kode:** skrip hanya membuat sertifikat ketika file cert atau key belum tersedia, lalu `openssl req` dipakai untuk membangkitkan pasangan TLS self-signed yang langsung cocok untuk `localhost`.
 
 ```sh
 if [ ! -f "${TLS_CERT_PATH}" ] || [ ! -f "${TLS_KEY_PATH}" ]; then
@@ -1190,11 +1217,14 @@ if [ ! -f "${TLS_CERT_PATH}" ] || [ ! -f "${TLS_KEY_PATH}" ]; then
 fi
 ```
 
-Langkah 3: nyalakan MySQL sebagai proses background internal container, lalu simpan PID-nya agar shutdown dapat dikendalikan dengan rapi saat container berhenti.
+**Langkah 3:**
 
-Sumber: [docker-entrypoint.sh:134](/home/fxrdhan/au7h/docker-entrypoint.sh:134)
+- Nyalakan MySQL sebagai proses background internal container.
+- Simpan PID MySQL agar shutdown dapat dikendalikan dengan rapi saat container berhenti.
 
-Alur kode: setelah data dir siap, `mysqld` dijalankan sebagai proses background internal container dengan socket, PID file, port, dan bind address yang semuanya diambil dari environment.
+**Sumber:** [docker-entrypoint.sh:134](/home/fxrdhan/au7h/docker-entrypoint.sh:134)
+
+**Alur kode:** setelah data dir siap, `mysqld` dijalankan sebagai proses background internal container dengan socket, PID file, port, dan bind address yang semuanya diambil dari environment.
 
 ```sh
 mysqld \
@@ -1208,11 +1238,15 @@ mysqld \
 MYSQLD_PID=$!
 ```
 
-Langkah 4: jika data directory masih kosong, bootstrap akun root, database aplikasi, dan akun aplikasi dalam urutan yang konsisten sebelum Apache melayani request.
+**Langkah 4:**
 
-Sumber: [docker-entrypoint.sh:154](/home/fxrdhan/au7h/docker-entrypoint.sh:154)
+- Periksa apakah data directory masih kosong.
+- Bootstrap akun root, database aplikasi, dan akun aplikasi dalam urutan yang konsisten.
+- Selesaikan bootstrap sebelum Apache melayani request.
 
-Alur kode: cabang bootstrap ini hanya berjalan untuk database yang masih kosong; urutannya adalah mengunci password root, membuat database aplikasi, membuat akun aplikasi, memberi grant, lalu menutup dengan `FLUSH PRIVILEGES`.
+**Sumber:** [docker-entrypoint.sh:154](/home/fxrdhan/au7h/docker-entrypoint.sh:154)
+
+**Alur kode:** cabang bootstrap ini hanya berjalan untuk database yang masih kosong; urutannya adalah mengunci password root, membuat database aplikasi, membuat akun aplikasi, memberi grant, lalu menutup dengan `FLUSH PRIVILEGES`.
 
 ```sh
 if [ "${MYSQL_BOOTSTRAP_REQUIRED}" -eq 1 ]; then
@@ -1242,11 +1276,11 @@ EOF
 
 Memastikan seluruh akses browser diarahkan ke kanal terenkripsi.
 
-#### Analisis langkah
+#### Analisis alur
 
 Requirement tugas menyebut server harus dilindungi HTTPS. Karena browser mungkin masih membuka `http://`, perlu redirect permanen ke `https://`.
 
-#### Referensi
+#### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah modul Apache yang menangani rewrite dan TLS.
 
@@ -1318,11 +1352,14 @@ Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virt
 
 #### Implementasi
 
-Langkah implementasi terarah: sediakan virtual host HTTP yang tugasnya hanya meredirect, lalu pisahkan virtual host HTTPS sebagai tempat seluruh aplikasi dijalankan.
+**Langkah 1:**
 
-Sumber: [docker/apache-http.conf.template:1-11](/home/fxrdhan/au7h/docker/apache-http.conf.template:1)
+- Sediakan virtual host HTTP yang tugasnya hanya meredirect.
+- Pisahkan virtual host HTTPS sebagai tempat seluruh aplikasi dijalankan.
 
-Alur kode: virtual host HTTP ini sengaja dibuat tipis, hanya menerima request awal, menulis ulang URL ke skema HTTPS yang benar, lalu mencatat log tanpa melayani aplikasi secara langsung.
+**Sumber:** [docker/apache-http.conf.template:1-11](/home/fxrdhan/au7h/docker/apache-http.conf.template:1)
+
+**Alur kode:** virtual host HTTP ini sengaja dibuat tipis, hanya menerima request awal, menulis ulang URL ke skema HTTPS yang benar, lalu mencatat log tanpa melayani aplikasi secara langsung.
 
 ```apacheconf
 <VirtualHost *:${APP_PORT_HTTP}>
@@ -1338,11 +1375,15 @@ Alur kode: virtual host HTTP ini sengaja dibuat tipis, hanya menerima request aw
 </VirtualHost>
 ```
 
-Langkah implementasi terarah berikutnya adalah mengaktifkan TLS, menentukan document root aplikasi, dan memastikan direktori `public/` menjadi satu-satunya area yang boleh diakses langsung oleh browser.
+**Langkah 2:**
 
-Sumber: [docker/apache-ssl.conf.template:1-30](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1)
+- Aktifkan TLS.
+- Tentukan document root aplikasi.
+- Pastikan direktori `public/` menjadi satu-satunya area yang boleh diakses langsung oleh browser.
 
-Alur kode: virtual host HTTPS ini memasang sertifikat, membatasi protokol TLS, menaruh semua security header browser, lalu mengarahkan Apache agar hanya direktori `public/` yang menjadi entry point request web.
+**Sumber:** [docker/apache-ssl.conf.template:1-30](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1)
+
+**Alur kode:** virtual host HTTPS ini memasang sertifikat, membatasi protokol TLS, menaruh semua security header browser, lalu mengarahkan Apache agar hanya direktori `public/` yang menjadi entry point request web.
 
 ```apacheconf
 <VirtualHost *:${APP_PORT_HTTPS}>
@@ -1389,11 +1430,11 @@ Alur kode: virtual host HTTPS ini memasang sertifikat, membatasi protokol TLS, m
 
 Memberi perlindungan baseline terhadap XSS, sniffing, clickjacking, dan downgrade risk.
 
-#### Analisis langkah
+#### Analisis alur
 
 OWASP menekankan bahwa CSP bukan pertahanan utama XSS, tetapi tetap sangat bernilai sebagai defense in depth. Karena itu, encoding output tetap wajib di level PHP, lalu dilengkapi header di Apache.
 
-#### Referensi
+#### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi identitas server Apache, konfigurasi header Apache, dan deskripsi fungsi setiap response header keamanan yang akan dipasang.
 
@@ -1612,11 +1653,14 @@ Setelah fungsi masing-masing header dibaca, kombinasi header yang benar-benar re
 
 #### Implementasi
 
-Langkah implementasi terarah: rapikan fingerprint server lebih dulu di konfigurasi global Apache, lalu tambahkan security headers pada virtual host HTTPS sebagai lapisan pertahanan browser.
+**Langkah 1:**
 
-Sumber: [docker/apache-global.conf:1-4](/home/fxrdhan/au7h/docker/apache-global.conf:1)
+- Rapikan fingerprint server di konfigurasi global Apache.
+- Tambahkan security headers pada virtual host HTTPS sebagai lapisan pertahanan browser.
 
-Alur kode: konfigurasi global ini merapikan fingerprint server di level Apache paling awal dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
+**Sumber:** [docker/apache-global.conf:1-4](/home/fxrdhan/au7h/docker/apache-global.conf:1)
+
+**Alur kode:** konfigurasi global ini merapikan fingerprint server di level Apache paling awal dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
 
 ```apacheconf
 ServerName localhost
@@ -1625,11 +1669,15 @@ ServerSignature Off
 TraceEnable Off
 ```
 
-Langkah implementasi terarah berikutnya adalah memasang header yang relevan dengan requirement tugas: CSP untuk defense in depth XSS, `nosniff`, `SAMEORIGIN`, `Referrer-Policy`, dan HSTS conditional.
+**Langkah 2:**
 
-Sumber: [docker/apache-ssl.conf.template:12-20](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)
+- Pasang header yang relevan dengan requirement tugas.
+- Tambahkan CSP untuk defense in depth XSS.
+- Tambahkan `nosniff`, `SAMEORIGIN`, `Referrer-Policy`, dan HSTS conditional.
 
-Alur kode: bagian ini adalah lapisan header keamanan browser; setiap `Header always set` menambah satu kebijakan response yang aktif untuk semua request HTTPS yang lolos ke virtual host aplikasi.
+**Sumber:** [docker/apache-ssl.conf.template:12-20](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)
+
+**Alur kode:** bagian ini adalah lapisan header keamanan browser; setiap `Header always set` menambah satu kebijakan response yang aktif untuk semua request HTTPS yang lolos ke virtual host aplikasi.
 
 ```apacheconf
     Header always set Cache-Control "no-store"
@@ -1647,7 +1695,7 @@ Alur kode: bagian ini adalah lapisan header keamanan browser; setiap `Header alw
 
 Web server sudah memiliki pagar keamanan HTTP-level sebelum aplikasi PHP dijalankan.
 
-Catatan transparansi:
+#### Catatan transparansi
 
 Untuk demo murni di `localhost`, HSTS bisa dibuat conditional atau dilewati agar perilaku browser saat memakai self-signed cert lebih mudah dikendalikan. Untuk host non-lokal, HSTS sebaiknya aktif.
 
@@ -1657,7 +1705,7 @@ Untuk demo murni di `localhost`, HSTS bisa dibuat conditional atau dilewati agar
 
 Membatasi permukaan serangan pada interpreter.
 
-#### Analisis langkah
+#### Analisis alur
 
 Inilah bagian yang paling dekat dengan requirement “buffer overflow” pada level tugas. Logika bisnis memang ada di PHP userland, tetapi pembatasan ukuran input dan menonaktifkan fitur yang tidak dipakai tetap perlu agar request berbahaya tidak melebar ke komponen yang tidak relevan.
 
@@ -1739,11 +1787,16 @@ Setelah arti directive disclosure, batas input, upload, dan session cookie harde
 
 #### Implementasi
 
-Langkah implementasi terarah: kecilkan permukaan serangan interpreter dengan mematikan fitur yang tidak dipakai, membatasi ukuran request, dan mengeraskan cookie session untuk konteks HTTPS.
+**Langkah 1:**
 
-Sumber: [docker/php.ini:1-18](/home/fxrdhan/au7h/docker/php.ini:1)
+- Kecilkan permukaan serangan interpreter.
+- Matikan fitur yang tidak dipakai.
+- Batasi ukuran request.
+- Keraskan cookie session untuk konteks HTTPS.
 
-Alur kode: runtime PHP diketatkan dari awal dengan mematikan fitur bocor informasi, membatasi ukuran input, mengunci perilaku session cookie, dan menutup jalur upload yang tidak dibutuhkan aplikasi.
+**Sumber:** [docker/php.ini:1-18](/home/fxrdhan/au7h/docker/php.ini:1)
+
+**Alur kode:** runtime PHP diketatkan dari awal dengan mematikan fitur bocor informasi, membatasi ukuran input, mengunci perilaku session cookie, dan menutup jalur upload yang tidak dibutuhkan aplikasi.
 
 ```ini
 default_charset = "UTF-8"
@@ -1778,11 +1831,11 @@ upload_max_filesize = 1K
 
 Menyediakan satu titik pusat pembacaan konfigurasi, session, header dasar, dan inisialisasi database.
 
-#### Analisis langkah
+#### Analisis alur
 
 Bootstrap terpusat membuat setiap endpoint memakai aturan keamanan yang sama. Jika bootstrap tersebar, route yang lupa diproteksi akan mudah muncul.
 
-#### Referensi
+#### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi session PHP yang mengatur nama session, parameter cookie, dan urutan start session.
 
@@ -1835,11 +1888,14 @@ Setelah urutan nama session -> cookie params -> start session jelas, bootstrap a
 
 #### Implementasi
 
-Langkah 1: bangun file bootstrap yang selalu dimuat oleh endpoint publik, sehingga semua helper, konfigurasi, dan koneksi database aktif dari jalur yang sama.
+**Langkah 1:**
 
-Sumber: [config/bootstrap.php:1-14](/home/fxrdhan/au7h/config/bootstrap.php:1)
+- Bangun file bootstrap yang selalu dimuat oleh endpoint publik.
+- Pastikan semua helper, konfigurasi, dan koneksi database aktif dari jalur yang sama.
 
-Alur kode: file bootstrap ini menjadi pintu masuk bersama, jadi ia memuat seluruh helper inti lebih dulu lalu mengeksekusi `ensure_app_booted()` agar session, header, dan database selalu siap sebelum endpoint berjalan.
+**Sumber:** [config/bootstrap.php:1-14](/home/fxrdhan/au7h/config/bootstrap.php:1)
+
+**Alur kode:** file bootstrap ini menjadi pintu masuk bersama, jadi ia memuat seluruh helper inti lebih dulu lalu mengeksekusi `ensure_app_booted()` agar session, header, dan database selalu siap sebelum endpoint berjalan.
 
 ```php
 <?php
@@ -1858,11 +1914,14 @@ require_once APP_ROOT . '/src/Presentation/Views.php';
 ensure_app_booted();
 ```
 
-Langkah 2: pusatkan pembacaan environment dan policy aplikasi dalam satu fungsi konfigurasi agar perubahan nilai port, secret, dan rate limit tidak tersebar.
+**Langkah 2:**
 
-Sumber: [src/Support/Config.php:12-52](/home/fxrdhan/au7h/src/Support/Config.php:12)
+- Pusatkan pembacaan environment dan policy aplikasi dalam satu fungsi konfigurasi.
+- Pastikan perubahan nilai port, secret, dan rate limit tidak tersebar.
 
-Alur kode: fungsi ini membaca environment, membuat direktori data bila belum ada, lalu menyusun satu array konfigurasi yang dipakai ulang oleh layer database, session, crypto, dan rate limit.
+**Sumber:** [src/Support/Config.php:12-52](/home/fxrdhan/au7h/src/Support/Config.php:12)
+
+**Alur kode:** fungsi ini membaca environment, membuat direktori data bila belum ada, lalu menyusun satu array konfigurasi yang dipakai ulang oleh layer database, session, crypto, dan rate limit.
 
 ```php
 function app_config(): array
@@ -1908,11 +1967,15 @@ function app_config(): array
 }
 ```
 
-Langkah 3: pastikan bootstrap benar-benar menjalankan session aman, security header dasar, dan inisialisasi schema sebelum request diproses lebih jauh.
+**Langkah 3:**
 
-Sumber: [src/Support/Http.php:36](/home/fxrdhan/au7h/src/Support/Http.php:36)
+- Jalankan session aman.
+- Kirim security header dasar.
+- Inisialisasi schema sebelum request diproses lebih jauh.
 
-Alur kode: `ensure_app_booted()` memakai guard statis supaya hanya berjalan sekali, lalu menjalankan urutan bootstrap tetap: session aman dulu, header dasar kedua, inisialisasi database terakhir.
+**Sumber:** [src/Support/Http.php:36](/home/fxrdhan/au7h/src/Support/Http.php:36)
+
+**Alur kode:** `ensure_app_booted()` memakai guard statis supaya hanya berjalan sekali, lalu menjalankan urutan bootstrap tetap: session aman dulu, header dasar kedua, inisialisasi database terakhir.
 
 ```php
 function ensure_app_booted(): void
@@ -1930,11 +1993,14 @@ function ensure_app_booted(): void
 }
 ```
 
-Langkah 4: bentuk session cookie yang cocok untuk aplikasi login berbasis browser dengan `secure`, `httponly`, dan `SameSite=Strict`.
+**Langkah 4:**
 
-Sumber: [src/Support/Http.php:10](/home/fxrdhan/au7h/src/Support/Http.php:10)
+- Bentuk session cookie yang cocok untuk aplikasi login berbasis browser.
+- Aktifkan atribut `secure`, `httponly`, dan `SameSite=Strict`.
 
-Alur kode: fungsi ini berhenti jika session sudah aktif, kalau belum ia mengambil policy dari konfigurasi, menerapkan nama dan atribut cookie yang aman, lalu baru memanggil `session_start()`.
+**Sumber:** [src/Support/Http.php:10](/home/fxrdhan/au7h/src/Support/Http.php:10)
+
+**Alur kode:** fungsi ini berhenti jika session sudah aktif, kalau belum ia mengambil policy dari konfigurasi, menerapkan nama dan atribut cookie yang aman, lalu baru memanggil `session_start()`.
 
 ```php
 function start_secure_session(): void
@@ -1958,11 +2024,14 @@ function start_secure_session(): void
 }
 ```
 
-Langkah 5: kirim header dasar anti-cache dari sisi aplikasi untuk memastikan halaman sensitif tidak mudah tersisa di cache browser bersama session lama.
+**Langkah 5:**
 
-Sumber: [src/Support/Http.php:30](/home/fxrdhan/au7h/src/Support/Http.php:30)
+- Kirim header dasar anti-cache dari sisi aplikasi.
+- Pastikan halaman sensitif tidak mudah tersisa di cache browser bersama session lama.
 
-Alur kode: header respons dasar dikirim sangat awal dengan dua langkah sederhana, yaitu menghapus fingerprint `X-Powered-By` dan memaksa halaman sensitif tidak disimpan di cache.
+**Sumber:** [src/Support/Http.php:30](/home/fxrdhan/au7h/src/Support/Http.php:30)
+
+**Alur kode:** header respons dasar dikirim sangat awal dengan dua langkah sederhana, yaitu menghapus fingerprint `X-Powered-By` dan memaksa halaman sensitif tidak disimpan di cache.
 
 ```php
 function send_security_headers(): void
@@ -1972,11 +2041,14 @@ function send_security_headers(): void
 }
 ```
 
-Langkah 6: paksa seluruh aksi perubahan state memakai `POST` agar form register, login, dan logout tidak pernah dipicu lewat query string biasa.
+**Langkah 6:**
 
-Sumber: [src/Support/Http.php:109](/home/fxrdhan/au7h/src/Support/Http.php:109)
+- Paksa seluruh aksi perubahan state memakai `POST`.
+- Pastikan form register, login, dan logout tidak pernah dipicu lewat query string biasa.
 
-Alur kode: helper ini memeriksa metode request terlebih dulu; jika bukan `POST`, alur langsung diputus dengan response 405 sehingga endpoint sensitif tidak pernah jalan lewat metode yang salah.
+**Sumber:** [src/Support/Http.php:109](/home/fxrdhan/au7h/src/Support/Http.php:109)
+
+**Alur kode:** helper ini memeriksa metode request terlebih dulu; jika bukan `POST`, alur langsung diputus dengan response 405 sehingga endpoint sensitif tidak pernah jalan lewat metode yang salah.
 
 ```php
 function require_post_method(): void
@@ -1993,7 +2065,7 @@ function require_post_method(): void
 
 Menyimpan akun dengan aman dan menambah tabel rate limit.
 
-#### Analisis langkah
+#### Analisis alur
 
 Schema harus mendukung tiga hal sekaligus:
 
@@ -2007,11 +2079,14 @@ Tahap ini tidak menambah URL baru. Skema tabel langsung diturunkan dari hasil ri
 
 #### Implementasi
 
-Langkah implementasi terarah: bentuk tabel `users` lebih dulu karena seluruh flow autentikasi bergantung pada penyimpanan lookup username, ciphertext username, dan hash password.
+**Langkah 1:**
 
-Sumber: [src/Infrastructure/Database.php:35-43](/home/fxrdhan/au7h/src/Infrastructure/Database.php:35)
+- Bentuk tabel `users` lebih dulu.
+- Simpan lookup username, ciphertext username, dan hash password sebagai dasar flow autentikasi.
 
-Alur kode: tabel `users` dibentuk dengan kolom yang memisahkan lookup username, ciphertext username, dan hash password, sehingga pencarian akun dan perlindungan data tetap bisa berjalan bersamaan.
+**Sumber:** [src/Infrastructure/Database.php:35-43](/home/fxrdhan/au7h/src/Infrastructure/Database.php:35)
+
+**Alur kode:** tabel `users` dibentuk dengan kolom yang memisahkan lookup username, ciphertext username, dan hash password, sehingga pencarian akun dan perlindungan data tetap bisa berjalan bersamaan.
 
 ```php
     $pdo->exec(
@@ -2025,11 +2100,14 @@ Alur kode: tabel `users` dibentuk dengan kolom yang memisahkan lookup username, 
     );
 ```
 
-Langkah implementasi terarah berikutnya adalah menambah tabel terpisah untuk percobaan autentikasi agar throttling tidak tercampur dengan data akun utama.
+**Langkah 2:**
 
-Sumber: [src/Infrastructure/Database.php:45-51](/home/fxrdhan/au7h/src/Infrastructure/Database.php:45)
+- Tambahkan tabel terpisah untuk percobaan autentikasi.
+- Pastikan throttling tidak tercampur dengan data akun utama.
 
-Alur kode: tabel kedua ini khusus menyimpan state throttling, jadi percobaan autentikasi bisa dihitung terpisah dari data akun utama dan tetap konsisten antar request.
+**Sumber:** [src/Infrastructure/Database.php:45-51](/home/fxrdhan/au7h/src/Infrastructure/Database.php:45)
+
+**Alur kode:** tabel kedua ini khusus menyimpan state throttling, jadi percobaan autentikasi bisa dihitung terpisah dari data akun utama dan tetap konsisten antar request.
 
 ```php
     $pdo->exec(
@@ -2053,7 +2131,7 @@ Alur kode: tabel kedua ini khusus menyimpan state throttling, jadi percobaan aut
 
 Menyatukan validasi input, CSRF, hashing password, enkripsi username, escaping output, dan rate limiting.
 
-#### Analisis langkah
+#### Analisis alur
 
 Bagian ini adalah jantung keamanan aplikasi. Jika helper ini rapi, endpoint publik tinggal merangkai alur tanpa mengulang logika sensitif.
 
@@ -2063,7 +2141,9 @@ Tahap ini adalah titik paling jelas untuk pola: requirement keamanan -> cari ref
 
 #### Implementasi
 
-##### 9.1. Output encoding
+**Langkah 1:**
+
+- Output encoding.
 
 Referensi yang dicari: `OWASP XSS Prevention Cheat Sheet` dan PHP `htmlspecialchars()`.
 
@@ -2109,11 +2189,11 @@ Referensi terkait: [PHP Manual - htmlspecialchars()](https://www.php.net/manual/
 > | `<` (less than) | `&lt;` |
 > | `>` (greater than) | `&gt;` |
 
-Langkah implementasi: siapkan helper escaping sesederhana mungkin agar setiap nilai dinamis yang keluar ke HTML selalu lewat jalur yang sama.
+**Implementasi:** siapkan helper escaping sesederhana mungkin agar setiap nilai dinamis yang keluar ke HTML selalu lewat jalur yang sama.
 
-Sumber: [src/Presentation/Components.php:5](/home/fxrdhan/au7h/src/Presentation/Components.php:5)
+**Sumber:** [src/Presentation/Components.php:5](/home/fxrdhan/au7h/src/Presentation/Components.php:5)
 
-Alur kode: semua nilai dinamis yang akan masuk ke HTML dilewatkan ke helper ini agar escaping selalu konsisten dan tidak tersebar manual di banyak view.
+**Alur kode:** semua nilai dinamis yang akan masuk ke HTML dilewatkan ke helper ini agar escaping selalu konsisten dan tidak tersebar manual di banyak view.
 
 ```php
 function escape_html(string $value): string
@@ -2122,7 +2202,9 @@ function escape_html(string $value): string
 }
 ```
 
-##### 9.2. CSRF token
+**Langkah 2:**
+
+- CSRF token.
 
 Referensi yang dicari: `OWASP CSRF Prevention Cheat Sheet` dan PHP `random_bytes()`.
 
@@ -2176,11 +2258,11 @@ Referensi terkait: [PHP Manual - random_bytes()](https://www.php.net/manual/en/f
 >
 > Keacakan yang dihasilkan fungsi ini cocok untuk semua aplikasi, termasuk pembuatan secret jangka panjang seperti kunci enkripsi.
 
-Langkah implementasi: hasilkan token acak yang hidup di session, lalu pakai token yang sama untuk semua form sampai token diganti atau session berakhir.
+**Implementasi:** hasilkan token acak yang hidup di session, lalu pakai token yang sama untuk semua form sampai token diganti atau session berakhir.
 
-Sumber: [src/Security/Auth.php:5](/home/fxrdhan/au7h/src/Security/Auth.php:5)
+**Sumber:** [src/Security/Auth.php:5](/home/fxrdhan/au7h/src/Security/Auth.php:5)
 
-Alur kode: token CSRF dibuat secara lazy, artinya session hanya diisi token baru saat token belum ada atau formatnya tidak valid, lalu token yang sama dipakai kembali sampai diregenerasi.
+**Alur kode:** token CSRF dibuat secara lazy, artinya session hanya diisi token baru saat token belum ada atau formatnya tidak valid, lalu token yang sama dipakai kembali sampai diregenerasi.
 
 ```php
 function csrf_token(): string
@@ -2193,11 +2275,11 @@ function csrf_token(): string
 }
 ```
 
-Langkah implementasi terarah berikutnya adalah memverifikasi token dengan `hash_equals()` dan langsung memutus request jika integritas form gagal.
+**Lanjutan:** memverifikasi token dengan `hash_equals()` dan langsung memutus request jika integritas form gagal.
 
-Sumber: [src/Security/Auth.php:20](/home/fxrdhan/au7h/src/Security/Auth.php:20)
+**Sumber:** [src/Security/Auth.php:20](/home/fxrdhan/au7h/src/Security/Auth.php:20)
 
-Alur kode: helper verifikasi ini mengambil token tersimpan dari session, membandingkannya dengan input form memakai `hash_equals()`, lalu langsung mengembalikan halaman 403 bila integritas form gagal.
+**Alur kode:** helper verifikasi ini mengambil token tersimpan dari session, membandingkannya dengan input form memakai `hash_equals()`, lalu langsung mengembalikan halaman 403 bila integritas form gagal.
 
 ```php
 function verify_csrf_or_fail(?string $submittedToken): void
@@ -2212,7 +2294,9 @@ function verify_csrf_or_fail(?string $submittedToken): void
 }
 ```
 
-##### 9.3. Validasi username dan password
+**Langkah 3:**
+
+- Validasi username dan password.
 
 Referensi yang dicari: `OWASP Input Validation Cheat Sheet`.
 
@@ -2233,11 +2317,11 @@ Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries
 > Validasi allowlist cocok untuk semua field input dari user.
 > Validasi input harus diterapkan di sisi server sebelum data diproses oleh fungsi aplikasi.
 
-Langkah implementasi: validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
+**Implementasi:** validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
 
-Sumber: [src/Security/Auth.php:31](/home/fxrdhan/au7h/src/Security/Auth.php:31)
+**Sumber:** [src/Security/Auth.php:31](/home/fxrdhan/au7h/src/Security/Auth.php:31)
 
-Alur kode: username lebih dulu di-trim, kemudian diperiksa panjang minimumnya, lalu diuji dengan regex allowlist; hanya input yang lolos semua gerbang ini yang diteruskan sebagai nilai valid.
+**Alur kode:** username lebih dulu di-trim, kemudian diperiksa panjang minimumnya, lalu diuji dengan regex allowlist; hanya input yang lolos semua gerbang ini yang diteruskan sebagai nilai valid.
 
 ```php
 function validate_username(string $username): array
@@ -2256,11 +2340,11 @@ function validate_username(string $username): array
 }
 ```
 
-Langkah implementasi berikutnya adalah memaksa kompleksitas minimum password dan menetapkan batas atas panjang agar hashing tetap terkontrol.
+**Lanjutan:** memaksa kompleksitas minimum password dan menetapkan batas atas panjang agar hashing tetap terkontrol.
 
-Sumber: [src/Security/Auth.php:46](/home/fxrdhan/au7h/src/Security/Auth.php:46)
+**Sumber:** [src/Security/Auth.php:46](/home/fxrdhan/au7h/src/Security/Auth.php:46)
 
-Alur kode: password diperiksa dari dua sisi, yaitu batas panjang untuk keamanan operasional dan kombinasi karakter untuk kompleksitas dasar, baru kemudian dikembalikan sebagai nilai yang boleh diproses lebih jauh.
+**Alur kode:** password diperiksa dari dua sisi, yaitu batas panjang untuk keamanan operasional dan kombinasi karakter untuk kompleksitas dasar, baru kemudian dikembalikan sebagai nilai yang boleh diproses lebih jauh.
 
 ```php
 function validate_password(string $password): array
@@ -2281,7 +2365,9 @@ function validate_password(string $password): array
 }
 ```
 
-##### 9.4. Privasi username
+**Langkah 4:**
+
+- Privasi username.
 
 Referensi yang dicari: OWASP Cryptographic Storage, PHP `hash_hmac()`, `openssl_encrypt()`, dan `openssl_decrypt()`.
 
@@ -2373,11 +2459,11 @@ Referensi terkait: [PHP Manual - openssl_decrypt()](https://www.php.net/manual/e
 >
 > Ini adalah authentication tag pada mode cipher AEAD. Jika tag tersebut salah, autentikasi gagal dan fungsi mengembalikan `false`.
 
-Langkah implementasi: normalisasi username lebih dulu supaya variasi huruf besar-kecil dan spasi tidak memecah identitas yang sebenarnya sama.
+**Implementasi:** normalisasi username lebih dulu supaya variasi huruf besar-kecil dan spasi tidak memecah identitas yang sebenarnya sama.
 
-Sumber: [src/Security/Auth.php:63](/home/fxrdhan/au7h/src/Security/Auth.php:63)
+**Sumber:** [src/Security/Auth.php:63](/home/fxrdhan/au7h/src/Security/Auth.php:63)
 
-Alur kode: username lebih dulu dinormalisasi menjadi bentuk stabil, lalu bentuk stabil itu di-hash dengan HMAC dan pepper aplikasi sehingga login bisa mencari akun tanpa menyimpan plaintext.
+**Alur kode:** username lebih dulu dinormalisasi menjadi bentuk stabil, lalu bentuk stabil itu di-hash dengan HMAC dan pepper aplikasi sehingga login bisa mencari akun tanpa menyimpan plaintext.
 
 ```php
 function normalize_username(string $username): string
@@ -2391,11 +2477,11 @@ function username_lookup(string $username): string
 }
 ```
 
-Langkah implementasi berikutnya adalah menyiapkan utilitas `base64url` karena ciphertext AES-GCM perlu dibawa dalam format string yang aman disimpan dan dibaca ulang.
+**Lanjutan:** menyiapkan utilitas `base64url` karena ciphertext AES-GCM perlu dibawa dalam format string yang aman disimpan dan dibaca ulang.
 
-Sumber: [src/Security/Auth.php:73](/home/fxrdhan/au7h/src/Security/Auth.php:73)
+**Sumber:** [src/Security/Auth.php:73](/home/fxrdhan/au7h/src/Security/Auth.php:73)
 
-Alur kode: dua helper ini mengubah data biner menjadi format base64url yang aman dipakai di payload string, lalu menyediakan jalur baliknya saat payload perlu didekode.
+**Alur kode:** dua helper ini mengubah data biner menjadi format base64url yang aman dipakai di payload string, lalu menyediakan jalur baliknya saat payload perlu didekode.
 
 ```php
 function base64url_encode(string $value): string
@@ -2414,11 +2500,11 @@ function base64url_decode(string $value): string
 }
 ```
 
-Langkah implementasi berikutnya adalah mengenkripsi username untuk penyimpanan dan menyediakan pasangan fungsi dekripsi agar landing page sukses masih bisa menampilkan nama asli.
+**Lanjutan:** mengenkripsi username untuk penyimpanan dan menyediakan pasangan fungsi dekripsi agar landing page sukses masih bisa menampilkan nama asli.
 
-Sumber: [src/Security/Auth.php:88](/home/fxrdhan/au7h/src/Security/Auth.php:88)
+**Sumber:** [src/Security/Auth.php:88](/home/fxrdhan/au7h/src/Security/Auth.php:88)
 
-Alur kode: username dienkripsi dengan AES-256-GCM memakai IV acak, lalu IV, tag, dan ciphertext digabung menjadi satu payload; fungsi kebalikannya memecah payload itu lagi dan mendekripsinya hanya jika strukturnya valid.
+**Alur kode:** username dienkripsi dengan AES-256-GCM memakai IV acak, lalu IV, tag, dan ciphertext digabung menjadi satu payload; fungsi kebalikannya memecah payload itu lagi dan mendekripsinya hanya jika strukturnya valid.
 
 ```php
 function encrypt_username(string $username): string
@@ -2464,7 +2550,9 @@ function decrypt_username(string $payload): string
 }
 ```
 
-##### 9.5. Privasi password
+**Langkah 5:**
+
+- Privasi password.
 
 Referensi yang dicari: `OWASP Password Storage Cheat Sheet`, PHP `password_hash()`, PHP `password_verify()`, dan `PHP Password Hashing FAQ`.
 
@@ -2534,11 +2622,11 @@ Referensi terkait: [PHP Manual - Password Hashing FAQ](https://www.php.net/manua
 >
 > `password_verify()` harus selalu dipakai alih-alih melakukan hash ulang lalu membandingkannya dengan hash tersimpan, agar terhindar dari timing attack.
 
-Langkah implementasi: password dipadukan dengan pepper aplikasi lalu di-hash memakai Argon2id, sehingga kebocoran database tidak langsung membuka password asli.
+**Implementasi:** password dipadukan dengan pepper aplikasi lalu di-hash memakai Argon2id, sehingga kebocoran database tidak langsung membuka password asli.
 
-Sumber: [src/Security/Auth.php:130](/home/fxrdhan/au7h/src/Security/Auth.php:130)
+**Sumber:** [src/Security/Auth.php:130](/home/fxrdhan/au7h/src/Security/Auth.php:130)
 
-Alur kode: sebelum disimpan, password digabung dulu dengan pepper aplikasi, lalu hasil gabungannya di-hash menggunakan Argon2id sehingga kebocoran hash tidak langsung membuka password asli.
+**Alur kode:** sebelum disimpan, password digabung dulu dengan pepper aplikasi, lalu hasil gabungannya di-hash menggunakan Argon2id sehingga kebocoran hash tidak langsung membuka password asli.
 
 ```php
 function hash_password_for_storage(string $password): string
@@ -2548,11 +2636,11 @@ function hash_password_for_storage(string $password): string
 }
 ```
 
-Langkah implementasi berikutnya adalah memverifikasi input login terhadap hash tersimpan tanpa pernah mengubah data hash menjadi plaintext.
+**Lanjutan:** memverifikasi input login terhadap hash tersimpan tanpa pernah mengubah data hash menjadi plaintext.
 
-Sumber: [src/Security/Auth.php:136](/home/fxrdhan/au7h/src/Security/Auth.php:136)
+**Sumber:** [src/Security/Auth.php:136](/home/fxrdhan/au7h/src/Security/Auth.php:136)
 
-Alur kode: saat login, input password dibentuk kembali dengan pepper yang sama, lalu diverifikasi terhadap hash tersimpan tanpa pernah mengubah hash itu menjadi plaintext.
+**Alur kode:** saat login, input password dibentuk kembali dengan pepper yang sama, lalu diverifikasi terhadap hash tersimpan tanpa pernah mengubah hash itu menjadi plaintext.
 
 ```php
 function verify_stored_password(string $password, string $storedHash): bool
@@ -2561,7 +2649,7 @@ function verify_stored_password(string $password, string $storedHash): bool
 }
 ```
 
-#### Keputusan
+#### Keputusan penting
 
 1. `hash_equals()` dipakai untuk membandingkan token agar tidak memakai compare biasa,
 2. username tidak dicari lewat ciphertext,
@@ -2573,11 +2661,11 @@ function verify_stored_password(string $password, string $storedHash): bool
 
 Menutup celah SQL injection dan memastikan akses data konsisten.
 
-#### Analisis langkah
+#### Analisis alur
 
 OWASP menempatkan parameterized query sebagai pertahanan utama. Karena itu, seluruh operasi `SELECT`, `INSERT`, `UPDATE`, dan `DELETE` harus lewat prepared statement.
 
-#### Referensi
+#### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah `OWASP SQL Injection Prevention Cheat Sheet`, PHP `PDO::prepare()`, dan overview PDO.
 
@@ -2616,11 +2704,14 @@ Referensi terkait: [PHP Manual - PDO](https://www.php.net/manual/en/book.pdo.php
 
 #### Implementasi
 
-Langkah 1: bentuk koneksi PDO yang memaksa native prepared statement dan mode SQL ketat sejak awal.
+**Langkah 1:**
 
-Sumber: [src/Infrastructure/Database.php:5-29](/home/fxrdhan/au7h/src/Infrastructure/Database.php:5)
+- Bentuk koneksi PDO.
+- Paksa native prepared statement dan mode SQL ketat sejak awal.
 
-Alur kode: koneksi PDO dibuat sekali lalu disimpan statis, sesudah itu koneksi dipaksa memakai prepared statement native, mode error exception, charset utf8mb4, dan SQL mode ketat.
+**Sumber:** [src/Infrastructure/Database.php:5-29](/home/fxrdhan/au7h/src/Infrastructure/Database.php:5)
+
+**Alur kode:** koneksi PDO dibuat sekali lalu disimpan statis, sesudah itu koneksi dipaksa memakai prepared statement native, mode error exception, charset utf8mb4, dan SQL mode ketat.
 
 ```php
 function db_connection(): PDO
@@ -2650,11 +2741,14 @@ function db_connection(): PDO
 }
 ```
 
-Langkah 2: pencarian akun saat login dilakukan lewat `username_lookup`, bukan lewat string mentah dari form.
+**Langkah 2:**
 
-Sumber: [src/Infrastructure/Database.php:56-65](/home/fxrdhan/au7h/src/Infrastructure/Database.php:56)
+- Cari akun saat login lewat `username_lookup`.
+- Hindari pencarian lewat string mentah dari form.
 
-Alur kode: pencarian akun login berjalan lewat satu prepared statement yang hanya menerima `username_lookup`, lalu hasil fetch dinormalisasi menjadi `null` bila tidak ada row yang cocok.
+**Sumber:** [src/Infrastructure/Database.php:56-65](/home/fxrdhan/au7h/src/Infrastructure/Database.php:56)
+
+**Alur kode:** pencarian akun login berjalan lewat satu prepared statement yang hanya menerima `username_lookup`, lalu hasil fetch dinormalisasi menjadi `null` bila tidak ada row yang cocok.
 
 ```php
     $statement = db_connection()->prepare(
@@ -2669,11 +2763,14 @@ Alur kode: pencarian akun login berjalan lewat satu prepared statement yang hany
     return $user === false ? null : $user;
 ```
 
-Langkah 3: pencarian berdasarkan `user_id` dipisahkan untuk kebutuhan session dan guard halaman setelah login berhasil.
+**Langkah 3:**
 
-Sumber: [src/Infrastructure/Database.php:68-80](/home/fxrdhan/au7h/src/Infrastructure/Database.php:68)
+- Pisahkan pencarian berdasarkan `user_id`.
+- Gunakan jalur ini untuk kebutuhan session dan guard halaman setelah login berhasil.
 
-Alur kode: helper ini mengambil user berdasarkan `id` dari session, jadi guard halaman privat bisa memvalidasi identitas aktif tanpa perlu membaca credential dari form lagi.
+**Sumber:** [src/Infrastructure/Database.php:68-80](/home/fxrdhan/au7h/src/Infrastructure/Database.php:68)
+
+**Alur kode:** helper ini mengambil user berdasarkan `id` dari session, jadi guard halaman privat bisa memvalidasi identitas aktif tanpa perlu membaca credential dari form lagi.
 
 ```php
 function find_user_by_id(int $userId): ?array
@@ -2691,11 +2788,14 @@ function find_user_by_id(int $userId): ?array
 }
 ```
 
-Langkah 4: penyimpanan akun baru dilakukan dengan parameter terikat penuh agar tidak ada concat SQL di jalur registrasi.
+**Langkah 4:**
 
-Sumber: [src/Infrastructure/Database.php:82-104](/home/fxrdhan/au7h/src/Infrastructure/Database.php:82)
+- Simpan akun baru dengan parameter terikat penuh.
+- Hindari concat SQL di jalur registrasi.
 
-Alur kode: akun baru ditulis ke database lewat `INSERT` berparameter penuh, sehingga lookup username, ciphertext username, hash password, dan timestamp masuk sebagai satu transaksi penyimpanan yang eksplisit.
+**Sumber:** [src/Infrastructure/Database.php:82-104](/home/fxrdhan/au7h/src/Infrastructure/Database.php:82)
+
+**Alur kode:** akun baru ditulis ke database lewat `INSERT` berparameter penuh, sehingga lookup username, ciphertext username, hash password, dan timestamp masuk sebagai satu transaksi penyimpanan yang eksplisit.
 
 ```php
 function create_user(string $usernameLookup, string $usernameEncrypted, string $passwordHash): void
@@ -2733,7 +2833,7 @@ Input validation tetap ada, tetapi **bukan pengganti** prepared statement.
 
 Memenuhi requirement browser-facing: user harus melihat form register/login dari web server.
 
-#### Analisis langkah
+#### Analisis alur
 
 Halaman awal harus menjadi titik masuk tunggal. Flow tugas akan jauh lebih mudah diuji jika register dan login langsung tersedia di halaman pertama.
 
@@ -2743,11 +2843,15 @@ Tahap ini tidak menambah referensi internet baru. Setelah helper CSRF, escaping,
 
 #### Implementasi
 
-Langkah 1: arahkan root route ke satu file masuk yang memutuskan mode register atau login, sekaligus mencegah user yang sudah login kembali ke form awal.
+**Langkah 1:**
 
-Sumber: [public/index.php:5-16](/home/fxrdhan/au7h/public/index.php:5)
+- Arahkan root route ke satu file masuk.
+- Putuskan mode register atau login dari file tersebut.
+- Cegah user yang sudah login kembali ke form awal.
 
-Alur kode: endpoint root memuat bootstrap dulu, menolak user yang sudah login agar langsung ke welcome page, lalu menormalkan mode form sebelum merender halaman auth yang sesuai.
+**Sumber:** [public/index.php:5-16](/home/fxrdhan/au7h/public/index.php:5)
+
+**Alur kode:** endpoint root memuat bootstrap dulu, menolak user yang sudah login agar langsung ke welcome page, lalu menormalkan mode form sebelum merender halaman auth yang sesuai.
 
 ```php
 require_once dirname(__DIR__) . '/config/bootstrap.php';
@@ -2764,11 +2868,14 @@ if (!in_array($mode, ['register', 'login'], true)) {
 render_page_response(200, render_auth_page(pull_flash(), $mode));
 ```
 
-Langkah 2: siapkan state form dinamis seperti judul, action, label tombol, dan token CSRF sebelum HTML akhir dirender.
+**Langkah 2:**
 
-Sumber: [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:5)
+- Siapkan state form dinamis.
+- Tetapkan judul, action, label tombol, dan token CSRF sebelum HTML akhir dirender.
 
-Alur kode: potongan ini membangun seluruh state view untuk kartu auth, mulai dari token CSRF, jenis mode, teks UI, target form, hingga field konfirmasi password yang hanya muncul saat registrasi.
+**Sumber:** [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:5)
+
+**Alur kode:** potongan ini membangun seluruh state view untuk kartu auth, mulai dari token CSRF, jenis mode, teks UI, target form, hingga field konfirmasi password yang hanya muncul saat registrasi.
 
 ```php
 function render_auth_form_card(string $mode, ?array $flash): string
@@ -2802,11 +2909,16 @@ function render_auth_form_card(string $mode, ?array $flash): string
         : '';
 ```
 
-Langkah 3: baru setelah state siap, bentuk markup form yang memuat hidden CSRF token, field username-password, dan switch antar mode.
+**Langkah 3:**
 
-Sumber cuplikan relevan: [src/Presentation/AuthViews.php:35](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:35)
+- Bentuk markup form setelah seluruh state siap.
+- Muat hidden CSRF token.
+- Muat field username-password.
+- Muat switch antar mode.
 
-Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan urutan yang konsisten: judul, flash message, hidden CSRF token, field input, tombol submit, lalu link untuk berpindah mode.
+**Sumber cuplikan relevan:** [src/Presentation/AuthViews.php:35](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:35)
+
+**Alur kode:** setelah semua state siap, blok ini menyusun HTML final form dengan urutan yang konsisten: judul, flash message, hidden CSRF token, field input, tombol submit, lalu link untuk berpindah mode.
 
 ```php
     return '
@@ -2855,7 +2967,7 @@ Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan ur
 
 Membuat akun baru secara aman dan siap dipakai login.
 
-#### Analisis langkah
+#### Analisis alur
 
 Endpoint register harus memverifikasi method, CSRF, rate limit, validasi input, duplikasi username, lalu baru menyimpan data terenkripsi/terhash.
 
@@ -2865,11 +2977,16 @@ Tahap ini tidak mencari sumber baru. Implementasinya langsung memakai hasil baca
 
 #### Implementasi
 
-Langkah 1: hentikan request non-POST, baca input dasar, verifikasi CSRF, lalu throttle jalur registrasi sebelum validasi lebih dalam dilakukan.
+**Langkah 1:**
 
-Sumber: [public/register.php:7-11](/home/fxrdhan/au7h/public/register.php:7)
+- Hentikan request non-POST.
+- Baca input dasar.
+- Verifikasi CSRF.
+- Throttle jalur registrasi sebelum validasi lebih dalam dilakukan.
 
-Alur kode: request registrasi dipagari dari awal dengan tiga langkah berurutan, yaitu wajib `POST`, baca username mentah, validasi CSRF, lalu aktifkan throttling sebelum logika lain dijalankan.
+**Sumber:** [public/register.php:7-11](/home/fxrdhan/au7h/public/register.php:7)
+
+**Alur kode:** request registrasi dipagari dari awal dengan tiga langkah berurutan, yaitu wajib `POST`, baca username mentah, validasi CSRF, lalu aktifkan throttling sebelum logika lain dijalankan.
 
 ```php
 require_post_method();
@@ -2879,11 +2996,15 @@ verify_csrf_or_fail($_POST['csrf_token'] ?? null);
 enforce_auth_rate_limit('register');
 ```
 
-Langkah 2: validasi username, password, dan konfirmasi password sebagai gerbang pertama sebelum menyentuh database.
+**Langkah 2:**
 
-Sumber: [public/register.php:13-15](/home/fxrdhan/au7h/public/register.php:13)
+- Validasi username.
+- Validasi password.
+- Validasi konfirmasi password sebagai gerbang pertama sebelum menyentuh database.
 
-Alur kode: setelah lolos guard awal, input form dipisah menjadi tiga jalur validasi agar username, password, dan konfirmasi password bisa diperiksa dengan pesan error yang tepat.
+**Sumber:** [public/register.php:13-15](/home/fxrdhan/au7h/public/register.php:13)
+
+**Alur kode:** setelah lolos guard awal, input form dipisah menjadi tiga jalur validasi agar username, password, dan konfirmasi password bisa diperiksa dengan pesan error yang tepat.
 
 ```php
 $usernameValidation = validate_username($submittedUsername);
@@ -2891,11 +3012,14 @@ $passwordValidation = validate_password((string) ($_POST['password'] ?? ''));
 $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 ```
 
-Langkah 3: cek duplikasi username berdasarkan lookup stabil, lalu alihkan alur ke form login jika akun ternyata sudah pernah dibuat.
+**Langkah 3:**
 
-Sumber: [public/register.php:33-37](/home/fxrdhan/au7h/public/register.php:33)
+- Cek duplikasi username berdasarkan lookup stabil.
+- Alihkan alur ke form login jika akun ternyata sudah pernah dibuat.
 
-Alur kode: bila lookup username sudah ditemukan, proses registrasi tidak diteruskan; sistem justru mencatat kegagalan rate limit, menaruh flash message, lalu mengarahkan user ke mode login.
+**Sumber:** [public/register.php:33-37](/home/fxrdhan/au7h/public/register.php:33)
+
+**Alur kode:** bila lookup username sudah ditemukan, proses registrasi tidak diteruskan; sistem justru mencatat kegagalan rate limit, menaruh flash message, lalu mengarahkan user ke mode login.
 
 ```php
 if (find_user_by_lookup($lookup) !== null) {
@@ -2905,11 +3029,15 @@ if (find_user_by_lookup($lookup) !== null) {
 }
 ```
 
-Langkah 4: jika seluruh pemeriksaan lolos, simpan akun baru, bersihkan rate limit register, dan kirim flash success ke halaman login.
+**Langkah 4:**
 
-Sumber: [public/register.php:39-52](/home/fxrdhan/au7h/public/register.php:39)
+- Simpan akun baru jika seluruh pemeriksaan lolos.
+- Bersihkan rate limit register.
+- Kirim flash success ke halaman login.
 
-Alur kode: pada jalur sukses, username diubah menjadi lookup dan ciphertext, password di-hash, akun disimpan, rate limit dibersihkan, lalu user diarahkan ke halaman login; bila penyimpanan gagal, endpoint jatuh ke response 500.
+**Sumber:** [public/register.php:39-52](/home/fxrdhan/au7h/public/register.php:39)
+
+**Alur kode:** pada jalur sukses, username diubah menjadi lookup dan ciphertext, password di-hash, akun disimpan, rate limit dibersihkan, lalu user diarahkan ke halaman login; bila penyimpanan gagal, endpoint jatuh ke response 500.
 
 ```php
 try {
@@ -2938,7 +3066,7 @@ Data akun sudah aman di database dan siap dipakai saat login.
 
 Memenuhi requirement login sukses/gagal dengan dua landing page berbeda.
 
-#### Analisis langkah
+#### Analisis alur
 
 Inilah titik yang dinilai langsung pada tugas. Login harus:
 
@@ -2971,11 +3099,15 @@ Referensi terkait: [PHP Manual - session_regenerate_id()](https://www.php.net/ma
 
 #### Implementasi
 
-Langkah 1: paksa jalur login melewati `POST`, validasi CSRF, dan throttle berbasis kombinasi bucket login plus subject username.
+**Langkah 1:**
 
-Sumber: [public/login.php:7-10](/home/fxrdhan/au7h/public/login.php:7)
+- Paksa jalur login melewati `POST`.
+- Validasi CSRF.
+- Terapkan throttle berbasis kombinasi bucket login dan subject username.
 
-Alur kode: seperti registrasi, login juga dimulai dari guard berlapis: paksa `POST`, baca username mentah, verifikasi token CSRF, lalu aktifkan throttling berbasis bucket login dan subject username.
+**Sumber:** [public/login.php:7-10](/home/fxrdhan/au7h/public/login.php:7)
+
+**Alur kode:** seperti registrasi, login juga dimulai dari guard berlapis: paksa `POST`, baca username mentah, verifikasi token CSRF, lalu aktifkan throttling berbasis bucket login dan subject username.
 
 ```php
 require_post_method();
@@ -2984,11 +3116,14 @@ verify_csrf_or_fail($_POST['csrf_token'] ?? null);
 enforce_auth_rate_limit('login', $submittedUsername);
 ```
 
-Langkah 2: cari akun melalui lookup ter-normalisasi, lalu jika user tidak ditemukan atau password salah langsung kirim ke landing page gagal.
+**Langkah 2:**
 
-Sumber: [public/login.php:21-27](/home/fxrdhan/au7h/public/login.php:21)
+- Cari akun melalui lookup ter-normalisasi.
+- Kirim user ke landing page gagal jika user tidak ditemukan atau password salah.
 
-Alur kode: username valid lebih dulu diubah menjadi lookup stabil untuk mencari akun, lalu satu kondisi gabungan memutuskan kegagalan jika user tidak ditemukan atau hash password tidak cocok.
+**Sumber:** [public/login.php:21-27](/home/fxrdhan/au7h/public/login.php:21)
+
+**Alur kode:** username valid lebih dulu diubah menjadi lookup stabil untuk mencari akun, lalu satu kondisi gabungan memutuskan kegagalan jika user tidak ditemukan atau hash password tidak cocok.
 
 ```php
 $user = find_user_by_lookup(username_lookup((string) $usernameValidation['value']));
@@ -3000,11 +3135,16 @@ if ($user === null || !verify_stored_password((string) $passwordValidation['valu
 }
 ```
 
-Langkah 3: setelah autentikasi sukses, reset rate limit, regenerasi session ID, rotasi token CSRF, lalu arahkan ke halaman welcome.
+**Langkah 3:**
 
-Sumber: [public/login.php:29-34](/home/fxrdhan/au7h/public/login.php:29)
+- Reset rate limit setelah autentikasi sukses.
+- Regenerasi session ID.
+- Rotasi token CSRF.
+- Arahkan user ke halaman welcome.
 
-Alur kode: jalur sukses mereset throttling, mengganti session ID, menyimpan `user_id` aktif, merotasi token CSRF, lalu mengarahkan browser ke welcome page sebagai akhir autentikasi.
+**Sumber:** [public/login.php:29-34](/home/fxrdhan/au7h/public/login.php:29)
+
+**Alur kode:** jalur sukses mereset throttling, mengganti session ID, menyimpan `user_id` aktif, merotasi token CSRF, lalu mengarahkan browser ke welcome page sebagai akhir autentikasi.
 
 ```php
 clear_auth_rate_limit('login', $submittedUsername);
@@ -3027,7 +3167,7 @@ redirect_to('/welcome.php');
 
 Menutup acceptance criteria utama yang diminta pada tugas.
 
-#### Analisis langkah
+#### Analisis alur
 
 Tanpa dua landing page ini, requirement tugas belum lengkap walaupun autentikasi sebenarnya sudah bekerja.
 
@@ -3037,11 +3177,14 @@ Tahap ini tidak menambah referensi internet baru. Implementasinya hanya menyambu
 
 #### Implementasi
 
-Langkah 1: halaman welcome memanggil guard login lebih dulu, lalu mencoba mendekripsi username agar identitas yang tampil tetap nilai asli, bukan hash atau ciphertext.
+**Langkah 1:**
 
-Sumber: [public/welcome.php:7-14](/home/fxrdhan/au7h/public/welcome.php:7)
+- Panggil guard login lebih dulu di halaman welcome.
+- Dekripsi username agar identitas yang tampil tetap nilai asli, bukan hash atau ciphertext.
 
-Alur kode: endpoint ini memastikan user sudah login lebih dulu, lalu mencoba mendekripsi username untuk ditampilkan; jika dekripsi gagal, alur dipindah ke halaman error server.
+**Sumber:** [public/welcome.php:7-14](/home/fxrdhan/au7h/public/welcome.php:7)
+
+**Alur kode:** endpoint ini memastikan user sudah login lebih dulu, lalu mencoba mendekripsi username untuk ditampilkan; jika dekripsi gagal, alur dipindah ke halaman error server.
 
 ```php
 $user = require_login();
@@ -3056,11 +3199,15 @@ try {
 
 Akses halaman welcome tetap dijaga oleh helper session agar route ini tidak bisa dibuka tanpa login.
 
-Langkah 2: guard session dibangun terpisah agar semua route privat bisa memakai aturan yang sama tanpa mengulang pengecekan `$_SESSION` mentah.
+**Langkah 2:**
 
-Sumber: [src/Support/Http.php:81](/home/fxrdhan/au7h/src/Support/Http.php:81)
+- Bangun guard session secara terpisah.
+- Gunakan aturan yang sama untuk semua route privat.
+- Hindari pengulangan pengecekan `$_SESSION` mentah.
 
-Alur kode: `current_user()` membaca `user_id` dari session dan menukarnya menjadi row user nyata, sedangkan `require_login()` memakai hasil itu sebagai guard keras yang me-redirect tamu kembali ke root.
+**Sumber:** [src/Support/Http.php:81](/home/fxrdhan/au7h/src/Support/Http.php:81)
+
+**Alur kode:** `current_user()` membaca `user_id` dari session dan menukarnya menjadi row user nyata, sedangkan `require_login()` memakai hasil itu sebagai guard keras yang me-redirect tamu kembali ke root.
 
 ```php
 function current_user(): ?array
@@ -3084,21 +3231,27 @@ function require_login(): array
 }
 ```
 
-Langkah 3: halaman gagal dibuat sangat tipis karena endpoint login hanya perlu satu respons jelas saat kredensial tidak cocok.
+**Langkah 3:**
 
-Sumber: [public/not-registered.php:7-7](/home/fxrdhan/au7h/public/not-registered.php:7)
+- Buat halaman gagal dengan struktur sangat tipis.
+- Sediakan satu respons jelas saat kredensial tidak cocok.
 
-Alur kode: endpoint ini sengaja tipis karena seluruh keputusan gagal login sudah terjadi sebelumnya; tugasnya tinggal mengembalikan status 401 dengan view gagal yang seragam.
+**Sumber:** [public/not-registered.php:7-7](/home/fxrdhan/au7h/public/not-registered.php:7)
+
+**Alur kode:** endpoint ini sengaja tipis karena seluruh keputusan gagal login sudah terjadi sebelumnya; tugasnya tinggal mengembalikan status 401 dengan view gagal yang seragam.
 
 ```php
 render_page_response(401, render_not_registered_page());
 ```
 
-Langkah 4: view welcome menampilkan username hasil dekripsi dan form logout yang juga diproteksi CSRF.
+**Langkah 4:**
 
-Sumber: [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:5)
+- Tampilkan username hasil dekripsi di view welcome.
+- Sediakan form logout yang juga diproteksi CSRF.
 
-Alur kode: view welcome membungkus username yang sudah didekripsi ke shell halaman hasil, lalu menaruh form logout berisi token CSRF agar aksi keluar tetap lewat jalur aman.
+**Sumber:** [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:5)
+
+**Alur kode:** view welcome membungkus username yang sudah didekripsi ke shell halaman hasil, lalu menaruh form logout berisi token CSRF agar aksi keluar tetap lewat jalur aman.
 
 ```php
 function render_welcome_page(string $username): string
@@ -3118,11 +3271,14 @@ function render_welcome_page(string $username): string
 }
 ```
 
-Langkah 5: view gagal login menutup requirement dengan pesan yang eksplisit, tetapi tidak membocorkan detail apakah username atau password yang salah.
+**Langkah 5:**
 
-Sumber: [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:21)
+- Tutup requirement dengan pesan gagal login yang eksplisit.
+- Jangan bocorkan detail apakah username atau password yang salah.
 
-Alur kode: view gagal login ini membentuk satu pesan netral yang tidak membocorkan detail kegagalan, lalu menyediakan satu aksi balik ke form sebagai jalur pemulihan user.
+**Sumber:** [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:21)
+
+**Alur kode:** view gagal login ini membentuk satu pesan netral yang tidak membocorkan detail kegagalan, lalu menyediakan satu aksi balik ke form sebagai jalur pemulihan user.
 
 ```php
 function render_not_registered_page(): string
@@ -3150,7 +3306,7 @@ function render_not_registered_page(): string
 
 Menutup sesi tanpa menyisakan token lama.
 
-#### Analisis langkah
+#### Analisis alur
 
 Logout sering dianggap sepele, padahal tetap state-changing action. Karena itu, logout juga perlu `POST` dan CSRF.
 
@@ -3200,11 +3356,16 @@ Referensi terkait: [PHP Manual - session_get_cookie_params()](https://www.php.ne
 
 #### Implementasi
 
-Langkah implementasi terarah: logout diperlakukan seperti aksi sensitif lain, sehingga wajib `POST`, wajib CSRF valid, lalu seluruh state session dihapus sebelum redirect.
+**Langkah 1:**
 
-Sumber: [public/logout.php:7-17](/home/fxrdhan/au7h/public/logout.php:7)
+- Perlakukan logout seperti aksi sensitif lain.
+- Wajibkan `POST`.
+- Wajibkan CSRF valid.
+- Hapus seluruh state session sebelum redirect.
 
-Alur kode: logout dipagari seperti aksi sensitif lain, lalu session dibersihkan dari memori, cookie session lama dihapus bila ada, session dihancurkan, dan browser dipulangkan ke halaman awal.
+**Sumber:** [public/logout.php:7-17](/home/fxrdhan/au7h/public/logout.php:7)
+
+**Alur kode:** logout dipagari seperti aksi sensitif lain, lalu session dibersihkan dari memori, cookie session lama dihapus bila ada, session dihancurkan, dan browser dipulangkan ke halaman awal.
 
 ```php
 require_post_method();
@@ -3226,7 +3387,7 @@ redirect_to('/');
 
 Memperlambat brute-force dan pembuatan akun massal.
 
-#### Analisis langkah
+#### Analisis alur
 
 Password kuat tetap butuh throttling. Tanpa rate limit, endpoint login bisa dipukul terus dari IP atau kombinasi username tertentu.
 
@@ -3268,11 +3429,14 @@ Karena itu, implementasi proyek ini memilih throttling ringan berbasis database 
 
 #### Implementasi
 
-Langkah 1: bentuk `rate_key` yang stabil dari alamat klien, bucket aksi, dan subject opsional agar throttling bisa dibedakan antara login dan register.
+**Langkah 1:**
 
-Sumber: [src/Security/RateLimiter.php:5-15](/home/fxrdhan/au7h/src/Security/RateLimiter.php:5)
+- Bentuk `rate_key` yang stabil dari alamat klien, bucket aksi, dan subject opsional.
+- Pastikan throttling bisa dibedakan antara login dan register.
 
-Alur kode: helper ini menyusun identitas throttle dari IP klien, nama bucket aksi, dan subject opsional, lalu mengubah gabungan itu menjadi hash tetap yang aman dipakai sebagai primary key rate limit.
+**Sumber:** [src/Security/RateLimiter.php:5-15](/home/fxrdhan/au7h/src/Security/RateLimiter.php:5)
+
+**Alur kode:** helper ini menyusun identitas throttle dari IP klien, nama bucket aksi, dan subject opsional, lalu mengubah gabungan itu menjadi hash tetap yang aman dipakai sebagai primary key rate limit.
 
 ```php
 function auth_rate_limit_key(string $bucket, ?string $subject = null): string
@@ -3288,11 +3452,15 @@ function auth_rate_limit_key(string $bucket, ?string $subject = null): string
 }
 ```
 
-Langkah 2: tentukan policy per bucket supaya batas register bisa lebih ketat daripada login tanpa membuat fungsi pengecekan bercabang liar.
+**Langkah 2:**
 
-Sumber: [src/Security/RateLimiter.php:17-33](/home/fxrdhan/au7h/src/Security/RateLimiter.php:17)
+- Tentukan policy per bucket.
+- Buat batas register lebih ketat daripada login.
+- Hindari fungsi pengecekan yang bercabang liar.
 
-Alur kode: policy rate limit dibaca dari konfigurasi aplikasi, lalu helper ini memilih policy bucket spesifik bila ada atau jatuh ke default bila bucket tersebut belum diatur.
+**Sumber:** [src/Security/RateLimiter.php:17-33](/home/fxrdhan/au7h/src/Security/RateLimiter.php:17)
+
+**Alur kode:** policy rate limit dibaca dari konfigurasi aplikasi, lalu helper ini memilih policy bucket spesifik bila ada atau jatuh ke default bila bucket tersebut belum diatur.
 
 ```php
 function auth_rate_limit_policy(string $bucket): array
@@ -3314,11 +3482,14 @@ function auth_rate_limit_policy(string $bucket): array
 }
 ```
 
-Langkah 3: baca record rate limit aktif dari database untuk mengetahui apakah jendela percobaan lama masih berlaku atau perlu direset.
+**Langkah 3:**
 
-Sumber: [src/Security/RateLimiter.php:35-46](/home/fxrdhan/au7h/src/Security/RateLimiter.php:35)
+- Baca record rate limit aktif dari database.
+- Tentukan apakah jendela percobaan lama masih berlaku atau perlu direset.
 
-Alur kode: fungsi ini hanya bertugas mengambil record throttling aktif untuk kombinasi bucket-subject tertentu, sehingga logika keputusan blokir bisa dipisahkan dari query mentahnya.
+**Sumber:** [src/Security/RateLimiter.php:35-46](/home/fxrdhan/au7h/src/Security/RateLimiter.php:35)
+
+**Alur kode:** fungsi ini hanya bertugas mengambil record throttling aktif untuk kombinasi bucket-subject tertentu, sehingga logika keputusan blokir bisa dipisahkan dari query mentahnya.
 
 ```php
 function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?array
@@ -3335,11 +3506,14 @@ function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?
 }
 ```
 
-Langkah 4: fungsi pengecekan membandingkan jumlah percobaan dengan policy aktif dan mengembalikan keputusan blokir secara deterministik.
+**Langkah 4:**
 
-Sumber: [src/Security/RateLimiter.php:48-61](/home/fxrdhan/au7h/src/Security/RateLimiter.php:48)
+- Bandingkan jumlah percobaan dengan policy aktif.
+- Kembalikan keputusan blokir secara deterministik.
 
-Alur kode: keputusan blokir dihitung dengan membaca policy, waktu sekarang, dan record aktif; bila window lama sudah lewat maka percobaan dianggap bersih lagi, kalau belum maka jumlah attempts dibandingkan dengan batas policy.
+**Sumber:** [src/Security/RateLimiter.php:48-61](/home/fxrdhan/au7h/src/Security/RateLimiter.php:48)
+
+**Alur kode:** keputusan blokir dihitung dengan membaca policy, waktu sekarang, dan record aktif; bila window lama sudah lewat maka percobaan dianggap bersih lagi, kalau belum maka jumlah attempts dibandingkan dengan batas policy.
 
 ```php
 function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
@@ -3358,11 +3532,14 @@ function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
 }
 ```
 
-Langkah 5: jika terjadi kegagalan autentikasi, pencatatan percobaan dilakukan lewat upsert awal atau increment lanjutan pada window yang sama.
+**Langkah 5:**
 
-Sumber: [src/Security/RateLimiter.php:63-91](/home/fxrdhan/au7h/src/Security/RateLimiter.php:63)
+- Catat kegagalan autentikasi.
+- Gunakan upsert awal atau increment lanjutan pada window yang sama.
 
-Alur kode: saat autentikasi gagal, helper ini memeriksa apakah window lama masih berlaku; jika tidak, ia membuat atau me-reset record dengan `upsert`, jika ya, ia cukup menambah counter attempts pada record yang sama.
+**Sumber:** [src/Security/RateLimiter.php:63-91](/home/fxrdhan/au7h/src/Security/RateLimiter.php:63)
+
+**Alur kode:** saat autentikasi gagal, helper ini memeriksa apakah window lama masih berlaku; jika tidak, ia membuat atau me-reset record dengan `upsert`, jika ya, ia cukup menambah counter attempts pada record yang sama.
 
 ```php
 function record_auth_rate_limit_failure(string $bucket, ?string $subject = null): void
@@ -3396,11 +3573,14 @@ function record_auth_rate_limit_failure(string $bucket, ?string $subject = null)
 }
 ```
 
-Langkah 6: setelah login atau register sukses, record throttling untuk jalur terkait harus dibersihkan agar user sah tidak tetap terkena pembatasan lama.
+**Langkah 6:**
 
-Sumber: [src/Security/RateLimiter.php:93-100](/home/fxrdhan/au7h/src/Security/RateLimiter.php:93)
+- Bersihkan record throttling setelah login atau register sukses.
+- Pastikan user sah tidak tetap terkena pembatasan lama.
 
-Alur kode: begitu login atau registrasi berhasil, helper ini menghapus record throttling yang sesuai agar user sah tidak mewarisi penalti dari kegagalan sebelumnya.
+**Sumber:** [src/Security/RateLimiter.php:93-100](/home/fxrdhan/au7h/src/Security/RateLimiter.php:93)
+
+**Alur kode:** begitu login atau registrasi berhasil, helper ini menghapus record throttling yang sesuai agar user sah tidak mewarisi penalti dari kegagalan sebelumnya.
 
 ```php
 function clear_auth_rate_limit(string $bucket, ?string $subject = null): void
@@ -3413,11 +3593,14 @@ function clear_auth_rate_limit(string $bucket, ?string $subject = null): void
 }
 ```
 
-Langkah 7: sebelum endpoint melanjutkan logika bisnis, helper enforcement mengubah status blokir menjadi respons HTTP 429 yang jelas.
+**Langkah 7:**
 
-Sumber: [src/Security/Auth.php:141-149](/home/fxrdhan/au7h/src/Security/Auth.php:141)
+- Jalankan helper enforcement sebelum endpoint melanjutkan logika bisnis.
+- Ubah status blokir menjadi respons HTTP 429 yang jelas.
 
-Alur kode: helper enforcement ini berada di tepi endpoint; ia memanggil pengecekan rate limit dan langsung menghentikan request dengan halaman 429 bila bucket tersebut sedang diblokir.
+**Sumber:** [src/Security/Auth.php:141-149](/home/fxrdhan/au7h/src/Security/Auth.php:141)
+
+**Alur kode:** helper enforcement ini berada di tepi endpoint; ia memanggil pengecekan rate limit dan langsung menghentikan request dengan halaman 429 bila bucket tersebut sedang diblokir.
 
 ```php
 function enforce_auth_rate_limit(string $bucket, ?string $subject = null): void
@@ -3437,7 +3620,7 @@ function enforce_auth_rate_limit(string $bucket, ?string $subject = null): void
 
 Membuat proyek cepat dijalankan saat demo.
 
-#### Analisis langkah
+#### Analisis alur
 
 Port harus jelas sejak awal agar browser langsung bisa mengakses web server. Development juga lebih nyaman jika source code bisa di-mount.
 
@@ -3501,11 +3684,15 @@ Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose 
 
 #### Implementasi
 
-Langkah implementasi terarah: tampilkan satu file Compose yang cukup untuk demo lokal, dengan mapping port yang eksplisit dan volume mount agar perubahan source langsung tercermin saat pengujian.
+**Langkah 1:**
 
-Sumber cuplikan relevan: [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
+- Tampilkan satu file Compose yang cukup untuk demo lokal.
+- Tetapkan mapping port yang eksplisit.
+- Pasang volume mount agar perubahan source langsung tercermin saat pengujian.
 
-Alur kode: file Compose ini mendefinisikan service aplikasi yang sekaligus di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan ACL, memasang bind mount source code, lalu menambahkan service Snort sidecar untuk monitoring traffic jaringan.
+**Sumber cuplikan relevan:** [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
+
+**Alur kode:** file Compose ini mendefinisikan service aplikasi yang sekaligus di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan ACL, memasang bind mount source code, lalu menambahkan service Snort sidecar untuk monitoring traffic jaringan.
 
 ```yaml
 name: au7h
@@ -3576,7 +3763,7 @@ volumes:
 
 #### Hasil tahap
 
-Langkah pembacaan terarah: alamat ini menjadi target akses minimal saat demo, sehingga penguji bisa langsung memeriksa redirect HTTP dan akses HTTPS tanpa menebak port.
+**Catatan pembacaan:** alamat ini menjadi target akses minimal saat demo, sehingga penguji bisa langsung memeriksa redirect HTTP dan akses HTTPS tanpa menebak port.
 
 Browser bisa mengakses:
 
@@ -3591,7 +3778,7 @@ https://localhost:10443
 
 Menjawab tambahan requirement jaringan: traffic aplikasi dipantau oleh Snort, rule lokal tersedia, rule komunitas dapat diperbarui, dan akses port dibatasi dengan ACL.
 
-#### Analisis langkah
+#### Analisis alur
 
 Snort diposisikan sebagai IDS sidecar, bukan menggantikan Apache atau MySQL. ACL dipasang di container aplikasi agar browser tetap bisa mengakses HTTP/HTTPS, sementara port sensitif seperti MySQL dan SSH tidak terbuka langsung ke user.
 
@@ -3656,11 +3843,17 @@ Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man
 > `--destination-ports`, `--dports`
 >
 
-#### Implementasi Snort
+#### Implementasi
 
-Sumber cuplikan relevan: [security/snort/snort.lua:5](/home/fxrdhan/au7h/security/snort/snort.lua:5)
+**Langkah 1:**
 
-Alur kode: konfigurasi Snort menetapkan network yang dilindungi, memuat default Snort, mengarahkan `RULE_PATH`, mengaktifkan builtin rules, memasukkan file rules proyek, lalu menulis alert ke format `alert_fast`.
+- Konfigurasikan Snort sidecar.
+- Baca rule proyek.
+- Tulis alert.
+
+**Sumber cuplikan relevan:** [security/snort/snort.lua:5](/home/fxrdhan/au7h/security/snort/snort.lua:5)
+
+**Alur kode:** konfigurasi Snort menetapkan network yang dilindungi, memuat default Snort, mengarahkan `RULE_PATH`, mengaktifkan builtin rules, memasukkan file rules proyek, lalu menulis alert ke format `alert_fast`.
 
 ```lua
 HOME_NET = os.getenv('SNORT_HOME_NET') or 'any'
@@ -3691,7 +3884,12 @@ alert_fast =
 }
 ```
 
-Sumber cuplikan relevan: [security/snort/rules/au7h.rules:1](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1) dan [security/snort/rules/local.rules:1](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
+**Langkah 2:**
+
+- Susun file rule Snort proyek.
+- Pastikan rule lokal dan rule komunitas bisa dimuat dari satu aggregator.
+
+**Sumber cuplikan relevan:** [security/snort/rules/au7h.rules:1](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1) dan [security/snort/rules/local.rules:1](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
 
 `au7h.rules` menjadi file aggregator yang di-include oleh `snort.lua`, lalu memuat `local.rules` dan `community.rules`. Rule lokal mendeteksi ping, akses HTTP/HTTPS, akses langsung ke MySQL, dan akses SSH.
 
@@ -3707,11 +3905,14 @@ alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"
 alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:1000004; rev:3; classtype:attempted-recon;)
 ```
 
-#### Implementasi ACL
+**Langkah 3:**
 
-Sumber cuplikan relevan: [docker/acl.sh:22](/home/fxrdhan/au7h/docker/acl.sh:22)
+- Terapkan ACL jaringan di container aplikasi.
+- Batasi port yang boleh diakses.
 
-Alur kode: ACL membuat chain khusus `AU7H_INPUT`, mengizinkan loopback dan koneksi yang sudah established, membuka port HTTP/HTTPS, lalu menolak MySQL, SSH, ICMP ping, dan traffic lain yang tidak masuk daftar allow.
+**Sumber cuplikan relevan:** [docker/acl.sh:22](/home/fxrdhan/au7h/docker/acl.sh:22)
+
+**Alur kode:** ACL membuat chain khusus `AU7H_INPUT`, mengizinkan loopback dan koneksi yang sudah established, membuka port HTTP/HTTPS, lalu menolak MySQL, SSH, ICMP ping, dan traffic lain yang tidak masuk daftar allow.
 
 ```sh
 iptables -w -P INPUT DROP
@@ -3849,7 +4050,7 @@ Yang ditunjukkan:
 
 ### Uji 1 - Container hidup
 
-Langkah uji terarah: jalankan build bersih lebih dulu, lalu baca log startup sampai bootstrap MySQL dan Apache benar-benar selesai tanpa fatal error.
+Alur pengujian: jalankan build bersih lebih dulu, lalu baca log startup sampai bootstrap MySQL dan Apache benar-benar selesai tanpa fatal error.
 
 ```bash
 docker compose -f compose.dev.yaml up -d --build
@@ -3864,7 +4065,7 @@ Yang harus terlihat:
 
 ### Uji 2 - HTTP redirect ke HTTPS
 
-Langkah uji terarah: kirim request HEAD ke endpoint HTTP untuk memastikan web server tidak melayani konten sensitif di kanal tidak terenkripsi.
+Alur pengujian: kirim request HEAD ke endpoint HTTP untuk memastikan web server tidak melayani konten sensitif di kanal tidak terenkripsi.
 
 ```bash
 curl -I http://localhost:10080
@@ -3877,7 +4078,7 @@ Yang harus terlihat:
 
 ### Uji 3 - Form tampil di browser
 
-Langkah uji terarah: panggil halaman utama lewat HTTPS dan periksa bahwa HTML yang kembali memang sudah memuat form autentikasi serta hidden field CSRF.
+Alur pengujian: panggil halaman utama lewat HTTPS dan periksa bahwa HTML yang kembali memang sudah memuat form autentikasi serta hidden field CSRF.
 
 ```bash
 curl -k https://localhost:10443/
@@ -3891,7 +4092,7 @@ Yang harus terlihat:
 
 ### Uji 4 - Register berhasil
 
-Langkah manual:
+**Langkah manual:**
 
 1. buka `https://localhost:10443/`,
 2. isi username valid,
@@ -3901,7 +4102,7 @@ Langkah manual:
 
 ### Uji 5 - Login berhasil
 
-Langkah manual:
+**Langkah manual:**
 
 1. isi username yang baru terdaftar,
 2. isi password benar,
@@ -3915,7 +4116,7 @@ Hasil yang harus muncul:
 
 ### Uji 6 - Login gagal
 
-Langkah manual:
+**Langkah manual:**
 
 1. isi username salah atau password salah,
 2. submit login.
@@ -3928,7 +4129,7 @@ Hasil yang harus muncul:
 
 ### Uji 7 - Username dan password tidak terbaca asli di database
 
-Langkah uji terarah: periksa isi tabel secara langsung untuk membuktikan bahwa database hanya menyimpan lookup, ciphertext, dan hash, bukan kredensial plaintext.
+Alur pengujian: periksa isi tabel secara langsung untuk membuktikan bahwa database hanya menyimpan lookup, ciphertext, dan hash, bukan kredensial plaintext.
 
 ```sql
 SELECT username_lookup, username_encrypted, password_hash FROM users;
@@ -3954,7 +4155,7 @@ Hasil yang harus muncul:
 
 ### Uji 9 - SQL injection
 
-Langkah uji terarah: gunakan payload klasik pada field username untuk membuktikan prepared statement tetap membuat input itu diperlakukan sebagai data biasa.
+Alur pengujian: gunakan payload klasik pada field username untuk membuktikan prepared statement tetap membuat input itu diperlakukan sebagai data biasa.
 
 Masukkan pada field username:
 
@@ -3970,7 +4171,7 @@ Hasil yang diharapkan:
 
 ### Uji 10 - XSS
 
-Langkah uji terarah: masukkan payload script ke form register untuk melihat bahwa validasi input menghentikan nilai berbahaya bahkan sebelum output encoding dan CSP bekerja.
+Alur pengujian: masukkan payload script ke form register untuk melihat bahwa validasi input menghentikan nilai berbahaya bahkan sebelum output encoding dan CSP bekerja.
 
 Masukkan pada username saat register:
 
@@ -3986,7 +4187,7 @@ Hasil yang diharapkan:
 
 ### Uji 11 - Buffer overflow / oversized input
 
-Langkah uji terarah: kirim input yang sengaja dibuat melewati batas normal aplikasi, lalu cocokkan dengan hardening runtime PHP untuk memastikan request besar tidak diproses bebas.
+Alur pengujian: kirim input yang sengaja dibuat melewati batas normal aplikasi, lalu cocokkan dengan hardening runtime PHP untuk memastikan request besar tidak diproses bebas.
 
 Contoh input yang diuji:
 
@@ -4015,7 +4216,7 @@ Hasil yang diharapkan:
 
 ### Uji 13 - Snort IDS dan rule lokal
 
-Langkah uji terarah: validasi konfigurasi Snort, jalankan traffic HTTP/HTTPS, lalu baca file alert Snort.
+Alur pengujian: validasi konfigurasi Snort, jalankan traffic HTTP/HTTPS, lalu baca file alert Snort.
 
 ```bash
 bun run snort:test-rules
@@ -4030,7 +4231,7 @@ Yang harus terlihat:
 
 ### Uji 14 - ACL port jaringan
 
-Langkah uji terarah: tampilkan chain ACL dan pastikan port web diizinkan, sementara MySQL dan SSH ditolak.
+Alur pengujian: tampilkan chain ACL dan pastikan port web diizinkan, sementara MySQL dan SSH ditolak.
 
 ```bash
 bun run acl:status
@@ -4045,7 +4246,7 @@ Yang harus terlihat:
 
 ### Hasil Verifikasi Aktual
 
-Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya langkah uji yang direncanakan.
+Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya rencana uji.
 
 | Area yang diuji | Perintah atau cara uji | Hasil aktual |
 | --- | --- | --- |
@@ -4201,7 +4402,7 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 
 ## 13. Checklist Final Sebelum Presentasi
 
-Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement yang tertinggal saat presentasi berlangsung.
+Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement yang tertinggal saat presentasi berlangsung.
 
 ```text
 [x] docker compose up berhasil
