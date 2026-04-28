@@ -3175,20 +3175,30 @@ Referensi terkait: [Docker CLI - docker compose build](https://docs.docker.com/r
 Referensi terkait: [Docker CLI - docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/)
 
 > Description: Create and start containers
+> Usage: `docker compose up [OPTIONS] [SERVICE...]`
 > Builds, (re)creates, starts, and attaches to containers for a service.
+> Running `docker compose up --detach` starts the containers in the background and leaves them running.
+> If there are existing containers for a service, and the service’s configuration or image was changed after the container’s creation, `docker compose up` picks up the changes by stopping and recreating the containers (preserving mounted volumes).
 >
 > **Translated:**
 > Deskripsi: membuat dan menjalankan container.
+> Pemakaian: `docker compose up [OPTIONS] [SERVICE...]`
 > Perintah ini membangun, membuat ulang, menjalankan, dan menghubungkan diri ke container milik suatu service.
+> Menjalankan `docker compose up --detach` akan menjalankan container di background dan membiarkannya tetap berjalan.
+> Jika container untuk sebuah service sudah ada, lalu konfigurasi service atau image berubah setelah container dibuat, `docker compose up` mengambil perubahan tersebut dengan menghentikan dan membuat ulang container sambil mempertahankan mounted volume.
 
 Referensi terkait: [Docker Docs - Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 
-> When you use a bind mount, a file or directory on the host machine is mounted from the host into a container.
-> Bind mounts are appropriate for sharing source code or build artifacts between a development environment and a container.
+> When you use a bind mount, a file or directory on the host machine is mounted from the host into a container. By contrast, when you use a volume, a new directory is created within Docker's storage directory on the host machine. Docker creates and maintains this storage location, but containers access it directly using standard filesystem operations.
+> Bind mounts are appropriate for the following types of use case:
+> - Sharing source code or build artifacts between a development environment on the Docker host and a container.
+> - Sharing configuration files from the host machine to containers.
 >
 > **Translated:**
-> Saat Anda memakai bind mount, file atau direktori pada mesin host akan di-mount dari host ke dalam container.
-> Bind mount cocok dipakai untuk berbagi source code atau build artifact antara environment development dan container.
+> Saat Anda memakai bind mount, file atau direktori pada mesin host akan di-mount dari host ke dalam container. Sebaliknya, saat memakai volume, direktori baru dibuat di dalam direktori storage Docker pada mesin host. Docker membuat dan memelihara lokasi storage ini, tetapi container mengaksesnya langsung memakai operasi filesystem standar.
+> Bind mount cocok untuk beberapa use case berikut:
+> - Berbagi source code atau build artifact antara environment development pada host Docker dan container.
+> - Berbagi file konfigurasi dari mesin host ke container.
 
 Referensi terkait: [Docker Docs - Volumes](https://docs.docker.com/engine/storage/volumes/)
 

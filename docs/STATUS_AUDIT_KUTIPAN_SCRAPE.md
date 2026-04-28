@@ -5,8 +5,8 @@ Dokumen ini merangkum status audit kutipan pada [LAPORAN_PROYEK_DARI_NOL_REQUIRE
 Scope saat ini:
 - Total `Referensi terkait:` di laporan: `79`
 - Total referensi unik: `66`
-- Sudah diaudit/cocokkan dengan file scrape lokal: `55`
-- Belum diaudit/cocokkan dengan file scrape lokal: `11`
+- Sudah diaudit/cocokkan dengan file scrape lokal: `57`
+- Belum diaudit/cocokkan dengan file scrape lokal: `9`
 
 ## Sudah Diaudit Dengan Scrape
 
@@ -60,13 +60,15 @@ Scope saat ini:
 | PHP Manual - session_regenerate_id() | 2707 | `/home/fxrdhan/Downloads/www.php.net_manual_en_function.session-regenerate-id.php.2026-04-17T17_34_56.231Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan bahwa ID session diganti sambil mempertahankan data session, serta arti parameter `delete_old_session`, sesuai pemakaian saat login sukses. |
 | PHP Manual - session_destroy() | 2911 | `/home/fxrdhan/Downloads/www.php.net_manual_en_function.session-destroy.php.2026-04-17T17_37_35.304Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan bahwa `session_destroy()` tidak otomatis menghapus global variable maupun cookie session, sehingga alur logout lebih defensible. |
 | PHP Manual - session_get_cookie_params() | 2926 | `/home/fxrdhan/Downloads/www.php.net_manual_en_function.session-get-cookie-params.php.2026-04-17T17_39_57.125Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan isi array parameter cookie session seperti `path`, `domain`, `secure`, `httponly`, dan `samesite`. |
-| Docker Recipes - Snort 3 Docker Compose | 238, 3300 | `/home/fxrdhan/Downloads/docker.recipes_security_snort3.2026-04-28T05_34_02.068Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan dipakai untuk menjustifikasi pola Snort 3 di Docker Compose: image `ciscotalos/snort3`, capability `NET_ADMIN` dan `NET_RAW`, mount rules/logs, serta command `-i eth0 -c snort.lua`. |
-| Docker Hub - ciscotalos/snort3 | 256, 3308 | `/home/fxrdhan/Downloads/hub.docker.com_r_ciscotalos_snort3.2026-04-28T05_34_42.500Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menegaskan bahwa image yang dipakai berasal dari repository `ciscotalos/snort3` dan dapat ditarik dari Docker Hub. |
-| Snort 3 Configuration Guide | 267, 3312 | `/home/fxrdhan/Downloads/docs.snort.org_start_configuration.2026-04-28T05_35_24.110Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan bahwa Snort 3 memakai konfigurasi Lua, `snort.lua` dan `snort_defaults.lua` adalah base configuration, serta konfigurasi dapat divalidasi melalui argumen `-c`. |
-| Snort 3 Rule Writing Guide | 280, 3318 | `/home/fxrdhan/Downloads/docs.snort.org_start_rules.2026-04-28T05_42_26.223Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan bahwa rule Snort umumnya berada pada file `.rules` yang di-include, dan mode `alert_fast` dapat dipakai untuk output alert ringkas. |
-| Docker Compose services - network_mode | 293, 3324 | `/home/fxrdhan/Downloads/docs.docker.com_reference_compose-file_services_#network_mode.2026-04-28T05_43_16.509Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan `network_mode` dan opsi `service:{name}`, yang menjadi dasar Snort sidecar berbagi network namespace dengan service aplikasi. |
-| Docker Docs - Docker with iptables | 306, 3330 | `/home/fxrdhan/Downloads/docs.docker.com_engine_network_firewall-iptables_.2026-04-28T05_44_12.544Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan relasi Docker dengan `iptables`, rule di namespace container, dan alasan ACL tetap mengizinkan traffic `RELATED,ESTABLISHED` sebelum menolak port sensitif. |
-| Docker Docs - Volumes | 3193 | `/home/fxrdhan/Downloads/docs.docker.com_engine_storage_volumes_.2026-04-28T06_26_17.721Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan volume sebagai penyimpanan persisten yang dikelola Docker, lokasi mount pada host/container, dan fakta bahwa isi volume berada di luar lifecycle container sehingga tetap ada walaupun container dihapus. |
+| Docker Recipes - Snort 3 Docker Compose | 238, 3310 | `/home/fxrdhan/Downloads/docker.recipes_security_snort3.2026-04-28T05_34_02.068Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan dipakai untuk menjustifikasi pola Snort 3 di Docker Compose: image `ciscotalos/snort3`, capability `NET_ADMIN` dan `NET_RAW`, mount rules/logs, serta command `-i eth0 -c snort.lua`. |
+| Docker Hub - ciscotalos/snort3 | 256, 3318 | `/home/fxrdhan/Downloads/hub.docker.com_r_ciscotalos_snort3.2026-04-28T05_34_42.500Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menegaskan bahwa image yang dipakai berasal dari repository `ciscotalos/snort3` dan dapat ditarik dari Docker Hub. |
+| Snort 3 Configuration Guide | 267, 3322 | `/home/fxrdhan/Downloads/docs.snort.org_start_configuration.2026-04-28T05_35_24.110Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan bahwa Snort 3 memakai konfigurasi Lua, `snort.lua` dan `snort_defaults.lua` adalah base configuration, serta konfigurasi dapat divalidasi melalui argumen `-c`. |
+| Snort 3 Rule Writing Guide | 280, 3328 | `/home/fxrdhan/Downloads/docs.snort.org_start_rules.2026-04-28T05_42_26.223Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan bahwa rule Snort umumnya berada pada file `.rules` yang di-include, dan mode `alert_fast` dapat dipakai untuk output alert ringkas. |
+| Docker Compose services - network_mode | 293, 3334 | `/home/fxrdhan/Downloads/docs.docker.com_reference_compose-file_services_#network_mode.2026-04-28T05_43_16.509Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan `network_mode` dan opsi `service:{name}`, yang menjadi dasar Snort sidecar berbagi network namespace dengan service aplikasi. |
+| Docker Docs - Docker with iptables | 306, 3340 | `/home/fxrdhan/Downloads/docs.docker.com_engine_network_firewall-iptables_.2026-04-28T05_44_12.544Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menjelaskan relasi Docker dengan `iptables`, rule di namespace container, dan alasan ACL tetap mengizinkan traffic `RELATED,ESTABLISHED` sebelum menolak port sensitif. |
+| Docker CLI - docker compose up | 3175 | `/home/fxrdhan/Downloads/docs.docker.com_reference_cli_docker_compose_up_.2026-04-28T06_34_20.916Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang memuat deskripsi, usage, perilaku start/recreate/attach service, mode `--detach`, dan fakta bahwa perubahan konfigurasi atau image membuat container direcreate sambil mempertahankan mounted volumes. |
+| Docker Docs - Bind mounts | 3190 | `/home/fxrdhan/Downloads/docs.docker.com_engine_storage_bind-mounts_.2026-04-28T06_33_45.345Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang membedakan bind mount dengan volume, lalu memakai use case resmi untuk berbagi source/build artifact dan file konfigurasi dari host ke container. |
+| Docker Docs - Volumes | 3203 | `/home/fxrdhan/Downloads/docs.docker.com_engine_storage_volumes_.2026-04-28T06_26_17.721Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan volume sebagai penyimpanan persisten yang dikelola Docker, lokasi mount pada host/container, dan fakta bahwa isi volume berada di luar lifecycle container sehingga tetap ada walaupun container dihapus. |
 
 ## Belum Diaudit Dengan Scrape
 
@@ -81,8 +83,6 @@ Scope saat ini:
 | MySQL - GRANT | 819 | https://dev.mysql.com/doc/refman/8.4/en/grant.html |
 | MySQL - mysqladmin | 826 | https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html |
 | Docker CLI - docker compose build | 3166 | https://docs.docker.com/reference/cli/docker/compose/build/ |
-| Docker CLI - docker compose up | 3175 | https://docs.docker.com/reference/cli/docker/compose/up/ |
-| Docker Docs - Bind mounts | 3184 | https://docs.docker.com/engine/storage/bind-mounts/ |
 
 ## Catatan
 
