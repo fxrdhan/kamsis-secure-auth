@@ -3193,9 +3193,13 @@ Referensi terkait: [Docker Docs - Bind mounts](https://docs.docker.com/engine/st
 Referensi terkait: [Docker Docs - Volumes](https://docs.docker.com/engine/storage/volumes/)
 
 > Volumes are persistent data stores for containers, created and managed by Docker.
+> When you create a volume, it's stored within a directory on the Docker host. When you mount the volume into a container, this directory is what's mounted into the container. This is similar to the way that bind mounts work, except that volumes are managed by Docker and are isolated from the core functionality of the host machine.
+> A volume's contents exist outside the lifecycle of a given container. When a container is destroyed, the writable layer is destroyed with it. Using a volume ensures that the data is persisted even if the container using it is removed.
 >
 > **Translated:**
 > Volume adalah media penyimpanan data persisten untuk container yang dibuat dan dikelola oleh Docker.
+> Saat volume dibuat, volume disimpan di dalam direktori pada host Docker. Saat volume di-mount ke container, direktori itulah yang di-mount ke dalam container. Ini mirip dengan bind mount, tetapi volume dikelola oleh Docker dan terisolasi dari fungsi inti mesin host.
+> Isi volume berada di luar lifecycle container tertentu. Saat container dihancurkan, writable layer ikut dihancurkan. Dengan volume, data tetap persisten walaupun container yang memakainya dihapus.
 
 Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose baru ditulis sebagai jalur demo lokal.
 
