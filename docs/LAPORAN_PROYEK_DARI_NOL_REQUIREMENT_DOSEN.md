@@ -29,7 +29,8 @@
   - [Tahap 16 - Menambahkan rate limiting login dan register](#tahap-16---menambahkan-rate-limiting-login-dan-register)
   - [Tahap 17 - Menyiapkan Docker Compose untuk development dan demo](#tahap-17---menyiapkan-docker-compose-untuk-development-dan-demo)
   - [Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan](#tahap-18---menambahkan-snort-ids-dan-acl-jaringan)
-- [9. Urutan Verifikasi Setelah Implementasi](#9-urutan-verifikasi-setelah-implementasi)
+- [9. Alur Demo Singkat Saat Presentasi](#9-alur-demo-singkat-saat-presentasi)
+- [10. Urutan Verifikasi Setelah Implementasi](#10-urutan-verifikasi-setelah-implementasi)
   - [Uji 1 - Container hidup](#uji-1---container-hidup)
   - [Uji 2 - HTTP redirect ke HTTPS](#uji-2---http-redirect-ke-https)
   - [Uji 3 - Form tampil di browser](#uji-3---form-tampil-di-browser)
@@ -46,10 +47,10 @@
   - [Uji 14 - ACL port jaringan](#uji-14---acl-port-jaringan)
   - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
   - [Bukti Screenshot Verifikasi](#bukti-screenshot-verifikasi)
-- [10. Pemetaan Requirement Tugas Ke Tahap Implementasi](#10-pemetaan-requirement-tugas-ke-tahap-implementasi)
-- [11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#11-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
-- [12. Checklist Final Sebelum Presentasi](#12-checklist-final-sebelum-presentasi)
-- [13. Ringkasan Strategi Dari Nol](#13-ringkasan-strategi-dari-nol)
+- [11. Pemetaan Requirement Tugas Ke Tahap Implementasi](#11-pemetaan-requirement-tugas-ke-tahap-implementasi)
+- [12. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#12-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
+- [13. Checklist Final Sebelum Presentasi](#13-checklist-final-sebelum-presentasi)
+- [14. Ringkasan Strategi Dari Nol](#14-ringkasan-strategi-dari-nol)
 
 ## 1. Posisi Dokumen
 
@@ -3595,7 +3596,102 @@ Hasil yang dapat ditunjukkan saat demo:
 5. request HTTP/HTTPS tetap berhasil,
 6. akses langsung ke MySQL `3306` dan SSH `22` ditolak.
 
-## 9. Urutan Verifikasi Setelah Implementasi
+## 9. Alur Demo Singkat Saat Presentasi
+
+Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat dosen meminta bukti langsung.
+
+### 9.1. Start container dan pastikan service aktif
+
+```bash
+docker compose -f compose.dev.yaml up -d --build
+docker compose -f compose.dev.yaml ps
+```
+
+Yang ditunjukkan:
+
+1. service `app` aktif,
+2. service `snort` aktif sebagai IDS sidecar,
+3. port HTTP `10080` dan HTTPS `10443` terpublish.
+
+### 9.2. Buka aplikasi lewat browser
+
+Buka:
+
+```text
+https://localhost:10443/
+```
+
+Yang ditunjukkan:
+
+1. halaman register/login tampil,
+2. form memakai metode `POST`,
+3. form membawa `csrf_token`.
+
+### 9.3. Buktikan HTTP diarahkan ke HTTPS
+
+```bash
+curl -k -I http://localhost:10080
+```
+
+Yang ditunjukkan:
+
+1. status `301 Moved Permanently`,
+2. header `Location: https://localhost:10443/`.
+
+### 9.4. Demo flow utama login-register
+
+Urutan demo:
+
+1. register username baru dengan password valid,
+2. login memakai akun yang baru dibuat,
+3. tunjukkan halaman `/welcome.php`,
+4. pastikan username muncul pada halaman welcome,
+5. logout,
+6. coba login dengan akun salah dan tunjukkan redirect ke `/not-registered.php`.
+
+### 9.5. Buktikan database tidak menyimpan kredensial plaintext
+
+Jalankan query inspeksi tabel `users` dari MySQL container:
+
+```sql
+SELECT username_lookup, username_encrypted, password_hash FROM users ORDER BY id DESC LIMIT 1;
+```
+
+Yang ditunjukkan:
+
+1. `username_lookup` berupa HMAC 64 karakter hex,
+2. `username_encrypted` berupa payload terenkripsi `iv.tag.ciphertext`,
+3. `password_hash` berformat `$argon2id$...`,
+4. tidak ada username/password plaintext di database.
+
+### 9.6. Demo uji negatif keamanan
+
+Urutan paling cepat:
+
+1. kirim login tanpa `csrf_token` dan tunjukkan status `403`,
+2. masukkan payload SQL injection `' OR 1=1 --` dan tunjukkan login tetap gagal,
+3. masukkan payload XSS `<script>alert(1)</script>` pada register dan tunjukkan input ditolak,
+4. masukkan username terlalu panjang dan tunjukkan validasi `Username harus 3-32 karakter.`,
+5. lakukan login gagal 6 kali dan tunjukkan request ke-6 menerima `429`.
+
+Catatan saat menjelaskan SQL injection: payload memang ditolak oleh validasi username sebelum query dijalankan, dan layer database tetap memakai PDO prepared statement sebagai pertahanan utama bila input valid sampai ke query.
+
+### 9.7. Demo Snort IDS dan ACL jaringan
+
+```bash
+bun run snort:test-rules
+bun run acl:status
+```
+
+Yang ditunjukkan:
+
+1. konfigurasi Snort valid,
+2. rule lokal dan komunitas dimuat,
+3. chain `AU7H_INPUT` aktif,
+4. HTTP/HTTPS diizinkan,
+5. MySQL `3306`, SSH `22`, dan ICMP dibatasi sesuai ACL.
+
+## 10. Urutan Verifikasi Setelah Implementasi
 
 ### Uji 1 - Container hidup
 
@@ -3889,11 +3985,17 @@ Gambar ini menunjukkan `bun run dev:up` menjalankan `docker compose -f compose.d
 
 Gambar ini menunjukkan request `POST` ke `/login.php` tanpa `csrf_token` menerima respons `HTTP/1.1 403 Forbidden`, sehingga integritas form benar-benar divalidasi di server.
 
-#### Screenshot 12 - Payload SQL injection tidak membypass login
+#### Screenshot 12a - Payload SQL injection diisi pada form login
 
-![Payload SQL injection tidak membypass login](assets/screenshots/12-sql-injection-blocked.png)
+![Payload SQL injection diisi pada form login](assets/screenshots/12a-sql-injection-payload.png)
 
-Gambar ini menunjukkan payload username `' OR 1=1 --` tetap menerima `HTTP/1.1 302 Found` menuju `/not-registered.php`, sehingga input dianggap sebagai data biasa dan tidak membypass autentikasi.
+Gambar ini menunjukkan field username diisi payload `' OR 1=1 --` dan field password tetap diisi agar browser benar-benar mengirim request ke server, bukan berhenti pada validasi `required` di sisi browser.
+
+#### Screenshot 12b - Payload SQL injection tidak membypass login
+
+![Payload SQL injection tidak membypass login](assets/screenshots/12b-sql-injection-blocked.png)
+
+Gambar ini menunjukkan hasil setelah payload dikirim: aplikasi tetap menampilkan halaman `You are not registered yet`, sehingga payload tidak membypass autentikasi dan tidak membuka akun lain.
 
 #### Screenshot 13 - Payload XSS ditolak validasi input
 
@@ -3913,7 +4015,7 @@ Gambar ini menunjukkan username panjang berlebih ditolak dengan pesan `Username 
 
 Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, lalu percobaan keenam menerima `HTTP 429` dengan pesan `Terlalu banyak percobaan`.
 
-## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
+## 11. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
 | --- | --- |
@@ -3931,7 +4033,7 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 | Snort IDS + rule lokal | Tahap 18 |
 | ACL ICMP dan port | Tahap 18 |
 
-## 11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
+## 12. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
 1. Satu container dipilih karena requirement tugas, bukan karena itu pola terbaik produksi.
 2. “Buffer overflow protection” di sini diterapkan secara realistis pada level aplikasi: bahasa high-level, limit ukuran, nonaktif upload, hardening runtime. Ini bukan klaim bahwa seluruh dependency native bebas bug.
@@ -3941,7 +4043,7 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 6. Snort berjalan sebagai sidecar IDS untuk kebutuhan monitoring jaringan; ini tidak mengubah fakta bahwa web server, aplikasi PHP, dan database MySQL tetap berada dalam satu container aplikasi.
 7. Sertifikat self-signed cukup untuk demo lokal dan pembuktian HTTPS, tetapi browser bisa tetap menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
 
-## 12. Checklist Final Sebelum Presentasi
+## 13. Checklist Final Sebelum Presentasi
 
 Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement dosen yang tertinggal saat presentasi berlangsung.
 
@@ -3982,7 +4084,7 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [x] MySQL 3306 dan SSH 22 ditolak ACL
 ```
 
-## 13. Ringkasan Strategi Dari Nol
+## 14. Ringkasan Strategi Dari Nol
 
 Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan untuk tugas ini adalah:
 
