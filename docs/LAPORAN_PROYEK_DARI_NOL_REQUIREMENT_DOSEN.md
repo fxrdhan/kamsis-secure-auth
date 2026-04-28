@@ -421,7 +421,11 @@ au7h/
 │   ├── Security/Auth.php
 │   ├── Support/Config.php
 │   ├── Support/Http.php
-│   └── Presentation/Views.php
+│   └── Presentation/
+│       ├── Views.php
+│       ├── Components.php
+│       ├── AuthViews.php
+│       └── ResultViews.php
 ├── public/
 │   ├── index.php
 │   ├── register.php
@@ -437,7 +441,7 @@ Blueprint ini tidak disusun sekadar supaya folder terlihat rapi. Struktur awal d
 Alasan struktur:
 
 1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
-2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender dari [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
+2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
 3. `docker/` dipisahkan karena isinya bukan logika bisnis aplikasi, melainkan concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, dan pengaturan PHP dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1) serta [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
 4. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Auth`, `Views`, dan `Http`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
 
@@ -2598,7 +2602,7 @@ render_page_response(200, render_auth_page(pull_flash(), $mode));
 
 Langkah 2: siapkan state form dinamis seperti judul, action, label tombol, dan token CSRF sebelum HTML akhir dirender.
 
-Sumber: [src/Presentation/Views.php:114-139](/home/fxrdhan/au7h/src/Presentation/Views.php:114)
+Sumber: [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:5)
 
 Alur kode: potongan ini membangun seluruh state view untuk kartu auth, mulai dari token CSRF, jenis mode, teks UI, target form, hingga field konfirmasi password yang hanya muncul saat registrasi.
 
@@ -2626,14 +2630,17 @@ function render_auth_form_card(string $mode, ?array $flash): string
             'password',
             'new-password',
             '',
-            'Please confirm your password.'
+            null,
+            true,
+            'data-confirm-password-input',
+            render_confirm_password_status()
         )
         : '';
 ```
 
 Langkah 3: baru setelah state siap, bentuk markup form yang memuat hidden CSRF token, field username-password, dan switch antar mode.
 
-Sumber: [src/Presentation/Views.php:141-176](/home/fxrdhan/au7h/src/Presentation/Views.php:141)
+Sumber: [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:35)
 
 Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan urutan yang konsisten: judul, flash message, hidden CSRF token, field input, tombol submit, lalu link untuk berpindah mode.
 
@@ -2923,7 +2930,7 @@ render_page_response(401, render_not_registered_page());
 
 Langkah 4: view welcome menampilkan username hasil dekripsi dan form logout yang juga diproteksi CSRF.
 
-Sumber: [src/Presentation/Views.php:266-280](/home/fxrdhan/au7h/src/Presentation/Views.php:266)
+Sumber: [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:5)
 
 Alur kode: view welcome membungkus username yang sudah didekripsi ke shell halaman hasil, lalu menaruh form logout berisi token CSRF agar aksi keluar tetap lewat jalur aman.
 
@@ -2947,7 +2954,7 @@ function render_welcome_page(string $username): string
 
 Langkah 5: view gagal login menutup requirement dosen dengan pesan yang eksplisit, tetapi tidak membocorkan detail apakah username atau password yang salah.
 
-Sumber: [src/Presentation/Views.php:282-298](/home/fxrdhan/au7h/src/Presentation/Views.php:282)
+Sumber: [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:21)
 
 Alur kode: view gagal login ini membentuk satu pesan netral yang tidak membocorkan detail kegagalan, lalu menyediakan satu aksi balik ke form sebagai jalur pemulihan user.
 
@@ -3447,11 +3454,14 @@ ips =
 }
 ```
 
-Sumber: [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
+Sumber: [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1) dan [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
 
-Rule lokal mendeteksi ping, akses HTTP/HTTPS, akses langsung ke MySQL, dan akses SSH.
+`au7h.rules` menjadi file aggregator yang di-include oleh `snort.lua`, lalu memuat `local.rules` dan `community.rules`. Rule lokal mendeteksi ping, akses HTTP/HTTPS, akses langsung ke MySQL, dan akses SSH.
 
 ```conf
+include $RULE_PATH/local.rules
+include $RULE_PATH/community.rules
+
 alert icmp any any -> $HOME_NET any (msg:"AU7H ICMP ping attempt to protected server"; itype:8; sid:1000001; rev:2; classtype:icmp-event;)
 alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"AU7H HTTP/HTTPS connection to web server"; sid:1000002; rev:3; classtype:web-application-activity;)
 alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"; sid:1000003; rev:3; classtype:attempted-recon;)
@@ -3740,6 +3750,7 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [x] file upload dimatikan
 [x] ukuran POST dibatasi
 [x] Snort service aktif
+[x] au7h.rules memuat local.rules dan community.rules
 [x] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH
 [x] snort:test-rules berhasil
 [x] acl:status menampilkan chain AU7H_INPUT
@@ -3960,7 +3971,7 @@ Yang ditopang oleh sumber ini:
 - penggunaan image `ciscotalos/snort3`
 - capability `NET_ADMIN` dan `NET_RAW` untuk Snort
 - konfigurasi `snort.lua` berbasis Lua
-- pemuatan `local.rules` dan `community.rules`
+- pemuatan `au7h.rules` sebagai aggregator untuk `local.rules` dan `community.rules`
 - alert mode `alert_fast`
 - sidecar dengan `network_mode: service:app`
 - ACL container dengan `iptables`
@@ -4069,6 +4080,9 @@ Yang ditopang oleh sumber ini:
 
 File repo terkait:
 - `src/Presentation/Views.php`
+- `src/Presentation/Components.php`
+- `src/Presentation/AuthViews.php`
+- `src/Presentation/ResultViews.php`
 - `public/index.php`
 - `public/not-registered.php`
 - `public/welcome.php`

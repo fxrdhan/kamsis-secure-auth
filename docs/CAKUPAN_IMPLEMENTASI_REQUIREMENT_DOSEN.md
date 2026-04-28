@@ -46,7 +46,7 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | XSS security | Output di-escape dengan `htmlspecialchars`, CSP dikirim oleh Apache |
 | Tambahan Jaringan 3: Snort + ACL | Snort IDS sidecar memonitor traffic container, ACL `iptables` membatasi port masuk |
 | Config Snort | `security/snort/snort.lua` mengatur `HOME_NET`, `HTTP_PORTS`, rule path, dan output alert |
-| Rule lokal dan update komunitas | `local.rules` berisi rule ICMP/port, `community.rules` dapat diperbarui lewat `bun run snort:update-rules` |
+| Rule lokal dan update komunitas | `au7h.rules` memuat `local.rules` dan `community.rules`; `local.rules` berisi rule ICMP/port, `community.rules` dapat diperbarui lewat `bun run snort:update-rules` |
 | ACL ICMP dan port | HTTP/HTTPS diizinkan, MySQL `3306` dan SSH `22` ditolak dari luar container, ICMP ping bisa dibuka/tutup lewat env |
 
 ## File Inti yang Paling Relevan
@@ -57,6 +57,7 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | `docker-entrypoint.sh` | Bootstrap secret runtime, sertifikat, MySQL, dan startup service |
 | `docker/acl.sh` | ACL jaringan container dengan `iptables` |
 | `security/snort/snort.lua` | Konfigurasi Snort 3 untuk IDS |
+| `security/snort/rules/au7h.rules` | Aggregator rule Snort yang memuat rule lokal dan rule komunitas |
 | `security/snort/rules/local.rules` | Rule lokal Snort untuk ICMP, HTTP/HTTPS, MySQL, dan SSH |
 | `docker/apache-http.conf.template` | Redirect HTTP ke HTTPS |
 | `docker/apache-ssl.conf.template` | TLS dan security headers |
@@ -69,7 +70,10 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | `src/Infrastructure/Database.php` | Koneksi database, schema, query prepared statement, rate limit store |
 | `src/Security/Auth.php` | Validasi input, CSRF, hashing, enkripsi, XSS escaping |
 | `src/Support/Http.php` | Session aman, header dasar, `POST` enforcement |
-| `src/Presentation/Views.php` | Render form login/register dan halaman hasil |
+| `src/Presentation/Views.php` | Aggregator renderer presentasi |
+| `src/Presentation/AuthViews.php` | Render form login/register |
+| `src/Presentation/ResultViews.php` | Render halaman welcome, gagal login, dan error |
+| `src/Presentation/Components.php` | Komponen HTML reusable dan output escaping |
 
 ## Cakupan Implementasi per Requirement
 
