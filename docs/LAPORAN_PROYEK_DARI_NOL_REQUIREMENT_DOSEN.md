@@ -152,12 +152,12 @@ Tabel berikut memuat sumber inti yang langsung memengaruhi keputusan teknis utam
 | Validasi input | `OWASP Input Validation Cheat Sheet allowlist length limit` | [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html) | bagian **Allowlist vs Denylist**, **minimum and maximum length**, **server-side validation** | memilih regex allowlist + batas panjang username/password |
 | SQL injection | `OWASP SQL Injection Prevention Cheat Sheet prepared statements` | [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html) | bagian **Prepared Statements (with Parameterized Queries)** | seluruh query auth harus PDO prepared statements |
 | XSS | `OWASP XSS Prevention Cheat Sheet output encoding CSP` | [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html) | bagian **Output Encoding** dan catatan bahwa **CSP hanya defense in depth** | memilih `htmlspecialchars` untuk output dan CSP header di Apache |
-| Buffer overflow | `CWE buffer overflow language selection bounds checks` | [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html) dan [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html) | bagian **Use a language that provides memory abstractions**, **bounds checking**, **validate length arguments** | memilih PHP userland untuk logika auth, membatasi input dan request size, mematikan upload |
+| Buffer overflow | `CWE buffer overflow language selection bounds checks` | [MITRE CWE-120](https://cwe.mitre.org/data/definitions/120.html), [MITRE CWE-787](https://cwe.mitre.org/data/definitions/787.html), [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html), dan [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html) | bagian **classic buffer overflow**, **out-of-bounds write**, **Use a language that provides memory abstractions**, **bounds checking**, **validate length arguments** | memilih PHP userland untuk logika auth, membatasi input dan request size, mematikan upload |
 | Rate limiting autentikasi | `OWASP Authentication Cheat Sheet login throttling` | [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html) dan [OWASP Blocking Brute Force Attacks](https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks) | bagian **Login Throttling**, lockout threshold, observation window, dan risiko denial of service pada lockout penuh | menambahkan throttling berbasis database dan response `429` |
 | Snort IDS di Docker | `Snort 3 Docker Compose ciscotalos/snort3 tutorial` | [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3) dan [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3) | image `ciscotalos/snort3`, capability `NET_ADMIN`/`NET_RAW`, mount rules/logs, command `-i eth0 -c snort.lua` | menambahkan service Snort IDS sidecar di Compose |
 | Konfigurasi dan rule Snort 3 | `Snort 3 configuration snort.lua local.rules` | [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration) dan [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules) | `snort.lua`, `snort_defaults.lua`, `ips.include`, file `.rules`, `alert_fast` | membuat `security/snort/snort.lua`, `local.rules`, `community.rules`, dan command validasi rule |
 | Sidecar network namespace | `Docker Compose network_mode service` | [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode) | `network_mode: service:[service name]` | Snort berbagi network namespace dengan container aplikasi agar dapat memonitor traffic yang sama |
-| ACL container dengan iptables | `Docker iptables restrict external connections to containers` | [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/) | Docker membuat chain iptables, pembatasan koneksi eksternal, `RELATED,ESTABLISHED` | menambahkan ACL `iptables` untuk mengizinkan web dan menolak akses langsung ke MySQL/SSH |
+| ACL container dengan iptables | `Docker iptables restrict external connections to containers` | [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/), [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html), dan [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html) | Docker membuat chain iptables; `iptables` menjelaskan chain, policy, `ACCEPT`/`DROP`; extensions menjelaskan `conntrack`, `multiport`, dan `icmp` | menambahkan ACL `iptables` untuk mengizinkan web dan menolak akses langsung ke MySQL/SSH |
 
 Alur kerja pada laporan ini dimulai dari requirement, lalu diterjemahkan menjadi target teknis, kemudian cari referensi, membaca bagian yang relevan, menempelkan kutipan penting ke dokumen, dan setelah itu masuk ke implementasi. 
 
@@ -283,9 +283,39 @@ Referensi terkait: [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.o
 > Cross-Site Scripting (XSS) adalah istilah yang agak menyesatkan. Awalnya istilah ini berasal dari versi awal serangan yang terutama berfokus pada pencurian data lintas situs. Sejak itu, maknanya meluas hingga mencakup penyisipan hampir semua jenis konten. Serangan XSS bersifat serius dan dapat menyebabkan peniruan akun, pengamatan perilaku pengguna, pemuatan konten eksternal, pencurian data sensitif, dan lain-lain.
 > **Cheat sheet ini berisi teknik untuk mencegah atau membatasi dampak XSS. Karena tidak ada satu teknik pun yang bisa menyelesaikan XSS sendirian, kombinasi teknik pertahanan yang tepat tetap diperlukan untuk mencegah XSS.**
 
-### MITRE CWE-122 dan CWE-125
+### MITRE CWE-120, CWE-787, CWE-122, dan CWE-125
 
 Terjemahkan requirement “buffer overflow” ke mitigasi yang realistis untuk aplikasi PHP userland.
+
+Referensi terkait: [MITRE CWE-120](https://cwe.mitre.org/data/definitions/120.html)
+
+> CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')
+>
+> Use a language that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.
+>
+> Implementation: Strategy: _Input Validation_
+>
+> **Translated:**
+> CWE-120 adalah buffer copy tanpa pemeriksaan ukuran input, atau classic buffer overflow.
+>
+> Gunakan bahasa yang tidak memungkinkan kelemahan ini terjadi, atau menyediakan konstruksi yang membuat kelemahan ini lebih mudah dihindari.
+>
+> Implementasi: strategi input validation.
+
+Referensi terkait: [MITRE CWE-787](https://cwe.mitre.org/data/definitions/787.html)
+
+> CWE-787: Out-of-bounds Write
+>
+> Often used to describe the consequences of writing to memory outside the bounds of a buffer, or to memory that is otherwise invalid.
+>
+> Use a language that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.
+>
+> **Translated:**
+> CWE-787 adalah out-of-bounds write.
+>
+> Istilah ini sering dipakai untuk menjelaskan konsekuensi penulisan ke memori di luar batas buffer, atau ke memori yang tidak valid.
+>
+> Gunakan bahasa yang tidak memungkinkan kelemahan ini terjadi, atau menyediakan konstruksi yang membuat kelemahan ini lebih mudah dihindari.
 
 Referensi terkait: [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html)
 
@@ -385,7 +415,7 @@ Referensi terkait: [Docker Compose services - network_mode](https://docs.docker.
 
 ### Docker Docs - Docker with iptables
 
-Dipakai untuk dasar ACL jaringan. Walaupun ACL proyek dipasang di namespace container aplikasi, prinsipnya sama: filter traffic memakai rule `iptables`, izinkan koneksi yang perlu, lalu tolak akses port sensitif.
+Dipakai untuk dasar ACL jaringan di konteks Docker. Referensi Docker menjelaskan bagaimana Docker berhubungan dengan `iptables`, sedangkan man page `iptables` dan `iptables-extensions` dipakai untuk menjelaskan semantik rule yang benar-benar muncul di `docker/acl.sh`: chain `INPUT`, policy `DROP`, target `ACCEPT`/`DROP`, `conntrack`, `multiport`, dan filter ICMP.
 
 Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
 
@@ -395,6 +425,52 @@ Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/
 >
 > **Translated:**
 > Docker membuat rule `iptables` untuk jaringan bridge, dan pada beberapa tipe jaringan juga membuat rule di namespace container. Saat membatasi koneksi, traffic yang sudah termasuk koneksi `RELATED` atau `ESTABLISHED` perlu tetap diizinkan agar respons koneksi yang sah tidak ikut terblokir.
+
+Referensi terkait: [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html)
+
+> A firewall rule specifies criteria for a packet and a target.
+>
+> The target can be one of the special values `ACCEPT`, `DROP` or `RETURN`.
+>
+> `ACCEPT` means to let the packet through. `DROP` means to drop the packet on the floor.
+>
+> The filter table contains the built-in chains `INPUT`, `FORWARD`, and `OUTPUT`.
+>
+> **Translated:**
+> Rule firewall menetapkan kriteria paket dan target.
+>
+> Target dapat berupa nilai khusus seperti `ACCEPT`, `DROP`, atau `RETURN`.
+>
+> `ACCEPT` berarti paket diizinkan lewat. `DROP` berarti paket dijatuhkan.
+>
+> Tabel filter memuat chain bawaan `INPUT`, `FORWARD`, dan `OUTPUT`.
+
+Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html)
+
+> `conntrack`
+>
+> `--ctstate statelist`
+>
+> `ESTABLISHED`
+>
+> `RELATED`
+>
+> `multiport`
+>
+> This module matches a set of source or destination ports.
+>
+> `--destination-ports`, `--dports`
+>
+> `icmp`
+>
+> `--icmp-type`
+>
+> **Translated:**
+> Extension `conntrack` menyediakan pencocokan state koneksi seperti `ESTABLISHED` dan `RELATED`.
+>
+> Extension `multiport` mencocokkan sekumpulan port sumber atau tujuan, termasuk melalui opsi `--dports`.
+>
+> Extension `icmp` menyediakan filter tipe ICMP melalui opsi `--icmp-type`.
 
 ## 6. Decision Log Dari Nol
 
@@ -465,6 +541,7 @@ au7h/
 │   ├── apache-global.conf
 │   ├── apache-http.conf.template
 │   ├── apache-ssl.conf.template
+│   ├── acl.sh
 │   └── php.ini
 ├── config/
 │   └── bootstrap.php
@@ -487,6 +564,15 @@ au7h/
 │   ├── welcome.php
 │   ├── not-registered.php
 │   └── logout.php
+├── security/
+│   └── snort/
+│       ├── snort.lua
+│       └── rules/
+│           ├── au7h.rules
+│           ├── local.rules
+│           └── community.rules
+├── tests/
+│   └── AuthSecurityTest.php
 └── certs/
 ```
 
@@ -496,8 +582,10 @@ Alasan struktur:
 
 1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
 2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), rate limiting di [src/Security/RateLimiter.php](/home/fxrdhan/au7h/src/Security/RateLimiter.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
-3. `docker/` dipisahkan karena isinya bukan logika bisnis aplikasi, melainkan concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, dan pengaturan PHP dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1) serta [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
-4. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
+3. `docker/` dipisahkan karena isinya bukan logika bisnis aplikasi, melainkan concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, pengaturan PHP, dan ACL jaringan dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1), [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1), serta [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
+4. `security/snort/` dipisah karena Snort IDS adalah concern monitoring jaringan. [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1) memuat konfigurasi IDS, sedangkan [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1), [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1), dan [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) memisahkan rule aggregator, rule lokal, dan rule komunitas.
+5. `tests/` disiapkan untuk verifikasi helper keamanan. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) memeriksa validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
+6. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
 
 ### Referensi khusus folder `docker/`
 
@@ -506,6 +594,7 @@ Detail referensi isi file di folder `docker/` sengaja tidak diletakkan di bluepr
 1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dibahas di Tahap 4 karena di sana alur redirect HTTP dan aktivasi HTTPS baru benar-benar diimplementasikan.
 2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12) dibahas di Tahap 5 karena fokus tahap itu adalah hardening HTTP-level di web server.
 3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) dibahas di Tahap 6 karena isinya adalah hardening runtime PHP dan penguatan session cookie.
+4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) dibahas di Tahap 18 karena isinya adalah ACL jaringan container dengan `iptables`.
 
 ### File pendukung UI, tooling, dan test
 
@@ -976,7 +1065,7 @@ Referensi terkait: [MySQL - mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/
 > `ping`: memeriksa apakah server tersedia. Status return dari [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) adalah 0 jika server berjalan, 1 jika tidak.
 > `shutdown`: menghentikan server.
 
-Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/master/man1/openssl-req/)
+Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/3.5/man1/openssl-req/)
 
 > This command primarily creates and processes certificate requests (CSRs) in
 > PKCS#10 format. It can additionally create self-signed certificates for use
@@ -1062,7 +1151,7 @@ Langkah 1: buat secret runtime sekali saja pada startup pertama, lalu simpan dal
 
 Shell dibuka dalam mode ketat, lalu secret runtime hanya dibuat saat file belum ada.
 
-Sumber: [docker-entrypoint.sh:46-53](/home/fxrdhan/au7h/docker-entrypoint.sh:46)
+Sumber: [docker-entrypoint.sh:50](/home/fxrdhan/au7h/docker-entrypoint.sh:50)
 
 Alur kode: saat container pertama kali start, skrip mengecek apakah file secret sudah ada; jika belum, skrip membuat semua secret runtime sekaligus lalu menyimpannya ke satu file yang nantinya di-load oleh proses bootstrap berikutnya.
 
@@ -1079,7 +1168,7 @@ fi
 
 Langkah 2: setelah secret siap, bangun sertifikat self-signed yang cukup untuk demo lokal agar kanal HTTPS langsung tersedia tanpa provisioning eksternal.
 
-Sumber: [docker-entrypoint.sh:73-87](/home/fxrdhan/au7h/docker-entrypoint.sh:73)
+Sumber: [docker-entrypoint.sh:77](/home/fxrdhan/au7h/docker-entrypoint.sh:77)
 
 Alur kode: skrip hanya membuat sertifikat ketika file cert atau key belum tersedia, lalu `openssl req` dipakai untuk membangkitkan pasangan TLS self-signed yang langsung cocok untuk `localhost`.
 
@@ -1103,7 +1192,7 @@ fi
 
 Langkah 3: nyalakan MySQL sebagai proses background internal container, lalu simpan PID-nya agar shutdown dapat dikendalikan dengan rapi saat container berhenti.
 
-Sumber: [docker-entrypoint.sh:129-137](/home/fxrdhan/au7h/docker-entrypoint.sh:129)
+Sumber: [docker-entrypoint.sh:134](/home/fxrdhan/au7h/docker-entrypoint.sh:134)
 
 Alur kode: setelah data dir siap, `mysqld` dijalankan sebagai proses background internal container dengan socket, PID file, port, dan bind address yang semuanya diambil dari environment.
 
@@ -1121,7 +1210,7 @@ MYSQLD_PID=$!
 
 Langkah 4: jika data directory masih kosong, bootstrap akun root, database aplikasi, dan akun aplikasi dalam urutan yang konsisten sebelum Apache melayani request.
 
-Sumber: [docker-entrypoint.sh:149-161](/home/fxrdhan/au7h/docker-entrypoint.sh:149)
+Sumber: [docker-entrypoint.sh:154](/home/fxrdhan/au7h/docker-entrypoint.sh:154)
 
 Alur kode: cabang bootstrap ini hanya berjalan untuk database yang masih kosong; urutannya adalah mengunci password root, membuat database aplikasi, membuat akun aplikasi, memberi grant, lalu menutup dengan `FLUSH PRIVILEGES`.
 
@@ -1821,7 +1910,7 @@ function app_config(): array
 
 Langkah 3: pastikan bootstrap benar-benar menjalankan session aman, security header dasar, dan inisialisasi schema sebelum request diproses lebih jauh.
 
-Sumber: [src/Support/Http.php:31-43](/home/fxrdhan/au7h/src/Support/Http.php:31)
+Sumber: [src/Support/Http.php:36](/home/fxrdhan/au7h/src/Support/Http.php:36)
 
 Alur kode: `ensure_app_booted()` memakai guard statis supaya hanya berjalan sekali, lalu menjalankan urutan bootstrap tetap: session aman dulu, header dasar kedua, inisialisasi database terakhir.
 
@@ -1843,7 +1932,7 @@ function ensure_app_booted(): void
 
 Langkah 4: bentuk session cookie yang cocok untuk aplikasi login berbasis browser dengan `secure`, `httponly`, dan `SameSite=Strict`.
 
-Sumber: [src/Support/Http.php:5-23](/home/fxrdhan/au7h/src/Support/Http.php:5)
+Sumber: [src/Support/Http.php:10](/home/fxrdhan/au7h/src/Support/Http.php:10)
 
 Alur kode: fungsi ini berhenti jika session sudah aktif, kalau belum ia mengambil policy dari konfigurasi, menerapkan nama dan atribut cookie yang aman, lalu baru memanggil `session_start()`.
 
@@ -1871,7 +1960,7 @@ function start_secure_session(): void
 
 Langkah 5: kirim header dasar anti-cache dari sisi aplikasi untuk memastikan halaman sensitif tidak mudah tersisa di cache browser bersama session lama.
 
-Sumber: [src/Support/Http.php:25-29](/home/fxrdhan/au7h/src/Support/Http.php:25)
+Sumber: [src/Support/Http.php:30](/home/fxrdhan/au7h/src/Support/Http.php:30)
 
 Alur kode: header respons dasar dikirim sangat awal dengan dua langkah sederhana, yaitu menghapus fingerprint `X-Powered-By` dan memaksa halaman sensitif tidak disimpan di cache.
 
@@ -1885,7 +1974,7 @@ function send_security_headers(): void
 
 Langkah 6: paksa seluruh aksi perubahan state memakai `POST` agar form register, login, dan logout tidak pernah dipicu lewat query string biasa.
 
-Sumber: [src/Support/Http.php:104-109](/home/fxrdhan/au7h/src/Support/Http.php:104)
+Sumber: [src/Support/Http.php:109](/home/fxrdhan/au7h/src/Support/Http.php:109)
 
 Alur kode: helper ini memeriksa metode request terlebih dulu; jika bukan `POST`, alur langsung diputus dengan response 405 sehingga endpoint sensitif tidak pernah jalan lewat metode yang salah.
 
@@ -2022,7 +2111,7 @@ Referensi terkait: [PHP Manual - htmlspecialchars()](https://www.php.net/manual/
 
 Langkah implementasi: siapkan helper escaping sesederhana mungkin agar setiap nilai dinamis yang keluar ke HTML selalu lewat jalur yang sama.
 
-Sumber: [src/Security/Auth.php:5-8](/home/fxrdhan/au7h/src/Security/Auth.php:5)
+Sumber: [src/Presentation/Components.php:5](/home/fxrdhan/au7h/src/Presentation/Components.php:5)
 
 Alur kode: semua nilai dinamis yang akan masuk ke HTML dilewatkan ke helper ini agar escaping selalu konsisten dan tidak tersebar manual di banyak view.
 
@@ -2089,7 +2178,7 @@ Referensi terkait: [PHP Manual - random_bytes()](https://www.php.net/manual/en/f
 
 Langkah implementasi: hasilkan token acak yang hidup di session, lalu pakai token yang sama untuk semua form sampai token diganti atau session berakhir.
 
-Sumber: [src/Security/Auth.php:15-22](/home/fxrdhan/au7h/src/Security/Auth.php:15)
+Sumber: [src/Security/Auth.php:5](/home/fxrdhan/au7h/src/Security/Auth.php:5)
 
 Alur kode: token CSRF dibuat secara lazy, artinya session hanya diisi token baru saat token belum ada atau formatnya tidak valid, lalu token yang sama dipakai kembali sampai diregenerasi.
 
@@ -2106,7 +2195,7 @@ function csrf_token(): string
 
 Langkah implementasi terarah berikutnya adalah memverifikasi token dengan `hash_equals()` dan langsung memutus request jika integritas form gagal.
 
-Sumber: [src/Security/Auth.php:30-39](/home/fxrdhan/au7h/src/Security/Auth.php:30)
+Sumber: [src/Security/Auth.php:20](/home/fxrdhan/au7h/src/Security/Auth.php:20)
 
 Alur kode: helper verifikasi ini mengambil token tersimpan dari session, membandingkannya dengan input form memakai `hash_equals()`, lalu langsung mengembalikan halaman 403 bila integritas form gagal.
 
@@ -2146,7 +2235,7 @@ Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries
 
 Langkah implementasi: validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
 
-Sumber: [src/Security/Auth.php:41-54](/home/fxrdhan/au7h/src/Security/Auth.php:41)
+Sumber: [src/Security/Auth.php:31](/home/fxrdhan/au7h/src/Security/Auth.php:31)
 
 Alur kode: username lebih dulu di-trim, kemudian diperiksa panjang minimumnya, lalu diuji dengan regex allowlist; hanya input yang lolos semua gerbang ini yang diteruskan sebagai nilai valid.
 
@@ -2169,7 +2258,7 @@ function validate_username(string $username): array
 
 Langkah implementasi berikutnya adalah memaksa kompleksitas minimum password dan menetapkan batas atas panjang agar hashing tetap terkontrol.
 
-Sumber: [src/Security/Auth.php:56-71](/home/fxrdhan/au7h/src/Security/Auth.php:56)
+Sumber: [src/Security/Auth.php:46](/home/fxrdhan/au7h/src/Security/Auth.php:46)
 
 Alur kode: password diperiksa dari dua sisi, yaitu batas panjang untuk keamanan operasional dan kombinasi karakter untuk kompleksitas dasar, baru kemudian dikembalikan sebagai nilai yang boleh diproses lebih jauh.
 
@@ -2194,7 +2283,18 @@ function validate_password(string $password): array
 
 ##### 9.4. Privasi username
 
-Referensi yang dicari: PHP `hash_hmac()`, `openssl_encrypt()`, dan `openssl_decrypt()`.
+Referensi yang dicari: OWASP Cryptographic Storage, PHP `hash_hmac()`, `openssl_encrypt()`, dan `openssl_decrypt()`.
+
+Referensi terkait: [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
+
+> For symmetric encryption **AES** with a key that's at least **128 bits** (ideally **256 bits**) and a secure mode should be used as the preferred algorithm.
+>
+> Where available, authenticated modes should always be used. These provide guarantees of the integrity and authenticity of the data, as well as confidentiality. The most commonly used authenticated modes are **GCM** and **CCM**, which should be used as a first preference.
+>
+> **Translated:**
+> Untuk enkripsi simetris, **AES** dengan key minimal **128 bit** dan idealnya **256 bit** serta mode yang aman sebaiknya dipakai sebagai algoritma pilihan.
+>
+> Jika tersedia, mode terautentikasi sebaiknya selalu dipakai. Mode ini memberi jaminan integritas dan autentisitas data, selain kerahasiaan. Mode terautentikasi yang umum dipakai adalah **GCM** dan **CCM**, dan sebaiknya menjadi pilihan pertama.
 
 Referensi terkait: [PHP Manual - hash_hmac()](https://www.php.net/manual/en/function.hash-hmac.php)
 
@@ -2275,7 +2375,7 @@ Referensi terkait: [PHP Manual - openssl_decrypt()](https://www.php.net/manual/e
 
 Langkah implementasi: normalisasi username lebih dulu supaya variasi huruf besar-kecil dan spasi tidak memecah identitas yang sebenarnya sama.
 
-Sumber: [src/Security/Auth.php:73-81](/home/fxrdhan/au7h/src/Security/Auth.php:73)
+Sumber: [src/Security/Auth.php:63](/home/fxrdhan/au7h/src/Security/Auth.php:63)
 
 Alur kode: username lebih dulu dinormalisasi menjadi bentuk stabil, lalu bentuk stabil itu di-hash dengan HMAC dan pepper aplikasi sehingga login bisa mencari akun tanpa menyimpan plaintext.
 
@@ -2293,7 +2393,7 @@ function username_lookup(string $username): string
 
 Langkah implementasi berikutnya adalah menyiapkan utilitas `base64url` karena ciphertext AES-GCM perlu dibawa dalam format string yang aman disimpan dan dibaca ulang.
 
-Sumber: [src/Security/Auth.php:83-96](/home/fxrdhan/au7h/src/Security/Auth.php:83)
+Sumber: [src/Security/Auth.php:73](/home/fxrdhan/au7h/src/Security/Auth.php:73)
 
 Alur kode: dua helper ini mengubah data biner menjadi format base64url yang aman dipakai di payload string, lalu menyediakan jalur baliknya saat payload perlu didekode.
 
@@ -2316,7 +2416,7 @@ function base64url_decode(string $value): string
 
 Langkah implementasi berikutnya adalah mengenkripsi username untuk penyimpanan dan menyediakan pasangan fungsi dekripsi agar landing page sukses masih bisa menampilkan nama asli.
 
-Sumber: [src/Security/Auth.php:98-138](/home/fxrdhan/au7h/src/Security/Auth.php:98)
+Sumber: [src/Security/Auth.php:88](/home/fxrdhan/au7h/src/Security/Auth.php:88)
 
 Alur kode: username dienkripsi dengan AES-256-GCM memakai IV acak, lalu IV, tag, dan ciphertext digabung menjadi satu payload; fungsi kebalikannya memecah payload itu lagi dan mendekripsinya hanya jika strukturnya valid.
 
@@ -2436,7 +2536,7 @@ Referensi terkait: [PHP Manual - Password Hashing FAQ](https://www.php.net/manua
 
 Langkah implementasi: password dipadukan dengan pepper aplikasi lalu di-hash memakai Argon2id, sehingga kebocoran database tidak langsung membuka password asli.
 
-Sumber: [src/Security/Auth.php:140-144](/home/fxrdhan/au7h/src/Security/Auth.php:140)
+Sumber: [src/Security/Auth.php:130](/home/fxrdhan/au7h/src/Security/Auth.php:130)
 
 Alur kode: sebelum disimpan, password digabung dulu dengan pepper aplikasi, lalu hasil gabungannya di-hash menggunakan Argon2id sehingga kebocoran hash tidak langsung membuka password asli.
 
@@ -2450,7 +2550,7 @@ function hash_password_for_storage(string $password): string
 
 Langkah implementasi berikutnya adalah memverifikasi input login terhadap hash tersimpan tanpa pernah mengubah data hash menjadi plaintext.
 
-Sumber: [src/Security/Auth.php:146-149](/home/fxrdhan/au7h/src/Security/Auth.php:146)
+Sumber: [src/Security/Auth.php:136](/home/fxrdhan/au7h/src/Security/Auth.php:136)
 
 Alur kode: saat login, input password dibentuk kembali dengan pepper yang sama, lalu diverifikasi terhadap hash tersimpan tanpa pernah mengubah hash itu menjadi plaintext.
 
@@ -2704,7 +2804,7 @@ function render_auth_form_card(string $mode, ?array $flash): string
 
 Langkah 3: baru setelah state siap, bentuk markup form yang memuat hidden CSRF token, field username-password, dan switch antar mode.
 
-Sumber: [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:35)
+Sumber cuplikan relevan: [src/Presentation/AuthViews.php:35](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:35)
 
 Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan urutan yang konsisten: judul, flash message, hidden CSRF token, field input, tombol submit, lalu link untuk berpindah mode.
 
@@ -2731,7 +2831,10 @@ Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan ur
               'password',
               $passwordAutocomplete,
               '',
-              $isRegister ? 'Must be at least 10 characters long, with uppercase, lowercase, and number.' : null
+              null,
+              true,
+              $isRegister ? 'data-password-input aria-describedby="password-requirements"' : '',
+              $isRegister ? render_password_requirements() : ''
           ) . '
           ' . $confirmField . '
           <button
@@ -2744,7 +2847,6 @@ Alur kode: setelah semua state siap, blok ini menyusun HTML final form dengan ur
           <a class="font-medium text-foreground underline underline-offset-4 dark:text-white" href="' . escape_html($switchHref) . '">' . escape_html($switchAction) . '</a>
         </p>
       </div>';
-}
 ```
 
 ### Tahap 12 - Menulis endpoint registrasi
@@ -2956,7 +3058,7 @@ Akses halaman welcome tetap dijaga oleh helper session agar route ini tidak bisa
 
 Langkah 2: guard session dibangun terpisah agar semua route privat bisa memakai aturan yang sama tanpa mengulang pengecekan `$_SESSION` mentah.
 
-Sumber: [src/Support/Http.php:76-94](/home/fxrdhan/au7h/src/Support/Http.php:76)
+Sumber: [src/Support/Http.php:81](/home/fxrdhan/au7h/src/Support/Http.php:81)
 
 Alur kode: `current_user()` membaca `user_id` dari session dan menukarnya menjadi row user nyata, sedangkan `require_login()` memakai hasil itu sebagai guard keras yang me-redirect tamu kembali ke root.
 
@@ -3401,7 +3503,7 @@ Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose 
 
 Langkah implementasi terarah: tampilkan satu file Compose yang cukup untuk demo lokal, dengan mapping port yang eksplisit dan volume mount agar perubahan source langsung tercermin saat pengujian.
 
-Sumber: [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
+Sumber cuplikan relevan: [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
 
 Alur kode: file Compose ini mendefinisikan service aplikasi yang sekaligus di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan ACL, memasang bind mount source code, lalu menambahkan service Snort sidecar untuk monitoring traffic jaringan.
 
@@ -3423,6 +3525,9 @@ services:
       MYSQL_BIND_ADDRESS: 127.0.0.1
       MYSQL_ALLOW_REMOTE: "0"
       ACL_ENABLED: "1"
+      ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
+      ACL_DB_CIDR: ${ACL_DB_CIDR:-}
+      ACL_ALLOW_ICMP: ${ACL_ALLOW_ICMP:-0}
     volumes:
       - ./config:/var/www/html/config
       - ./public:/var/www/html/public
@@ -3446,6 +3551,9 @@ services:
       - ./security/snort/snort.lua:/home/snorty/snort3/etc/snort/au7h.lua:ro
       - ./security/snort/rules:/home/snorty/snort3/etc/rules/au7h:ro
       - snort-logs:/var/log/snort
+    environment:
+      SNORT_HOME_NET: ${SNORT_HOME_NET:-any}
+      SNORT_EXTERNAL_NET: ${SNORT_EXTERNAL_NET:-any}
     command:
       - -i
       - ${SNORT_INTERFACE:-eth0}
@@ -3529,9 +3637,28 @@ Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/
 >
 > The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
 
+Referensi terkait: [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html)
+
+> A firewall rule specifies criteria for a packet and a target.
+>
+> `ACCEPT` means to let the packet through. `DROP` means to drop the packet on the floor.
+
+Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html)
+
+> `conntrack`
+>
+> `--ctstate`
+>
+> `multiport`
+>
+> This module matches a set of source or destination ports.
+>
+> `--destination-ports`, `--dports`
+>
+
 #### Implementasi Snort
 
-Sumber: [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1)
+Sumber cuplikan relevan: [security/snort/snort.lua:5](/home/fxrdhan/au7h/security/snort/snort.lua:5)
 
 Alur kode: konfigurasi Snort menetapkan network yang dilindungi, memuat default Snort, mengarahkan `RULE_PATH`, mengaktifkan builtin rules, memasukkan file rules proyek, lalu menulis alert ke format `alert_fast`.
 
@@ -3543,6 +3670,11 @@ include 'snort_defaults.lua'
 
 RULE_PATH = '/home/snorty/snort3/etc/rules/au7h'
 HTTP_PORTS = '80 443 8080 8443'
+SQL_SERVERS = HOME_NET
+
+default_variables.paths.RULE_PATH = RULE_PATH
+default_variables.ports.HTTP_PORTS = HTTP_PORTS
+default_variables.nets.SQL_SERVERS = SQL_SERVERS
 
 ips =
 {
@@ -3550,16 +3682,25 @@ ips =
     include = RULE_PATH .. '/au7h.rules',
     variables = default_variables
 }
+
+alert_fast =
+{
+    file = true,
+    packet = false,
+    limit = 10
+}
 ```
 
-Sumber: [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1) dan [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
+Sumber cuplikan relevan: [security/snort/rules/au7h.rules:1](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1) dan [security/snort/rules/local.rules:1](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
 
 `au7h.rules` menjadi file aggregator yang di-include oleh `snort.lua`, lalu memuat `local.rules` dan `community.rules`. Rule lokal mendeteksi ping, akses HTTP/HTTPS, akses langsung ke MySQL, dan akses SSH.
 
 ```conf
 include $RULE_PATH/local.rules
 include $RULE_PATH/community.rules
+```
 
+```conf
 alert icmp any any -> $HOME_NET any (msg:"AU7H ICMP ping attempt to protected server"; itype:8; sid:1000001; rev:2; classtype:icmp-event;)
 alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"AU7H HTTP/HTTPS connection to web server"; sid:1000002; rev:3; classtype:web-application-activity;)
 alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"; sid:1000003; rev:3; classtype:attempted-recon;)
@@ -3568,7 +3709,7 @@ alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:10000
 
 #### Implementasi ACL
 
-Sumber: [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1)
+Sumber cuplikan relevan: [docker/acl.sh:22](/home/fxrdhan/au7h/docker/acl.sh:22)
 
 Alur kode: ACL membuat chain khusus `AU7H_INPUT`, mengizinkan loopback dan koneksi yang sudah established, membuka port HTTP/HTTPS, lalu menolak MySQL, SSH, ICMP ping, dan traffic lain yang tidak masuk daftar allow.
 
@@ -3577,12 +3718,25 @@ iptables -w -P INPUT DROP
 iptables -w -P FORWARD DROP
 iptables -w -P OUTPUT ACCEPT
 
+iptables -w -N "${ACL_CHAIN}" 2>/dev/null || iptables -w -F "${ACL_CHAIN}"
+iptables -w -C INPUT -j "${ACL_CHAIN}" 2>/dev/null || iptables -w -I INPUT 1 -j "${ACL_CHAIN}"
+
 iptables -w -A "${ACL_CHAIN}" -i lo -j ACCEPT
 iptables -w -A "${ACL_CHAIN}" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_WEB_CIDR}" -m multiport --dports "${APP_PORT_HTTP},${APP_PORT_HTTPS}" -j ACCEPT
+
+if [ -n "${ACL_DB_CIDR}" ]; then
+  iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_DB_CIDR}" --dport "${MYSQL_PORT}" -j ACCEPT
+fi
+
+if [ "${ACL_ALLOW_ICMP}" = "1" ]; then
+  iptables -w -A "${ACL_CHAIN}" -p icmp --icmp-type echo-request -j ACCEPT
+fi
+
 iptables -w -A "${ACL_CHAIN}" -p tcp --dport "${MYSQL_PORT}" -j REJECT
 iptables -w -A "${ACL_CHAIN}" -p tcp --dport 22 -j REJECT
 iptables -w -A "${ACL_CHAIN}" -p icmp --icmp-type echo-request -j DROP
+iptables -w -A "${ACL_CHAIN}" -j DROP
 ```
 
 #### Hasil tahap
