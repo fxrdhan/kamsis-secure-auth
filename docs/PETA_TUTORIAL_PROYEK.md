@@ -228,7 +228,7 @@ Bagian-bagian ini lebih masuk akal dijelaskan sebagai hasil pengembangan dan pen
 
 ## Kesimpulan
 
-Kalau harus saya jelaskan ke dosen, penjelasan yang paling jujur adalah:
+Kalau harus saya jelaskan saat evaluasi, penjelasan yang paling jujur adalah:
 
 > Proyek ini tidak saya ambil dari satu tutorial utuh, melainkan saya susun dari beberapa bahan dasar. Fondasi infrastrukturnya paling dekat ke tutorial Docker PHP + Compose, fondasi auth form-nya dekat ke tutorial registration/login PHP sederhana, lalu aspek security dan database-nya kuat dipengaruhi dokumentasi resmi PHP dan panduan OWASP. Styling-nya mengikuti workflow Tailwind CLI, tetapi tampilan akhirnya sudah banyak saya kustom sendiri.
 

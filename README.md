@@ -126,7 +126,7 @@ Catatan:
 
 ## Snort + ACL
 
-Konfigurasi tambahan sesuai catatan dosen ada di:
+Konfigurasi tambahan sesuai kebutuhan tugas ada di:
 
 - `security/snort/snort.lua`
 - `security/snort/rules/local.rules`

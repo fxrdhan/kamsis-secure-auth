@@ -88,7 +88,7 @@ Tabel berikut menyiapkan jawaban kritis sebelum dokumen masuk ke requirement tek
 | Pertanyaan kritis yang mungkin muncul | Jawaban dan justifikasi teknis |
 | --- | --- |
 | Kenapa Apache + PHP native + MySQL, bukan Node, Laravel, atau stack lain? | Karena kombinasi ini paling lurus untuk tugas browser-based berbasis form. Apache kuat untuk redirect HTTP ke HTTPS, TLS, dan security headers. PHP native membuat hubungan requirement -> kode -> kontrol keamanan tetap terlihat jelas tanpa tertutup abstraksi framework besar. MySQL dipilih karena umum, mudah diuji, dan langsung relevan dengan requirement penyimpanan akun. |
-| Kenapa tidak memakai framework penuh agar lebih cepat? | Framework memang bisa mempercepat fitur, tetapi tugas ini menuntut transparansi kontrol keamanan. Jika terlalu banyak abstraksi, penjelasan saat ditanya dosen menjadi lebih sulit karena banyak mekanisme berjalan “di balik layar”. Untuk tugas akademik seperti ini, transparansi lebih bernilai daripada akselerasi fitur. |
+| Kenapa tidak memakai framework penuh agar lebih cepat? | Framework memang bisa mempercepat fitur, tetapi tugas ini menuntut transparansi kontrol keamanan. Jika terlalu banyak abstraksi, penjelasan saat evaluasi menjadi lebih sulit karena banyak mekanisme berjalan “di balik layar”. Untuk tugas akademik seperti ini, transparansi lebih bernilai daripada akselerasi fitur. |
 | Kenapa autentikasi berbasis session, bukan JWT? | Karena aplikasi diuji lewat browser dengan form login biasa, bukan API stateless. Session cookie lebih natural untuk skenario ini, lebih mudah dipadukan dengan CSRF protection, dan logout server-side menjadi sederhana. JWT justru menambah kompleksitas yang tidak diminta oleh requirement. |
 | Kenapa password di-hash, bukan dienkripsi? | Karena tujuan requirement privasi database adalah mencegah attacker membaca password asli saat database bocor. Hash satu arah memenuhi tujuan itu. Enkripsi justru menyisakan kemungkinan pemulihan plaintext jika key ikut bocor, sehingga tidak cocok sebagai mekanisme utama penyimpanan password. |
 | Kenapa username tidak langsung disimpan plaintext? | Karena requirement privasi juga menyentuh data akun. Namun landing page sukses tetap harus menampilkan username asli. Solusi yang proporsional adalah memisahkan fungsi pencarian dan fungsi tampilan: `username_lookup` untuk pencarian stabil, `username_encrypted` untuk pemulihan tampilan asli. |
@@ -132,7 +132,7 @@ Urutan kerja yang aman dan transparan untuk tugas ini bukan langsung coding. Uru
 5. implementasikan skeleton paling kecil yang bisa jalan,
 6. tambahkan kontrol keamanan satu per satu,
 7. uji flow utama dan uji serangan dasar,
-8. cocokkan hasil dengan requirement dosen.
+8. cocokkan hasil dengan requirement.
 
 Urutan ini penting karena tanpa riset awal, kontrol keamanan sering dipasang sekadar formalitas dan tidak nyambung dengan ancaman nyata.
 
@@ -3025,7 +3025,7 @@ redirect_to('/welcome.php');
 
 #### Tujuan
 
-Menutup acceptance criteria yang langsung diminta dosen.
+Menutup acceptance criteria utama yang diminta pada tugas.
 
 #### Analisis langkah
 
@@ -3118,7 +3118,7 @@ function render_welcome_page(string $username): string
 }
 ```
 
-Langkah 5: view gagal login menutup requirement dosen dengan pesan yang eksplisit, tetapi tidak membocorkan detail apakah username atau password yang salah.
+Langkah 5: view gagal login menutup requirement dengan pesan yang eksplisit, tetapi tidak membocorkan detail apakah username atau password yang salah.
 
 Sumber: [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:21)
 
@@ -3576,7 +3576,7 @@ volumes:
 
 #### Hasil tahap
 
-Langkah pembacaan terarah: alamat ini menjadi target akses minimal saat demo, sehingga dosen bisa langsung menguji redirect HTTP dan akses HTTPS tanpa menebak port.
+Langkah pembacaan terarah: alamat ini menjadi target akses minimal saat demo, sehingga penguji bisa langsung memeriksa redirect HTTP dan akses HTTPS tanpa menebak port.
 
 Browser bisa mengakses:
 
@@ -3752,7 +3752,7 @@ Hasil yang dapat ditunjukkan saat demo:
 
 ## 9. Alur Demo Singkat Saat Presentasi
 
-Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat dosen meminta bukti langsung.
+Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat sesi evaluasi meminta bukti langsung.
 
 ### 9.1. Start container dan pastikan service aktif
 
@@ -4201,7 +4201,7 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 
 ## 13. Checklist Final Sebelum Presentasi
 
-Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement dosen yang tertinggal saat presentasi berlangsung.
+Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement yang tertinggal saat presentasi berlangsung.
 
 ```text
 [x] docker compose up berhasil
@@ -4252,6 +4252,6 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 6. pasang proteksi CSRF, session, hashing, enkripsi, SQLi, XSS, dan rate limit,
 7. tambahkan Snort IDS dan ACL untuk kontrol jaringan,
 8. tutup dengan uji manual dan uji negatif,
-9. cocokkan satu per satu dengan requirement dosen.
+9. cocokkan satu per satu dengan requirement.
 
-Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat diminta mempertanggungjawabkan alasan teknis di depan dosen.
+Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat alasan teknisnya perlu dipertanggungjawabkan di sesi evaluasi.

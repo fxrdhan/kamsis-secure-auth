@@ -1,10 +1,10 @@
-# Laporan Cakupan Implementasi Requirement Dosen
+# Laporan Cakupan Implementasi Requirement Tugas
 
 ## Tujuan Dokumen
 
-Dokumen ini menjelaskan **cakupan implementasi** dari requirement dosen pada proyek ini. Fokusnya bukan menyalin seluruh isi file, tetapi memetakan:
+Dokumen ini menjelaskan **cakupan implementasi** dari requirement tugas pada proyek ini. Fokusnya bukan menyalin seluruh isi file, tetapi memetakan:
 
-1. requirement dosen,
+1. requirement tugas,
 2. implementasi teknis yang dipakai,
 3. file yang relevan,
 4. cuplikan kode yang benar-benar penting sebagai bukti.
@@ -20,7 +20,7 @@ Aplikasi dapat diakses lewat browser, menyediakan form **register** dan **login*
 1. halaman welcome jika login berhasil,
 2. halaman "belum terdaftar" jika login gagal.
 
-Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang diminta dosen:
+Selain flow utama tersebut, implementasi juga menutup kebutuhan keamanan yang diminta pada tugas:
 
 1. HTTPS,
 2. integritas form,
@@ -30,9 +30,9 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 6. proteksi XSS,
 7. Snort IDS dan ACL jaringan.
 
-## Pemetaan Requirement Dosen ke Implementasi
+## Pemetaan Requirement Tugas ke Implementasi
 
-| Requirement dosen | Implementasi pada proyek |
+| Requirement tugas | Implementasi pada proyek |
 | --- | --- |
 | Satu container berisi server dan database | Apache, PHP, MySQL, dan OpenSSL dijalankan dalam satu image/container |
 | Webserver bisa diakses via browser | Port HTTP/HTTPS dipublish, Apache melayani halaman auth |
@@ -78,11 +78,11 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | `src/Presentation/ResultViews.php` | Render halaman welcome, gagal login, dan error |
 | `src/Presentation/Components.php` | Komponen HTML reusable dan output escaping |
 
-## Cakupan Implementasi per Requirement
+## Cakupan Implementasi per Requirement Tugas
 
 ### 1. Satu container untuk server dan database
 
-Requirement dosen memperbolehkan server dan database berada dalam satu container. Implementasi proyek mengikuti itu secara langsung: Apache, PHP, MySQL, dan OpenSSL dipasang di image yang sama, lalu dijalankan lewat `docker-entrypoint.sh`.
+Requirement tugas memperbolehkan server dan database berada dalam satu container. Implementasi proyek mengikuti itu secara langsung: Apache, PHP, MySQL, dan OpenSSL dipasang di image yang sama, lalu dijalankan lewat `docker-entrypoint.sh`.
 
 Cuplikan relevan:
 
@@ -118,7 +118,7 @@ RewriteRule ^ https://%1${PUBLIC_HTTPS_SUFFIX}%{REQUEST_URI} [R=301,L,NE]
 
 Cuplikan ini menunjukkan bahwa akses biasa lewat HTTP tidak dibiarkan terbuka, tetapi langsung dialihkan ke kanal HTTPS.
 
-### 3. Form register, login, dan landing page sesuai permintaan dosen
+### 3. Form register, login, dan landing page sesuai kebutuhan tugas
 
 Halaman awal memuat form register/login. Setelah itu:
 
@@ -155,7 +155,7 @@ Artinya requirement berikut sudah tertutup:
 
 ### 4. HTTPS untuk melindungi server
 
-Transport security diaktifkan lewat Apache SSL virtual host. Requirement dosen menyebut algoritma default webserver boleh dipakai; implementasi ini menggunakan stack default Apache + OpenSSL dan membatasi protokol ke TLS modern.
+Transport security diaktifkan lewat Apache SSL virtual host. Requirement tugas menyebut algoritma default webserver boleh dipakai; implementasi ini menggunakan stack default Apache + OpenSSL dan membatasi protokol ke TLS modern.
 
 Cuplikan relevan:
 
@@ -174,7 +174,7 @@ Maknanya:
 
 ### 5. Integritas form
 
-Permintaan dosen tentang melindungi input form dari serangan integrity diterjemahkan menjadi:
+Kebutuhan untuk melindungi input form dari serangan integrity diterjemahkan menjadi:
 
 1. semua aksi sensitif hanya boleh `POST`,
 2. setiap form membawa CSRF token,
@@ -206,7 +206,7 @@ function require_post_method(): void
 
 ### 6. Privasi data username dan password di database
 
-Requirement dosen meminta agar jika database bocor, attacker tidak bisa langsung melihat data asli. Implementasinya dibagi dua:
+Requirement tugas meminta agar jika database bocor, attacker tidak bisa langsung melihat data asli. Implementasinya dibagi dua:
 
 1. **password** tidak disimpan plaintext, tetapi di-hash dengan `Argon2id + pepper`,
 2. **username** tidak disimpan plaintext, tetapi dienkripsi dengan `AES-256-GCM`,
@@ -291,7 +291,7 @@ Artinya:
 
 ### 9. Mitigasi buffer overflow
 
-Karena aplikasi ditulis di PHP userland, risiko buffer overflow klasik lebih kecil dibanding implementasi manual di bahasa non-memory-safe. Namun requirement dosen tetap ditutup dengan pembatasan input dan request di runtime.
+Karena aplikasi ditulis di PHP userland, risiko buffer overflow klasik lebih kecil dibanding implementasi manual di bahasa non-memory-safe. Namun requirement tugas tetap ditutup dengan pembatasan input dan request di runtime.
 
 Cuplikan relevan:
 
@@ -322,7 +322,7 @@ Tambahan dari catatan "Snort + ACL" diterapkan pada level jaringan container dev
 5. ACL menolak akses langsung ke MySQL dan SSH dari luar container,
 6. MySQL tetap bind ke `127.0.0.1` sehingga hanya aplikasi di dalam container yang memakainya.
 
-Catatan batas cakupan: sidecar Snort tidak mengubah pemenuhan requirement satu container untuk server dan database, karena Apache, PHP, dan MySQL tetap berjalan bersama di container `app`.
+Catatan batas cakupan: sidecar Snort tidak mengubah pemenuhan requirement tugas tentang satu container untuk server dan database, karena Apache, PHP, dan MySQL tetap berjalan bersama di container `app`.
 
 Cuplikan rule lokal Snort:
 
@@ -370,7 +370,7 @@ curl -k -I https://localhost:10443
 
 ## Catatan Implementasi
 
-Ada tiga catatan penting supaya penjelasan ke dosen tetap jujur dan jelas:
+Ada tiga catatan penting supaya penjelasan implementasi tetap jujur dan jelas:
 
 1. penggunaan satu container adalah keputusan yang sengaja mengikuti requirement tugas, bukan pola deployment produksi yang paling ideal,
 2. Snort berjalan sebagai sidecar IDS untuk kebutuhan tambahan monitoring jaringan, bukan sebagai pemisahan web server atau database,
@@ -378,7 +378,7 @@ Ada tiga catatan penting supaya penjelasan ke dosen tetap jujur dan jelas:
 
 ## Kesimpulan
 
-Secara cakupan, proyek ini sudah mengimplementasikan inti requirement dosen:
+Secara cakupan, proyek ini sudah mengimplementasikan inti requirement tugas:
 
 1. satu container berisi server dan database,
 2. webserver bisa diakses via browser,
@@ -391,4 +391,4 @@ Secara cakupan, proyek ini sudah mengimplementasikan inti requirement dosen:
 9. ada mitigasi untuk buffer overflow, SQL injection, dan XSS,
 10. Snort IDS dan ACL jaringan sudah dicakup sebagai tambahan requirement jaringan.
 
-Jadi isi laporan ini sekarang berfungsi sebagai **dokumen cakupan implementasi requirement**, bukan sebagai dump seluruh source code.
+Jadi isi laporan ini sekarang berfungsi sebagai **dokumen cakupan implementasi requirement tugas**, bukan sebagai dump seluruh source code.

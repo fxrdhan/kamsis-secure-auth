@@ -1,6 +1,6 @@
 # Status Audit Kutipan Dengan Scrape
 
-Dokumen ini merangkum status audit kutipan pada [LAPORAN_PROYEK_DARI_NOL_REQUIREMENT_DOSEN.md](./LAPORAN_PROYEK_DARI_NOL_REQUIREMENT_DOSEN.md).
+Dokumen ini merangkum status audit kutipan pada [LAPORAN_PROYEK_DARI_NOL.md](./LAPORAN_PROYEK_DARI_NOL.md).
 
 Scope saat ini:
 - Total `Referensi terkait:` di laporan: `87`
