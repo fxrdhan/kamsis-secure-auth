@@ -455,19 +455,35 @@ Referensi terkait: [Martin Fowler - Front Controller](https://martinfowler.com/e
 > Controller yang menangani semua request untuk sebuah situs web.
 > Front Controller mengonsolidasikan seluruh penanganan request dengan mengalirkan request melalui satu objek handler.
 
-Referensi terkait: [Microsoft Learn - Program organization](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/program-structure/program-organization)
+Referensi terkait: [MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
 
-> Separate concerns — keep your data access, business logic, and presentation layers independent.
+> MVC (Model-View-Controller) is a pattern in software design commonly used to implement user interfaces, data, and controlling logic.
+> It emphasizes a separation between the software's business logic and display.
+> This "separation of concerns" provides for a better division of labor and improved maintenance.
+> Model: Manages data and business logic.
+> View: Handles layout and display.
+> Controller: Routes commands to the model and view parts.
 >
 > **Translated:**
-> Pisahkan concern: jaga agar layer akses data, logika bisnis, dan presentasi tetap independen.
+> MVC (Model-View-Controller) adalah pola desain software yang umum dipakai untuk mengimplementasikan user interface, data, dan controlling logic.
+> Pola ini menekankan pemisahan antara business logic software dan tampilan.
+> "Separation of concerns" ini memberi pembagian kerja yang lebih baik dan maintenance yang lebih mudah.
+> Model: mengelola data dan business logic.
+> View: menangani layout dan tampilan.
+> Controller: mengarahkan command ke bagian model dan view.
 
 Referensi terkait: [The Twelve-Factor App - Config](https://12factor.net/config)
 
+> An app's config is everything that is likely to vary between deploys (staging, production, developer environments, etc).
 > Apps sometimes store config as constants in the code. This is a violation of twelve-factor, which requires strict separation of config from code.
+> A litmus test for whether an app has all config correctly factored out of the code is whether the codebase could be made open source at any moment, without compromising any credentials.
+> The twelve-factor app stores config in environment variables (often shortened to env vars or env).
 >
 > **Translated:**
+> Config aplikasi adalah semua hal yang kemungkinan berubah antar-deploy (staging, production, environment developer, dan seterusnya).
 > Aplikasi kadang menyimpan konfigurasi sebagai konstanta di dalam kode. Ini melanggar prinsip twelve-factor, yang menuntut pemisahan ketat antara konfigurasi dan kode.
+> Uji sederhananya: apakah codebase bisa dibuat open source kapan saja tanpa membocorkan credential.
+> Aplikasi twelve-factor menyimpan config di environment variables (sering disingkat env vars atau env).
 
 Dengan empat referensi ini, justifikasi saat presentasi bisa dijelaskan singkat seperti berikut: `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar database-auth-view tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan `config/bootstrap.php` menjadi titik bootstrap tunggal agar seluruh endpoint memulai alur request secara konsisten.
 
@@ -813,30 +829,48 @@ Tanpa entrypoint, container satu-image akan sulit menghidupkan MySQL lebih dulu,
 
 Referensi yang dicari pada tahap ini adalah dokumentasi bootstrap MySQL, pembuatan user database, grant privilege, readiness check, dan TLS server dasar.
 
-Referensi terkait: [MySQL - Data Directory Initialization](https://dev.mysql.com/doc/refman/en/data-directory-initialization.html)
+Referensi terkait: [MySQL - Data Directory Initialization](https://dev.mysql.com/doc/refman/8.4/en/data-directory-initialization.html)
 
-> To initialize the data directory, invoke [mysqld](https://dev.mysql.com/doc/refman/en/mysqld.html) with the [--initialize](https://dev.mysql.com/doc/refman/en/server-options.html#option_mysqld_initialize) or [--initialize-insecure](https://dev.mysql.com/doc/refman/en/server-options.html#option_mysqld_initialize-insecure) option.
+> After MySQL is installed, the data directory must be initialized, including the tables in the `mysql` system schema.
+> To initialize the data directory, invoke [mysqld](https://dev.mysql.com/doc/refman/8.4/en/mysqld.html) with the [--initialize](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize) or [--initialize-insecure](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize-insecure) option.
 > Use `--initialize` for “secure by default” installation, including generation of a random initial `root` password.
+> Typically, data directory initialization need be done only after MySQL first has been installed.
 >
 > **Translated:**
-> Untuk menginisialisasi data directory, jalankan [mysqld](https://dev.mysql.com/doc/refman/en/mysqld.html) dengan opsi [--initialize](https://dev.mysql.com/doc/refman/en/server-options.html#option_mysqld_initialize) atau [--initialize-insecure](https://dev.mysql.com/doc/refman/en/server-options.html#option_mysqld_initialize-insecure).
+> Setelah MySQL di-install, data directory harus diinisialisasi, termasuk tabel dalam system schema `mysql`.
+> Untuk menginisialisasi data directory, jalankan [mysqld](https://dev.mysql.com/doc/refman/8.4/en/mysqld.html) dengan opsi [--initialize](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize) atau [--initialize-insecure](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize-insecure).
 > Gunakan `--initialize` untuk instalasi yang “secure by default”, termasuk pembuatan password awal `root` yang acak.
+> Biasanya, inisialisasi data directory hanya perlu dilakukan setelah MySQL pertama kali di-install.
 
 Referensi terkait: [MySQL - CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html)
 
 > The [CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html) statement creates new MySQL accounts.
+> It enables authentication, role, SSL/TLS, resource-limit, password-management, comment, and attribute properties to be established for new accounts.
+> `CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';`
 > An account when first created has no privileges and the default role `NONE`.
+> To assign privileges or roles to this account, use one or more [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statements.
 >
 > **Translated:**
 > Statement [CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html) membuat akun MySQL baru.
+> Statement ini memungkinkan authentication, role, SSL/TLS, resource limit, password management, comment, dan attribute ditetapkan untuk akun baru.
+> `CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';`
 > Saat akun pertama kali dibuat, akun tersebut tidak memiliki privilege dan role default-nya adalah `NONE`.
+> Untuk memberikan privilege atau role ke akun ini, gunakan satu atau beberapa statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html).
 
 Referensi terkait: [MySQL - GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html)
 
-> The [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statement enables system administrators to grant privileges and roles.
+> The [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statement assigns privileges and roles to MySQL user accounts and roles.
+> The [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statement enables system administrators to grant privileges and roles, which can be granted to user accounts and roles.
+> With `ON`, the statement grants privileges.
+> Database privileges apply to all objects in a given database. To assign database-level privileges, use `ON db_name.*` syntax.
+> `GRANT ALL ON mydb.* TO 'someuser'@'somehost';`
 >
 > **Translated:**
-> Statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) memungkinkan administrator sistem memberikan privilege dan role.
+> Statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) memberikan privilege dan role kepada akun user dan role MySQL.
+> Statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) memungkinkan administrator sistem memberikan privilege dan role, yang dapat diberikan kepada akun user dan role.
+> Dengan `ON`, statement tersebut memberikan privilege.
+> Privilege tingkat database berlaku untuk semua object dalam database tertentu. Untuk memberikan privilege tingkat database, gunakan sintaks `ON db_name.*`.
+> `GRANT ALL ON mydb.* TO 'someuser'@'somehost';`
 
 Referensi terkait: [MySQL - mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html)
 
