@@ -835,7 +835,11 @@ RUN bun install --frozen-lockfile
 COPY resources ./resources
 COPY public ./public
 RUN bun run build:css
+```
 
+Blok ini adalah stage khusus build frontend. Dependency dipasang dengan Bun, lalu CSS dibangun dari resource frontend sebelum hasilnya nanti dibawa ke image runtime.
+
+```dockerfile
 FROM ubuntu:25.10
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -854,6 +858,8 @@ RUN apt-get update \
   && (a2dissite 000-default default-ssl >/dev/null 2>&1 || true) \
   && rm -rf /var/lib/apt/lists/*
 ```
+
+Blok ini memulai image runtime dari Ubuntu, memasang paket web/database/TLS/ACL, mengaktifkan modul Apache yang diperlukan, lalu membersihkan cache apt agar image tidak membawa sisa instalasi yang tidak perlu.
 
 **Langkah 2:**
 
@@ -874,25 +880,40 @@ COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
 COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
 COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
 COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
+```
+
+Blok ini menyalin konfigurasi runtime dan script ACL ke lokasi sistem di dalam image agar Apache, PHP, dan firewall container punya file konfigurasi yang siap dipakai.
+
+```dockerfile
 COPY config /var/www/html/config
 COPY public /var/www/html/public
 COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
 COPY src /var/www/html/src
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
+```
 
+Blok ini menyalin source aplikasi dan hasil build CSS ke document tree runtime. Entrypoint juga dipasang sebagai script startup utama container.
+
+```dockerfile
 RUN mkdir -p /var/www/data /var/www/certs /var/run/mysqld /var/lib/mysql \
   && a2enconf zzz-au7h-global \
   && chmod +x /usr/local/bin/docker-entrypoint-custom.sh \
   && chmod +x /usr/local/bin/au7h-apply-acl.sh \
   && chown -R www-data:www-data /var/www \
   && chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
+```
 
+Blok ini menyiapkan direktori data, sertifikat, socket MySQL, dan izin file. Apache global config juga diaktifkan sebelum container dijalankan.
+
+```dockerfile
 EXPOSE 8080 8443
 VOLUME ["/var/www/data", "/var/www/certs", "/var/lib/mysql"]
 
 ENTRYPOINT ["docker-entrypoint-custom.sh"]
 CMD ["apache2ctl", "-D", "FOREGROUND"]
 ```
+
+Blok ini mendeklarasikan port web, volume persisten, entrypoint bootstrap, dan proses utama Apache yang menjaga container tetap berjalan.
 
 #### Keputusan penting
 
@@ -1396,7 +1417,11 @@ Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virt
     SSLCertificateFile ${TLS_CERT_PATH}
     SSLCertificateKeyFile ${TLS_KEY_PATH}
     SSLProtocol -all +TLSv1.2 +TLSv1.3
+```
 
+Blok ini membuka virtual host HTTPS, menetapkan `public/` sebagai document root, mengaktifkan TLS, memakai sertifikat dari entrypoint, dan membatasi protokol ke TLS 1.2/1.3.
+
+```apacheconf
     Header always set Cache-Control "no-store"
     Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; upgrade-insecure-requests"
     Header always set Permissions-Policy "camera=(), geolocation=(), microphone=()"
@@ -1406,17 +1431,27 @@ Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virt
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Permitted-Cross-Domain-Policies "none"
     Header always set X-XSS-Protection "0"
+```
 
+Blok ini memasang header keamanan browser. Fokusnya adalah mencegah cache halaman sensitif, membatasi sumber resource, menolak framing, mematikan MIME sniffing, dan mengatur kebijakan referrer.
+
+```apacheconf
     <Directory /var/www/html/public>
         AllowOverride None
         Options -Indexes +FollowSymLinks
         Require all granted
     </Directory>
+```
 
+Blok ini memastikan hanya direktori `public/` yang bisa dilayani Apache, mematikan directory listing, dan tetap mengizinkan symlink yang dibutuhkan aplikasi.
+
+```apacheconf
     ErrorLog /proc/self/fd/2
     CustomLog /proc/self/fd/1 combined
 </VirtualHost>
 ```
+
+Blok ini mengarahkan error log dan access log ke stdout/stderr container agar mudah dibaca lewat `docker logs`.
 
 #### Keputusan penting
 
@@ -1936,7 +1971,11 @@ function app_config(): array
     if (!is_dir($dataDir)) {
         mkdir($dataDir, 0700, true);
     }
+```
 
+Blok ini membuat cache konfigurasi lewat variabel statis, lalu memastikan direktori data aplikasi tersedia sebelum konfigurasi dipakai bagian lain.
+
+```php
     $config = [
         'db_host' => env_string('DB_HOST', '127.0.0.1'),
         'db_port' => env_string('DB_PORT', '3306'),
@@ -1945,6 +1984,11 @@ function app_config(): array
         'db_password' => env_string('DB_PASSWORD', 'change-me'),
         'pepper_secret' => env_string('PEPPER_SECRET', 'replace-me-demo-pepper'),
         'encryption_key' => hash('sha256', env_string('ENCRYPTION_KEY', 'replace-me-demo-key'), true),
+```
+
+Blok ini membaca konfigurasi database dan secret keamanan dari environment. Nilai default hanya menjadi fallback demo, sedangkan runtime container mengisi nilai sebenarnya dari secret yang dibuat entrypoint.
+
+```php
         'auth_rate_limits' => [
             'default' => [
                 'max_attempts' => 5,
@@ -1962,10 +2006,16 @@ function app_config(): array
         'session_name' => 'au7h_sid',
         'session_ttl' => 1800,
     ];
+```
 
+Blok ini menetapkan policy rate limit dan session. Register dibuat lebih ketat daripada login, sedangkan session diberi nama khusus dan TTL 30 menit.
+
+```php
     return $config;
 }
 ```
+
+Blok penutup ini mengembalikan konfigurasi final agar bisa dipakai ulang oleh layer database, session, crypto, dan rate limiter.
 
 **Langkah 3:**
 
@@ -2524,7 +2574,11 @@ function encrypt_username(string $username): string
         base64url_encode($cipherText),
     ]);
 }
+```
 
+Blok ini mengenkripsi username memakai AES-256-GCM. IV dibuat acak, tag autentikasi disimpan bersama ciphertext, lalu semuanya dibungkus menjadi payload string yang aman disimpan di database.
+
+```php
 function decrypt_username(string $payload): string
 {
     $parts = explode('.', $payload);
@@ -2533,6 +2587,11 @@ function decrypt_username(string $payload): string
     }
 
     [$ivPart, $tagPart, $cipherPart] = $parts;
+```
+
+Blok ini memvalidasi struktur payload username terenkripsi. Payload harus berisi tiga bagian: IV, tag autentikasi, dan ciphertext.
+
+```php
     $plainText = openssl_decrypt(
         base64url_decode($cipherPart),
         'aes-256-gcm',
@@ -2541,7 +2600,11 @@ function decrypt_username(string $payload): string
         base64url_decode($ivPart),
         base64url_decode($tagPart)
     );
+```
 
+Blok ini menjalankan dekripsi AES-256-GCM dengan key aplikasi, IV, dan tag autentikasi yang sudah didecode dari payload.
+
+```php
     if ($plainText === false) {
         throw new RuntimeException('Username decryption failed.');
     }
@@ -2549,6 +2612,8 @@ function decrypt_username(string $payload): string
     return $plainText;
 }
 ```
+
+Blok ini memastikan hasil dekripsi valid. Jika tag autentikasi gagal atau data rusak, fungsi tidak mengembalikan nilai palsu ke halaman.
 
 **Langkah 5:**
 
@@ -2729,6 +2794,11 @@ function db_connection(): PDO
         $config['db_port'],
         $config['db_name']
     );
+```
+
+Blok ini membuat koneksi PDO hanya sekali, membaca konfigurasi database, lalu menyusun DSN MySQL dengan charset `utf8mb4`.
+
+```php
     $pdo = new PDO($dsn, $config['db_user'], $config['db_password'], [
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
@@ -2736,10 +2806,16 @@ function db_connection(): PDO
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
     $pdo->exec("SET SESSION sql_mode = 'STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+```
 
+Blok ini membuat koneksi memakai prepared statement native, mengaktifkan error exception, menetapkan fetch associative array, dan mengunci charset serta SQL mode.
+
+```php
     return $pdo;
 }
 ```
+
+Blok penutup ini mengembalikan koneksi yang sudah dikonfigurasi agar semua query berikutnya memakai policy database yang sama.
 
 **Langkah 2:**
 
@@ -2813,7 +2889,11 @@ function create_user(string $usernameLookup, string $usernameEncrypted, string $
             :created_at
          )'
     );
+```
 
+Blok ini menyiapkan query `INSERT` dengan placeholder untuk setiap nilai akun. Tidak ada nilai user yang ditempel langsung ke string SQL.
+
+```php
     $statement->execute([
         'username_lookup' => $usernameLookup,
         'username_encrypted' => $usernameEncrypted,
@@ -2822,6 +2902,8 @@ function create_user(string $usernameLookup, string $usernameEncrypted, string $
     ]);
 }
 ```
+
+Blok ini mengikat semua nilai lewat parameter `execute()`, sehingga lookup username, ciphertext username, hash password, dan timestamp masuk sebagai data, bukan bagian dari query.
 
 #### Catatan transparansi
 
@@ -2893,7 +2975,11 @@ function render_auth_form_card(string $mode, ?array $flash): string
     $switchAction = $isRegister ? 'Sign in' : 'Create one';
     $passwordAutocomplete = $isRegister ? 'new-password' : 'current-password';
     $topMarginClass = $flash === null ? 'mt-0' : 'mt-4';
+```
 
+Blok ini menyiapkan state view berdasarkan mode halaman. Judul, target form, label tombol, link switch, autocomplete password, dan jarak flash message ditentukan sebelum HTML dirangkai.
+
+```php
     $confirmField = $isRegister
         ? render_auth_field(
             'Confirm Password',
@@ -2908,6 +2994,8 @@ function render_auth_form_card(string $mode, ?array $flash): string
         )
         : '';
 ```
+
+Blok ini hanya menambahkan field konfirmasi password saat mode register. Saat mode login, `$confirmField` dikosongkan agar form tetap ringkas.
 
 **Langkah 3:**
 
@@ -2928,6 +3016,11 @@ function render_auth_form_card(string $mode, ?array $flash): string
           <p class="text-sm text-muted-foreground dark:text-zinc-200">' . escape_html($description) . '</p>
         </div>
         <div class="' . $topMarginClass . '">' . render_flash($flash) . '</div>
+```
+
+Blok ini membentuk pembuka kartu auth: judul, deskripsi, dan area flash message. Teks dinamis tetap dilewatkan ke `escape_html()`.
+
+```php
         <form class="mt-8 space-y-6" method="post" action="' . escape_html($action) . '" autocomplete="off">
           <input type="hidden" name="csrf_token" value="' . escape_html($csrfToken) . '">
           ' . render_auth_field(
@@ -2937,6 +3030,11 @@ function render_auth_form_card(string $mode, ?array $flash): string
               'username',
               'johndoe'
           ) . '
+```
+
+Blok ini membuka form dan memasang hidden CSRF token, lalu merender field username.
+
+```php
           ' . render_auth_field(
               'Password',
               'password',
@@ -2949,17 +3047,29 @@ function render_auth_form_card(string $mode, ?array $flash): string
               $isRegister ? render_password_requirements() : ''
           ) . '
           ' . $confirmField . '
+```
+
+Blok ini merender field password, menambahkan atribut bantuan khusus mode register, lalu menyisipkan field konfirmasi password bila diperlukan.
+
+```php
           <button
             class="inline-flex h-10 w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-300 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-zinc-400/30"
             type="submit"
           >' . escape_html($submitLabel) . '</button>
         </form>
+```
+
+Blok ini membuat tombol submit dengan label yang mengikuti mode form.
+
+```php
         <p class="mt-4 text-center text-sm text-muted-foreground dark:text-zinc-300">
           ' . escape_html($switchLabel) . '
           <a class="font-medium text-foreground underline underline-offset-4 dark:text-white" href="' . escape_html($switchHref) . '">' . escape_html($switchAction) . '</a>
         </p>
       </div>';
 ```
+
+Blok ini menutup kartu dengan link untuk berpindah dari register ke login atau sebaliknya.
 
 ### Tahap 12 - Menulis endpoint registrasi
 
@@ -3550,7 +3660,11 @@ function record_auth_rate_limit_failure(string $bucket, ?string $subject = null)
     $windowSeconds = $policy['window_seconds'];
     $rateKey = auth_rate_limit_key($bucket, $subject);
     $record = find_auth_rate_limit_record($bucket, $subject);
+```
 
+Blok ini membaca policy aktif, waktu sekarang, key rate limit, dan record percobaan yang sudah ada untuk bucket-subject tersebut.
+
+```php
     if ($record === null || ($now - (int) $record['window_start']) >= $windowSeconds) {
         $upsert = $pdo->prepare(
             'INSERT INTO auth_rate_limits (rate_key, attempts, window_start)
@@ -3563,7 +3677,11 @@ function record_auth_rate_limit_failure(string $bucket, ?string $subject = null)
         ]);
         return;
     }
+```
 
+Blok ini membuat window percobaan baru atau mereset window lama yang sudah kedaluwarsa. `ON DUPLICATE KEY UPDATE` menjaga operasi tetap aman saat record sudah ada.
+
+```php
     $update = $pdo->prepare(
         'UPDATE auth_rate_limits
          SET attempts = attempts + 1
@@ -3572,6 +3690,8 @@ function record_auth_rate_limit_failure(string $bucket, ?string $subject = null)
     $update->execute(['rate_key' => $rateKey]);
 }
 ```
+
+Blok ini menangani kasus window masih aktif: jumlah percobaan cukup dinaikkan satu untuk rate key yang sama.
 
 **Langkah 6:**
 
@@ -3704,6 +3824,11 @@ services:
       context: .
     cap_add:
       - NET_ADMIN
+```
+
+Blok ini mendefinisikan service utama `app`, membangun image dari source lokal, dan memberi capability `NET_ADMIN` agar ACL berbasis iptables bisa diterapkan dari dalam container.
+
+```yaml
     ports:
       - "${HOST_HTTP_PORT:-10080}:8080"
       - "${HOST_HTTPS_PORT:-10443}:8443"
@@ -3715,6 +3840,11 @@ services:
       ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
       ACL_DB_CIDR: ${ACL_DB_CIDR:-}
       ACL_ALLOW_ICMP: ${ACL_ALLOW_ICMP:-0}
+```
+
+Blok ini memetakan port demo dan mengatur environment jaringan. HTTP/HTTPS dibuka ke host, MySQL dibatasi ke localhost, dan ACL dikendalikan lewat variabel environment.
+
+```yaml
     volumes:
       - ./config:/var/www/html/config
       - ./public:/var/www/html/public
@@ -3722,7 +3852,11 @@ services:
       - ./certs:/var/www/certs
       - au7h-data:/var/www/data
       - au7h-mysql:/var/lib/mysql
+```
 
+Blok ini memasang bind mount untuk source code agar perubahan lokal langsung tercermin, lalu memakai named volume untuk data aplikasi dan data MySQL yang perlu persisten.
+
+```yaml
   snort:
     image: ciscotalos/snort3:latest
     depends_on:
@@ -3734,6 +3868,11 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+```
+
+Blok ini mendefinisikan Snort sebagai sidecar. `network_mode: service:app` membuat Snort memantau network namespace yang sama dengan aplikasi.
+
+```yaml
     volumes:
       - ./security/snort/snort.lua:/home/snorty/snort3/etc/snort/au7h.lua:ro
       - ./security/snort/rules:/home/snorty/snort3/etc/rules/au7h:ro
@@ -3741,6 +3880,11 @@ services:
     environment:
       SNORT_HOME_NET: ${SNORT_HOME_NET:-any}
       SNORT_EXTERNAL_NET: ${SNORT_EXTERNAL_NET:-any}
+```
+
+Blok ini memasang konfigurasi Snort, rule lokal, dan direktori log. Variabel network Snort tetap bisa diubah dari environment saat demo.
+
+```yaml
     command:
       - -i
       - ${SNORT_INTERFACE:-eth0}
@@ -3754,12 +3898,18 @@ services:
       - alert_fast
       - -l
       - /var/log/snort
+```
 
+Blok ini menjalankan Snort pada interface aplikasi dan loopback, memakai konfigurasi proyek, menulis alert cepat, dan menyimpan log ke volume.
+
+```yaml
 volumes:
   au7h-data:
   au7h-mysql:
   snort-logs:
 ```
+
+Blok ini mendeklarasikan named volume untuk data aplikasi, data MySQL, dan log Snort agar tidak hilang ketika container dibuat ulang.
 
 #### Hasil tahap
 
@@ -3868,14 +4018,22 @@ SQL_SERVERS = HOME_NET
 default_variables.paths.RULE_PATH = RULE_PATH
 default_variables.ports.HTTP_PORTS = HTTP_PORTS
 default_variables.nets.SQL_SERVERS = SQL_SERVERS
+```
 
+Blok ini menetapkan variabel jaringan Snort, memuat default konfigurasi, lalu mengarahkan path rule dan port HTTP yang akan dipantau.
+
+```lua
 ips =
 {
     enable_builtin_rules = true,
     include = RULE_PATH .. '/au7h.rules',
     variables = default_variables
 }
+```
 
+Blok ini mengaktifkan builtin rules dan memasukkan rule aggregator proyek, sehingga rule lokal dan komunitas bisa dimuat dari satu pintu.
+
+```lua
 alert_fast =
 {
     file = true,
@@ -3883,6 +4041,8 @@ alert_fast =
     limit = 10
 }
 ```
+
+Blok ini memilih output alert ringkas ke file log, tanpa menyimpan isi paket penuh, agar hasil demo mudah dibaca.
 
 **Langkah 2:**
 
@@ -3921,11 +4081,19 @@ iptables -w -P OUTPUT ACCEPT
 
 iptables -w -N "${ACL_CHAIN}" 2>/dev/null || iptables -w -F "${ACL_CHAIN}"
 iptables -w -C INPUT -j "${ACL_CHAIN}" 2>/dev/null || iptables -w -I INPUT 1 -j "${ACL_CHAIN}"
+```
 
+Blok ini menetapkan default policy yang ketat dan menyiapkan chain khusus `AU7H_INPUT`. Jika chain sudah ada, isinya dibersihkan agar aturan lama tidak menumpuk.
+
+```sh
 iptables -w -A "${ACL_CHAIN}" -i lo -j ACCEPT
 iptables -w -A "${ACL_CHAIN}" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_WEB_CIDR}" -m multiport --dports "${APP_PORT_HTTP},${APP_PORT_HTTPS}" -j ACCEPT
+```
 
+Blok ini membuka jalur aman yang memang diperlukan: loopback, koneksi yang sudah established, dan akses web HTTP/HTTPS dari CIDR yang diizinkan.
+
+```sh
 if [ -n "${ACL_DB_CIDR}" ]; then
   iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_DB_CIDR}" --dport "${MYSQL_PORT}" -j ACCEPT
 fi
@@ -3933,12 +4101,18 @@ fi
 if [ "${ACL_ALLOW_ICMP}" = "1" ]; then
   iptables -w -A "${ACL_CHAIN}" -p icmp --icmp-type echo-request -j ACCEPT
 fi
+```
 
+Blok ini menyediakan pengecualian terkontrol untuk akses database dan ICMP. Keduanya hanya aktif jika environment memang mengizinkan.
+
+```sh
 iptables -w -A "${ACL_CHAIN}" -p tcp --dport "${MYSQL_PORT}" -j REJECT
 iptables -w -A "${ACL_CHAIN}" -p tcp --dport 22 -j REJECT
 iptables -w -A "${ACL_CHAIN}" -p icmp --icmp-type echo-request -j DROP
 iptables -w -A "${ACL_CHAIN}" -j DROP
 ```
+
+Blok ini menutup port sensitif dan traffic lain yang tidak masuk daftar allow. MySQL dan SSH ditolak eksplisit, ICMP ping dibuang, lalu aturan terakhir menjadi fallback drop.
 
 #### Hasil tahap
 
