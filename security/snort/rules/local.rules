@@ -1,0 +1,4 @@
+alert icmp any any -> $HOME_NET any (msg:"AU7H ICMP ping attempt to protected server"; itype:8; sid:1000001; rev:2; classtype:icmp-event;)
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"AU7H HTTP/HTTPS connection to web server"; sid:1000002; rev:3; classtype:web-application-activity;)
+alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"; sid:1000003; rev:3; classtype:attempted-recon;)
+alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:1000004; rev:3; classtype:attempted-recon;)

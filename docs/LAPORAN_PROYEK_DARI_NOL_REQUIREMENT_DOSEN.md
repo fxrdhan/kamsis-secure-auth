@@ -97,6 +97,10 @@ Link rinci dan lampiran referensi lengkap tersedia pada section **14. Lampiran R
 | SQL injection | `OWASP SQL Injection Prevention Cheat Sheet prepared statements` | [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html) | bagian **Prepared Statements (with Parameterized Queries)** | seluruh query auth harus PDO prepared statements |
 | XSS | `OWASP XSS Prevention Cheat Sheet output encoding CSP` | [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html) | bagian **Output Encoding** dan catatan bahwa **CSP hanya defense in depth** | memilih `htmlspecialchars` untuk output dan CSP header di Apache |
 | Buffer overflow | `CWE buffer overflow language selection bounds checks` | [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html) dan [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html) | bagian **Use a language that provides memory abstractions**, **bounds checking**, **validate length arguments** | memilih PHP userland untuk logika auth, membatasi input dan request size, mematikan upload |
+| Snort IDS di Docker | `Snort 3 Docker Compose ciscotalos/snort3 tutorial` | [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3) dan [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3) | image `ciscotalos/snort3`, capability `NET_ADMIN`/`NET_RAW`, mount rules/logs, command `-i eth0 -c snort.lua` | menambahkan service Snort IDS sidecar di Compose |
+| Konfigurasi dan rule Snort 3 | `Snort 3 configuration snort.lua local.rules` | [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration) dan [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules) | `snort.lua`, `snort_defaults.lua`, `ips.include`, file `.rules`, `alert_fast` | membuat `security/snort/snort.lua`, `local.rules`, `community.rules`, dan command validasi rule |
+| Sidecar network namespace | `Docker Compose network_mode service` | [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode) | `network_mode: service:[service name]` | Snort berbagi network namespace dengan container aplikasi agar dapat memonitor traffic yang sama |
+| ACL container dengan iptables | `Docker iptables restrict external connections to containers` | [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/) | Docker membuat chain iptables, pembatasan koneksi eksternal, `RELATED,ESTABLISHED` | menambahkan ACL `iptables` untuk mengizinkan web dan menolak akses langsung ke MySQL/SSH |
 
 Alur kerja pada laporan ini dimulai dari requirement, lalu diterjemahkan menjadi target teknis, kemudian cari referensi, membaca bagian yang relevan, menempelkan kutipan penting ke dokumen, dan setelah itu masuk ke implementasi. 
 
@@ -218,6 +222,87 @@ Referensi terkait: [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.ht
 Referensi terkait: [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html)
 
 > To reduce the likelihood of introducing an out-of-bounds read, ensure that you validate and ensure correct calculations for any length argument, buffer size calculation, or offset.
+
+#### Docker Recipes - Snort 3 Docker Compose
+
+Dipakai sebagai pembanding praktis untuk menjalankan Snort 3 lewat Docker Compose. Bagian yang diambil bukan seluruh topologi `network_mode: host`, melainkan pola penggunaan image `ciscotalos/snort3`, capability jaringan, mount rules/logs, dan command Snort yang menunjuk interface serta file konfigurasi.
+
+Referensi terkait: [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
+
+> image: ciscotalos/snort3:latest
+> cap_add:
+>   - NET_ADMIN
+>   - NET_RAW
+> volumes:
+>   - snort_rules:/usr/local/etc/rules
+>   - snort_logs:/var/log/snort
+> command: -i eth0 -c /usr/local/etc/snort/snort.lua
+>
+> **Translated:**
+> Contoh Compose Snort memakai image `ciscotalos/snort3`, capability `NET_ADMIN` dan `NET_RAW`, volume untuk rules/logs, serta command yang menjalankan Snort pada interface `eth0` dengan file `snort.lua`.
+
+#### Docker Hub - ciscotalos/snort3
+
+Dipakai untuk memastikan image Snort 3 yang digunakan memang image publik dari Cisco Talos, bukan image acak yang tidak jelas asalnya.
+
+Referensi terkait: [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3)
+
+> docker pull ciscotalos/snort3
+>
+> **Translated:**
+> Image Snort 3 dapat diambil dari Docker Hub dengan nama `ciscotalos/snort3`.
+
+#### Snort 3 Configuration Guide
+
+Dipakai untuk menentukan bentuk file `security/snort/snort.lua`, termasuk penggunaan Lua, `snort.lua`, `snort_defaults.lua`, dan validasi konfigurasi lewat argumen `-c`.
+
+Referensi terkait: [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
+
+> Snort 3 configuration is now all done in Lua, and these configuration options can be supplied to Snort in three different ways: via the command line, with a single Lua configuration file, or with multiple Lua configuration files.
+>
+> The default files are located in the `lua/` directory, and the `snort.lua` and `snort_defaults.lua` files present there make up what is considered to be the the base configuration.
+>
+> **Translated:**
+> Konfigurasi Snort 3 dilakukan dengan Lua. File `snort.lua` dan `snort_defaults.lua` menjadi konfigurasi dasar yang dapat dipakai sebagai template.
+
+#### Snort 3 Rule Writing Guide
+
+Dipakai untuk dasar pemisahan rule ke file `.rules`, pemuatan rule lewat `ips.include`, dan mode alert `alert_fast` yang dipakai pada service Snort.
+
+Referensi terkait: [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
+
+> Snort rules can be placed directly in one's Lua configuration file(s) via the `ips` module, but for the most part they will live in distinct `.rules` files that get "included".
+>
+> Snort provides a few different "alert mode" options that can be set on the command line to tweak the way alerts are displayed.
+>
+> **Translated:**
+> Rule Snort umumnya disimpan pada file `.rules` terpisah yang di-include dari konfigurasi, dan output alert dapat diatur memakai opsi alert mode seperti `alert_fast`.
+
+#### Docker Compose Services - network_mode
+
+Dipakai untuk menjelaskan keputusan menjalankan Snort sebagai sidecar dengan `network_mode: service:app`, bukan `network_mode: host`. Dengan pola ini, Snort melihat network namespace yang sama dengan aplikasi.
+
+Referensi terkait: [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode)
+
+> `network_mode` sets a service container's network mode.
+>
+> - `service:{name}`: Gives the container access to the specified container by referring to its service name.
+>
+> **Translated:**
+> `network_mode` mengatur mode jaringan container. Nilai `service:{name}` memberi container akses ke container service yang dituju berdasarkan nama service.
+
+#### Docker Docs - Docker with iptables
+
+Dipakai untuk dasar ACL jaringan. Walaupun ACL proyek dipasang di namespace container aplikasi, prinsipnya sama: filter traffic memakai rule `iptables`, izinkan koneksi yang perlu, lalu tolak akses port sensitif.
+
+Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
+
+> Docker creates iptables rules in the host's network namespace for bridge networks. For bridge and other network types, iptables rules for DNS are also created in the container's network namespace.
+>
+> You may need to allow responses from servers outside the permitted external address ranges. The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
+>
+> **Translated:**
+> Docker membuat rule `iptables` untuk jaringan bridge, dan pada beberapa tipe jaringan juga membuat rule di namespace container. Saat membatasi koneksi, traffic yang sudah termasuk koneksi `RELATED` atau `ESTABLISHED` perlu tetap diizinkan agar respons koneksi yang sah tidak ikut terblokir.
 > Be especially careful of relying on a sentinel (for example a NUL byte) in untrusted inputs.
 >
 > **Translated:**
@@ -3102,9 +3187,9 @@ Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose 
 
 Langkah implementasi terarah: tampilkan satu file Compose yang cukup untuk demo lokal, dengan mapping port yang eksplisit dan volume mount agar perubahan source langsung tercermin saat pengujian.
 
-Sumber: [compose.dev.yaml:1-26](/home/fxrdhan/au7h/compose.dev.yaml:1)
+Sumber: [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
 
-Alur kode: file Compose ini mendefinisikan satu service aplikasi yang sekaligus di-build lokal, memetakan port demo, membuka beberapa env override untuk runtime container, lalu memasang bind mount source code dan volume persisten data.
+Alur kode: file Compose ini mendefinisikan service aplikasi yang sekaligus di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan ACL, memasang bind mount source code, lalu menambahkan service Snort sidecar untuk monitoring traffic jaringan.
 
 ```yaml
 name: au7h
@@ -3114,14 +3199,16 @@ services:
     image: au7h
     build:
       context: .
+    cap_add:
+      - NET_ADMIN
     ports:
       - "${HOST_HTTP_PORT:-10080}:8080"
       - "${HOST_HTTPS_PORT:-10443}:8443"
-      - "${HOST_MYSQL_PORT:-13306}:3306"
     environment:
       PUBLIC_HTTPS_PORT: ${HOST_HTTPS_PORT:-10443}
-      MYSQL_BIND_ADDRESS: 0.0.0.0
-      MYSQL_ALLOW_REMOTE: "1"
+      MYSQL_BIND_ADDRESS: 127.0.0.1
+      MYSQL_ALLOW_REMOTE: "0"
+      ACL_ENABLED: "1"
     volumes:
       - ./config:/var/www/html/config
       - ./public:/var/www/html/public
@@ -3130,9 +3217,39 @@ services:
       - au7h-data:/var/www/data
       - au7h-mysql:/var/lib/mysql
 
+  snort:
+    image: ciscotalos/snort3:latest
+    depends_on:
+      - app
+    network_mode: service:app
+    entrypoint:
+      - /home/snorty/snort3/bin/snort
+    user: root
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./security/snort/snort.lua:/home/snorty/snort3/etc/snort/au7h.lua:ro
+      - ./security/snort/rules:/home/snorty/snort3/etc/rules/au7h:ro
+      - snort-logs:/var/log/snort
+    command:
+      - -i
+      - ${SNORT_INTERFACE:-eth0}
+      - -i
+      - lo
+      - -k
+      - none
+      - -c
+      - /home/snorty/snort3/etc/snort/au7h.lua
+      - -A
+      - alert_fast
+      - -l
+      - /var/log/snort
+
 volumes:
   au7h-data:
   au7h-mysql:
+  snort-logs:
 ```
 
 ### Hasil tahap
@@ -3145,6 +3262,120 @@ Browser bisa mengakses:
 http://localhost:10080
 https://localhost:10443
 ```
+
+## Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan
+
+### Tujuan
+
+Menjawab tambahan requirement jaringan: traffic aplikasi dipantau oleh Snort, rule lokal tersedia, rule komunitas dapat diperbarui, dan akses port dibatasi dengan ACL.
+
+### Analisis langkah
+
+Snort diposisikan sebagai IDS sidecar, bukan menggantikan Apache atau MySQL. ACL dipasang di container aplikasi agar browser tetap bisa mengakses HTTP/HTTPS, sementara port sensitif seperti MySQL dan SSH tidak terbuka langsung ke user.
+
+### Jejak referensi sebelum implementasi
+
+Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokumentasi resmi konfigurasi Snort 3, pemuatan rule `.rules`, sidecar network namespace di Compose, dan dokumentasi Docker terkait `iptables`.
+
+Referensi terkait: [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
+
+> image: ciscotalos/snort3:latest
+> cap_add:
+>   - NET_ADMIN
+>   - NET_RAW
+> command: -i eth0 -c /usr/local/etc/snort/snort.lua
+
+Referensi terkait: [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3)
+
+> docker pull ciscotalos/snort3
+
+Referensi terkait: [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
+
+> Snort 3 configuration is now all done in Lua.
+>
+> Snort doesn't look for a specific configuration file by default, but you can pass one to it very easily with the `-c` argument.
+
+Referensi terkait: [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
+
+> Snort rules can be placed directly in one's Lua configuration file(s) via the `ips` module, but for the most part they will live in distinct `.rules` files that get "included".
+>
+> `alert_fast (logger): output event with brief text format`
+
+Referensi terkait: [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode)
+
+> `network_mode` sets a service container's network mode.
+>
+> `service:{name}`: Gives the container access to the specified container by referring to its service name.
+
+Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
+
+> Docker creates iptables rules in the host's network namespace for bridge networks.
+>
+> The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
+
+### Implementasi Snort
+
+Sumber: [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1)
+
+Alur kode: konfigurasi Snort menetapkan network yang dilindungi, memuat default Snort, mengarahkan `RULE_PATH`, mengaktifkan builtin rules, memasukkan file rules proyek, lalu menulis alert ke format `alert_fast`.
+
+```lua
+HOME_NET = os.getenv('SNORT_HOME_NET') or 'any'
+EXTERNAL_NET = os.getenv('SNORT_EXTERNAL_NET') or 'any'
+
+include 'snort_defaults.lua'
+
+RULE_PATH = '/home/snorty/snort3/etc/rules/au7h'
+HTTP_PORTS = '80 443 8080 8443'
+
+ips =
+{
+    enable_builtin_rules = true,
+    include = RULE_PATH .. '/au7h.rules',
+    variables = default_variables
+}
+```
+
+Sumber: [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1)
+
+Rule lokal mendeteksi ping, akses HTTP/HTTPS, akses langsung ke MySQL, dan akses SSH.
+
+```conf
+alert icmp any any -> $HOME_NET any (msg:"AU7H ICMP ping attempt to protected server"; itype:8; sid:1000001; rev:2; classtype:icmp-event;)
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"AU7H HTTP/HTTPS connection to web server"; sid:1000002; rev:3; classtype:web-application-activity;)
+alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"; sid:1000003; rev:3; classtype:attempted-recon;)
+alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:1000004; rev:3; classtype:attempted-recon;)
+```
+
+### Implementasi ACL
+
+Sumber: [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1)
+
+Alur kode: ACL membuat chain khusus `AU7H_INPUT`, mengizinkan loopback dan koneksi yang sudah established, membuka port HTTP/HTTPS, lalu menolak MySQL, SSH, ICMP ping, dan traffic lain yang tidak masuk daftar allow.
+
+```sh
+iptables -w -P INPUT DROP
+iptables -w -P FORWARD DROP
+iptables -w -P OUTPUT ACCEPT
+
+iptables -w -A "${ACL_CHAIN}" -i lo -j ACCEPT
+iptables -w -A "${ACL_CHAIN}" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_WEB_CIDR}" -m multiport --dports "${APP_PORT_HTTP},${APP_PORT_HTTPS}" -j ACCEPT
+iptables -w -A "${ACL_CHAIN}" -p tcp --dport "${MYSQL_PORT}" -j REJECT
+iptables -w -A "${ACL_CHAIN}" -p tcp --dport 22 -j REJECT
+iptables -w -A "${ACL_CHAIN}" -p icmp --icmp-type echo-request -j DROP
+```
+
+### Hasil tahap
+
+Hasil yang dapat ditunjukkan saat demo:
+
+1. `docker compose -f compose.dev.yaml ps` menampilkan service `app` dan `snort` aktif,
+2. `bun run snort:test-rules` memvalidasi konfigurasi Snort,
+3. `bun run snort:logs` menampilkan alert dari `alert_fast.txt`,
+4. `bun run acl:status` menampilkan chain `AU7H_INPUT`,
+5. request HTTP/HTTPS tetap berhasil,
+6. akses langsung ke MySQL `3306` dan SSH `22` ditolak.
 
 ## 9. Urutan Verifikasi Setelah Implementasi
 
@@ -3294,6 +3525,36 @@ Hasil yang diharapkan:
 1. request berikutnya menerima status `429`,
 2. halaman error menyatakan terlalu banyak percobaan.
 
+## Uji 12 - Snort IDS dan rule lokal
+
+Langkah uji terarah: validasi konfigurasi Snort, jalankan traffic HTTP/HTTPS, lalu baca file alert Snort.
+
+```bash
+bun run snort:test-rules
+bun run snort:logs
+```
+
+Yang harus terlihat:
+
+1. konfigurasi Snort valid tanpa warning fatal,
+2. alert HTTP/HTTPS muncul saat browser atau `curl` mengakses aplikasi,
+3. alert MySQL atau SSH muncul saat ada percobaan akses langsung ke port `3306` atau `22`.
+
+## Uji 13 - ACL port jaringan
+
+Langkah uji terarah: tampilkan chain ACL dan pastikan port web diizinkan, sementara MySQL dan SSH ditolak.
+
+```bash
+bun run acl:status
+```
+
+Yang harus terlihat:
+
+1. chain `AU7H_INPUT` aktif,
+2. port `8080` dan `8443` berstatus `ACCEPT`,
+3. port `3306` dan `22` berstatus `REJECT`,
+4. ICMP echo request berstatus `DROP` kecuali `ACL_ALLOW_ICMP=1`.
+
 ## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
@@ -3309,6 +3570,8 @@ Hasil yang diharapkan:
 | Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 dan 6.4 |
 | SQL injection | Tahap 10 |
 | XSS | Tahap 5, 9, 11, 14 |
+| Snort IDS + rule lokal | Tahap 18 |
+| ACL ICMP dan port | Tahap 18 |
 
 ## 11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
@@ -3344,6 +3607,12 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [ ] rate limiting aktif
 [ ] file upload dimatikan
 [ ] ukuran POST dibatasi
+[ ] Snort service aktif
+[ ] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH
+[ ] snort:test-rules berhasil
+[ ] acl:status menampilkan chain AU7H_INPUT
+[ ] HTTP/HTTPS diizinkan ACL
+[ ] MySQL 3306 dan SSH 22 ditolak ACL
 ```
 
 ## 13. Ringkasan Strategi Dari Nol
@@ -3356,14 +3625,15 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 4. bangun satu container yang bisa bootstrap sendiri,
 5. implementasikan login/register paling kecil dulu,
 6. pasang proteksi CSRF, session, hashing, enkripsi, SQLi, XSS, dan rate limit,
-7. tutup dengan uji manual dan uji negatif,
-8. cocokkan satu per satu dengan requirement dosen.
+7. tambahkan Snort IDS dan ACL untuk kontrol jaringan,
+8. tutup dengan uji manual dan uji negatif,
+9. cocokkan satu per satu dengan requirement dosen.
 
 Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat diminta mempertanggungjawabkan alasan teknis di depan dosen.
 
 ## 14. Lampiran Referensi Lengkap
 
-Section ini menggabungkan seluruh lampiran referensi ke dokumen utama agar seluruh jejak rujukan berada dalam satu file. Bagian `14.1` sampai `14.8` paling langsung menopang requirement dosen. Bagian setelahnya mencatat resource pendukung proyek yang tetap relevan untuk implementasi penuh repo.
+Section ini menggabungkan seluruh lampiran referensi ke dokumen utama agar seluruh jejak rujukan berada dalam satu file. Bagian `14.1` sampai `14.9` paling langsung menopang requirement dosen. Bagian setelahnya mencatat resource pendukung proyek yang tetap relevan untuk implementasi penuh repo.
 
 Berbeda dari versi sebelumnya, bukti kutipan literal tidak lagi dipisah sebagai section tersendiri di belakang. Kutipan yang benar-benar dipakai sudah dipindahkan ke `Section 5` dan ke tiap tahap implementasi yang relevan agar alurnya terbaca utuh: requirement -> target -> referensi -> bagian sumber -> implementasi.
 
@@ -3532,7 +3802,40 @@ Yang ditopang oleh sumber ini:
 - CSP, HSTS, `Referrer-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Permissions-Policy`
 - pembatasan embedding dan clickjacking
 
-### 14.9. OpenSSL untuk Sertifikat Self-Signed
+### 14.9. Snort IDS, Rule Lokal, Sidecar, dan ACL Jaringan
+
+File repo terkait:
+- `compose.dev.yaml`
+- `Dockerfile`
+- `docker-entrypoint.sh`
+- `docker/acl.sh`
+- `security/snort/snort.lua`
+- `security/snort/rules/au7h.rules`
+- `security/snort/rules/local.rules`
+- `security/snort/rules/community.rules`
+- `scripts/update-snort-community-rules.sh`
+- `package.json`
+
+Referensi utama:
+- [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
+- [Docker Hub - `ciscotalos/snort3`](https://hub.docker.com/r/ciscotalos/snort3)
+- [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
+- [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
+- [Docker Compose services - `network_mode`](https://docs.docker.com/reference/compose-file/services/#network_mode)
+- [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
+
+Yang ditopang oleh sumber ini:
+- penggunaan image `ciscotalos/snort3`
+- capability `NET_ADMIN` dan `NET_RAW` untuk Snort
+- konfigurasi `snort.lua` berbasis Lua
+- pemuatan `local.rules` dan `community.rules`
+- alert mode `alert_fast`
+- sidecar dengan `network_mode: service:app`
+- ACL container dengan `iptables`
+- allow HTTP/HTTPS, reject MySQL/SSH, dan drop ICMP echo request
+- command `snort:test-rules`, `snort:logs`, `snort:update-rules`, dan `acl:status`
+
+### 14.10. OpenSSL untuk Sertifikat Self-Signed
 
 File repo terkait:
 - `docker-entrypoint.sh`
@@ -3544,7 +3847,7 @@ Catatan:
 - Repo ini membuat sertifikat self-signed via `openssl req`, tetapi link manpage OpenSSL spesifik belum dimasukkan agar daftar tetap ringkas.
 - Jika dosen meminta bukti lebih granular untuk command sertifikat, dokumentasi `openssl req` dari situs OpenSSL dapat ditambahkan sebagai lampiran tambahan.
 
-### 14.10. Tailwind CSS, Tema, dan Build CSS
+### 14.11. Tailwind CSS, Tema, dan Build CSS
 
 File repo terkait:
 - `resources/tailwind.css`
@@ -3562,7 +3865,7 @@ Yang ditopang oleh sumber ini:
 - penggunaan `tailwindcss` + `@tailwindcss/cli` v4.2.2
 - migrasi dari config JavaScript v3 ke pola CSS-first Tailwind v4
 
-### 14.11. Bun untuk Script Development
+### 14.12. Bun untuk Script Development
 
 File repo terkait:
 - `package.json`
@@ -3577,7 +3880,7 @@ Yang ditopang oleh sumber ini:
 - passing env var seperti `HOST_HTTP_PORT=... bun run dev`
 - perilaku `bun run dev`, `bun run build:css`, dan script lain
 
-### 14.12. Frontend Motion dan Page Transition
+### 14.13. Frontend Motion dan Page Transition
 
 File repo terkait:
 - `public/page-shell.js`
@@ -3595,7 +3898,7 @@ Yang ditopang oleh sumber ini:
 - pemakaian API Motion di frontend
 - sumber bundle `public/vendor/motion.js` yang aktif
 
-### 14.13. Library Matrix Background yang Dibundel
+### 14.14. Library Matrix Background yang Dibundel
 
 File repo terkait:
 - `public/matrix-rain.js`
@@ -3610,7 +3913,7 @@ Yang ditopang oleh sumber ini:
 - cara inisialisasi instance
 - opsi konfigurasi matrix rain
 
-### 14.14. GitHub Actions dan CI
+### 14.15. GitHub Actions dan CI
 
 File repo terkait:
 - `.github/workflows/ci.yml`
@@ -3629,7 +3932,7 @@ Yang ditopang oleh sumber ini:
 - setup Bun
 - setup PHP
 
-### 14.15. Komponen UI yang Ditulis Sendiri
+### 14.16. Komponen UI yang Ditulis Sendiri
 
 File repo terkait:
 - `src/Presentation/Views.php`

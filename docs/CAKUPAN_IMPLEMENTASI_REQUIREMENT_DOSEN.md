@@ -44,6 +44,10 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | Lindungi dari buffer overflow | Runtime PHP userland, pembatasan ukuran input/request di `php.ini`, upload dimatikan |
 | Lindungi SQL injection | Seluruh query auth memakai PDO prepared statements |
 | XSS security | Output di-escape dengan `htmlspecialchars`, CSP dikirim oleh Apache |
+| Tambahan Jaringan 3: Snort + ACL | Snort IDS sidecar memonitor traffic container, ACL `iptables` membatasi port masuk |
+| Config Snort | `security/snort/snort.lua` mengatur `HOME_NET`, `HTTP_PORTS`, rule path, dan output alert |
+| Rule lokal dan update komunitas | `local.rules` berisi rule ICMP/port, `community.rules` dapat diperbarui lewat `bun run snort:update-rules` |
+| ACL ICMP dan port | HTTP/HTTPS diizinkan, MySQL `3306` dan SSH `22` ditolak dari luar container, ICMP ping bisa dibuka/tutup lewat env |
 
 ## File Inti yang Paling Relevan
 
@@ -51,6 +55,9 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 | --- | --- |
 | `Dockerfile` | Menyatukan Apache, PHP, MySQL, dan OpenSSL dalam satu container |
 | `docker-entrypoint.sh` | Bootstrap secret runtime, sertifikat, MySQL, dan startup service |
+| `docker/acl.sh` | ACL jaringan container dengan `iptables` |
+| `security/snort/snort.lua` | Konfigurasi Snort 3 untuk IDS |
+| `security/snort/rules/local.rules` | Rule lokal Snort untuk ICMP, HTTP/HTTPS, MySQL, dan SSH |
 | `docker/apache-http.conf.template` | Redirect HTTP ke HTTPS |
 | `docker/apache-ssl.conf.template` | TLS dan security headers |
 | `docker/php.ini` | Hardening runtime dan pembatasan input |
@@ -296,6 +303,38 @@ Interpretasinya:
 2. ukuran request dibatasi,
 3. jumlah field input dibatasi,
 4. abuse melalui input yang terlalu besar dipersempit.
+
+### 10. Snort IDS dan ACL jaringan
+
+Tambahan dari catatan "Snort + ACL" diterapkan pada level jaringan container development:
+
+1. `snort` berjalan sebagai sidecar di `compose.dev.yaml`,
+2. Snort berbagi network namespace dengan container aplikasi sehingga dapat memonitor traffic menuju web server dan database,
+3. rule lokal mendeteksi ICMP/ping, akses HTTP/HTTPS, percobaan akses MySQL `3306`, dan percobaan akses SSH `22`,
+4. ACL `iptables` membuka HTTP `8080` dan HTTPS `8443`,
+5. ACL menolak akses langsung ke MySQL dan SSH dari luar container,
+6. MySQL tetap bind ke `127.0.0.1` sehingga hanya aplikasi di dalam container yang memakainya.
+
+Cuplikan rule lokal Snort:
+
+```conf
+alert icmp any any -> $HOME_NET any (msg:"AU7H ICMP ping attempt to protected server"; itype:8; sid:1000001; rev:2; classtype:icmp-event;)
+alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"; sid:1000003; rev:3; classtype:attempted-recon;)
+```
+
+Cuplikan ACL:
+
+```sh
+iptables -w -A "${ACL_CHAIN}" -p tcp -s "${ACL_WEB_CIDR}" -m multiport --dports "${APP_PORT_HTTP},${APP_PORT_HTTPS}" -j ACCEPT
+iptables -w -A "${ACL_CHAIN}" -p tcp --dport "${MYSQL_PORT}" -j REJECT
+iptables -w -A "${ACL_CHAIN}" -p tcp --dport 22 -j REJECT
+```
+
+Maknanya:
+
+1. user tetap bisa membuka aplikasi lewat browser,
+2. database tidak terbuka langsung ke user,
+3. percobaan ping atau akses port sensitif tetap tercatat oleh Snort untuk kebutuhan demo IDS.
 
 ## Alur Demo yang Menjawab Penilaian Minimum
 

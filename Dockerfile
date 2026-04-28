@@ -17,6 +17,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     apache2 \
     gettext-base \
+    iptables \
     libapache2-mod-php8.4 \
     mysql-server \
     openssl \
@@ -44,6 +45,7 @@ COPY docker/php.ini /etc/php/8.4/apache2/conf.d/90-au7h-security.ini
 COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
 COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
 COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
+COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
 COPY config /var/www/html/config
 COPY public /var/www/html/public
 COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
@@ -53,6 +55,7 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
 RUN mkdir -p /var/www/data /var/www/certs /var/run/mysqld /var/lib/mysql \
   && a2enconf zzz-au7h-global \
   && chmod +x /usr/local/bin/docker-entrypoint-custom.sh \
+  && chmod +x /usr/local/bin/au7h-apply-acl.sh \
   && chown -R www-data:www-data /var/www \
   && chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
 

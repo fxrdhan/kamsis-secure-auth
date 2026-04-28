@@ -1,0 +1,2 @@
+include $RULE_PATH/local.rules
+include $RULE_PATH/community.rules

@@ -5,14 +5,19 @@ services:
     image: au7h
     build:
       context: .
+    cap_add:
+      - NET_ADMIN
     ports:
       - "${HOST_HTTP_PORT:-10080}:8080"
       - "${HOST_HTTPS_PORT:-10443}:8443"
-      - "${HOST_MYSQL_PORT:-13306}:3306"
     environment:
       PUBLIC_HTTPS_PORT: ${HOST_HTTPS_PORT:-10443}
-      MYSQL_BIND_ADDRESS: 0.0.0.0
-      MYSQL_ALLOW_REMOTE: "1"
+      MYSQL_BIND_ADDRESS: 127.0.0.1
+      MYSQL_ALLOW_REMOTE: "0"
+      ACL_ENABLED: "1"
+      ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
+      ACL_DB_CIDR: ${ACL_DB_CIDR:-}
+      ACL_ALLOW_ICMP: ${ACL_ALLOW_ICMP:-0}
     volumes:
       - ./config:/var/www/html/config
       - ./public:/var/www/html/public
@@ -21,6 +26,39 @@ services:
       - au7h-data:/var/www/data
       - au7h-mysql:/var/lib/mysql
 
+  snort:
+    image: ciscotalos/snort3:latest
+    depends_on:
+      - app
+    network_mode: service:app
+    entrypoint:
+      - /home/snorty/snort3/bin/snort
+    user: root
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./security/snort/snort.lua:/home/snorty/snort3/etc/snort/au7h.lua:ro
+      - ./security/snort/rules:/home/snorty/snort3/etc/rules/au7h:ro
+      - snort-logs:/var/log/snort
+    environment:
+      SNORT_HOME_NET: ${SNORT_HOME_NET:-any}
+      SNORT_EXTERNAL_NET: ${SNORT_EXTERNAL_NET:-any}
+    command:
+      - -i
+      - ${SNORT_INTERFACE:-eth0}
+      - -i
+      - lo
+      - -k
+      - none
+      - -c
+      - /home/snorty/snort3/etc/snort/au7h.lua
+      - -A
+      - alert_fast
+      - -l
+      - /var/log/snort
+
 volumes:
   au7h-data:
   au7h-mysql:
+  snort-logs:

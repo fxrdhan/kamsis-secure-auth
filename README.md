@@ -51,6 +51,7 @@ bun run dev
 `bun run dev` akan:
 
 - menyalakan container via `docker compose`
+- menyalakan Snort IDS sidecar untuk memonitor traffic ke container aplikasi
 - menjalankan watcher Tailwind
 - menampilkan log aplikasi
 
@@ -65,6 +66,10 @@ Script tambahan:
 - `bun run dev:watch`
 - `bun run dev:css`
 - `bun run dev:logs`
+- `bun run snort:logs`
+- `bun run snort:test-rules`
+- `bun run snort:update-rules`
+- `bun run acl:status`
 - `bun run dev:rebuild`
 - `bun run dev:stop`
 - `bun run build:css`
@@ -106,6 +111,8 @@ Catatan:
 ## Security
 
 - HTTPS aktif secara default
+- Snort IDS aktif di `compose.dev.yaml` dengan rule lokal untuk ICMP, HTTP/HTTPS, MySQL, dan SSH
+- ACL container aktif di development: port HTTP/HTTPS dibuka, port MySQL dan SSH diblokir dari luar container
 - CSRF token dan cookie session aman
 - session ID diregenerasi setelah login
 - password disimpan dengan `Argon2id` + pepper
@@ -115,4 +122,34 @@ Catatan:
   - login dibatasi `5` percobaan gagal / `15` menit per kombinasi username + IP
   - register dibatasi `3` percobaan gagal / `15` menit per IP
   - request yang melewati batas ditolak dengan status `429`
-- image default menjalankan MySQL pada `127.0.0.1`; profile development di `compose.dev.yaml` mempublish MySQL ke host pada `localhost:13306` untuk kebutuhan lokal
+- image default dan profile development menjalankan MySQL pada `127.0.0.1`; database hanya diakses aplikasi dari dalam container
+
+## Snort + ACL
+
+Konfigurasi tambahan sesuai catatan dosen ada di:
+
+- `security/snort/snort.lua`
+- `security/snort/rules/local.rules`
+- `security/snort/rules/community.rules`
+- `docker/acl.sh`
+
+Rule lokal Snort mendeteksi:
+
+- ICMP/ping ke server
+- akses HTTP/HTTPS ke web server
+- percobaan akses langsung ke port MySQL `3306`
+- percobaan akses SSH port `22`
+
+Perintah cek:
+
+```bash
+bun run snort:logs
+bun run snort:test-rules
+bun run acl:status
+```
+
+Untuk memperbarui rule komunitas Snort:
+
+```bash
+bun run snort:update-rules
+```

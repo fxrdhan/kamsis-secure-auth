@@ -304,6 +304,8 @@ Berikut kontrol keamanan yang terlihat langsung dari kode dan konfigurasi:
   - `Permissions-Policy`
   - `Strict-Transport-Security` untuk host non-localhost
 - **MySQL bind ke `127.0.0.1`** di dalam container
+- **ACL container** lewat `iptables`: HTTP/HTTPS boleh masuk, MySQL dan SSH ditolak dari luar container
+- **Snort IDS** sebagai sidecar di Compose dengan rule lokal untuk ICMP, HTTP/HTTPS, MySQL, dan SSH
 - **PHP hardening** di `docker/php.ini`, termasuk menonaktifkan upload dan membatasi input
 
 ## 10. Konfigurasi Environment Penting
@@ -330,6 +332,10 @@ Konfigurasi repo ini datang dari dua lapis:
 | `MYSQL_DATABASE` | Database bootstrap MySQL | `au7h_auth` |
 | `MYSQL_APP_USER` | User aplikasi di MySQL | `au7h_app` |
 | `MYSQL_PORT` | Port MySQL internal | `3306` |
+| `ACL_ENABLED` | Mengaktifkan ACL `iptables` di container | `0` runtime, `1` di `compose.dev.yaml` |
+| `ACL_WEB_CIDR` | CIDR yang boleh mengakses HTTP/HTTPS | `0.0.0.0/0` |
+| `ACL_DB_CIDR` | CIDR khusus yang boleh mengakses MySQL langsung | kosong, berarti tidak ada akses DB eksternal |
+| `ACL_ALLOW_ICMP` | Mengizinkan ping masuk jika perlu demo khusus | `0` |
 
 Catatan:
 
@@ -377,8 +383,18 @@ bun run dev
 Perintah `bun run dev` akan:
 
 - membangun dan menyalakan container development
+- menyalakan Snort IDS sidecar
 - menjalankan Tailwind watcher
 - menampilkan log aplikasi secara live
+
+Perintah keamanan jaringan yang tersedia:
+
+```bash
+bun run snort:logs
+bun run snort:test-rules
+bun run snort:update-rules
+bun run acl:status
+```
 
 Endpoint default saat development:
 
