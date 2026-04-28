@@ -64,6 +64,10 @@ Dengan pendahuluan ini, bagian requirement pada section berikut tidak lagi dibac
 | Lindungi dari buffer overflow | Pilih runtime high-level, batasi ukuran input/request, hindari parsing biner, nonaktifkan upload |
 | Lindungi SQL injection | Prepared statement PDO + validasi input |
 | Lindungi XSS | Output encoding + CSP |
+| Tambahan Snort IDS | Snort 3 berjalan sebagai sidecar IDS dan membaca rule lokal/komunitas |
+| Tambahan ACL jaringan | `iptables` container membatasi traffic masuk: web diizinkan, MySQL/SSH/ICMP dibatasi |
+
+Catatan penting tentang istilah **satu container**: requirement inti satu container mengacu pada container aplikasi `app`, yaitu container yang memuat **Apache + PHP + MySQL + OpenSSL** dalam satu runtime. Service `snort` pada `compose.dev.yaml` adalah IDS sidecar tambahan untuk requirement jaringan, berbagi network namespace dengan `app` melalui `network_mode: service:app`. Sidecar ini tidak memisahkan database dari web server, sehingga requirement satu container web server + database tetap terpenuhi.
 
 ## 4. Urutan Kerja Wajib
 
@@ -3391,6 +3395,8 @@ Menjawab tambahan requirement jaringan: traffic aplikasi dipantau oleh Snort, ru
 
 Snort diposisikan sebagai IDS sidecar, bukan menggantikan Apache atau MySQL. ACL dipasang di container aplikasi agar browser tetap bisa mengakses HTTP/HTTPS, sementara port sensitif seperti MySQL dan SSH tidak terbuka langsung ke user.
 
+Bagian ini tidak mengubah keputusan satu container untuk aplikasi utama. Container `app` tetap menjadi tempat Apache, PHP, dan MySQL berjalan bersama. Snort dibuat sebagai sidecar karena IDS jaringan perlu proses dan image khusus, tetapi ia hanya menempel pada network namespace `app` untuk memantau traffic yang sama, bukan menjadi container database atau web server terpisah.
+
 ### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokumentasi resmi konfigurasi Snort 3, pemuatan rule `.rules`, sidecar network namespace di Compose, dan dokumentasi Docker terkait `iptables`.
@@ -3693,9 +3699,12 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 | Logout | Submit `/logout.php` dengan CSRF token dari halaman welcome | response `302 Found`, `Location: /`; akses ulang `/welcome.php` kembali redirect |
 | CSRF protection | Submit `POST /login.php` tanpa `csrf_token` | status `403` |
 | Privasi database | Query `SELECT username_lookup, username_encrypted, password_hash FROM users ORDER BY id DESC LIMIT 1` | username tampil sebagai HMAC 64 hex, username terenkripsi berbentuk payload `iv.tag.ciphertext`, password berbentuk hash `$argon2id$...` |
+| SQL injection | Payload username `' OR 1=1 --` pada form login | payload tidak membypass login; input ditolak sebagai credential tidak valid dan query auth tetap memakai prepared statement |
+| XSS | Payload username `<script>alert(1)</script>` pada form register | validasi username menolak karakter berbahaya; output dinamis tetap melewati `escape_html()` dan CSP aktif sebagai lapisan tambahan |
 | Rate limiting | Login gagal 6 kali beruntun untuk subject yang sama | percobaan 1-5 menghasilkan `302`, percobaan ke-6 menghasilkan `429` |
 | Snort rules | `bun run snort:test-rules` | Snort berhasil validasi konfigurasi, `644` rules loaded, `0 warnings` |
 | ACL container | `bun run acl:status` | chain `AU7H_INPUT` aktif; HTTP/HTTPS `ACCEPT`; MySQL `3306` dan SSH `22` `REJECT`; ICMP echo request `DROP` |
+| Batas satu container | Review `Dockerfile` dan `compose.dev.yaml` | container `app` memuat Apache/PHP/MySQL; `snort` adalah sidecar IDS, bukan pemisahan web/database |
 
 ## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
@@ -3722,6 +3731,8 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 3. CSP dipasang sebagai defense in depth, bukan pengganti output encoding.
 4. Password tidak dienkripsi karena referensi keamanan modern merekomendasikan hashing satu arah.
 5. Username tidak cukup di-hash karena landing page perlu menampilkan nilai asli setelah login.
+6. Snort berjalan sebagai sidecar IDS untuk kebutuhan monitoring jaringan; ini tidak mengubah fakta bahwa web server, aplikasi PHP, dan database MySQL tetap berada dalam satu container aplikasi.
+7. Sertifikat self-signed cukup untuk demo lokal dan pembuktian HTTPS, tetapi browser bisa tetap menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
 
 ## 12. Checklist Final Sebelum Presentasi
 
@@ -3744,11 +3755,15 @@ Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir te
 [x] lookup username via HMAC
 [x] prepared statement aktif
 [x] emulate prepares dimatikan
+[x] payload SQL injection tidak membypass login
 [x] CSP aktif
 [x] input validation aktif
+[x] payload XSS ditolak atau di-escape
 [x] rate limiting aktif
 [x] file upload dimatikan
 [x] ukuran POST dibatasi
+[x] batas satu container app vs Snort sidecar dijelaskan
+[x] sertifikat self-signed untuk demo lokal dijelaskan
 [x] Snort service aktif
 [x] au7h.rules memuat local.rules dan community.rules
 [x] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH

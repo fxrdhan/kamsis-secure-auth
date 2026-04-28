@@ -13,7 +13,9 @@ Dengan pendekatan ini, isi laporan tetap ringkas, relevan, dan mudah dipakai saa
 
 ## Ringkasan Sistem
 
-Proyek ini adalah aplikasi autentikasi berbasis **PHP + Apache + MySQL dalam satu container**. Aplikasi dapat diakses lewat browser, menyediakan form **register** dan **login**, lalu menampilkan:
+Proyek ini adalah aplikasi autentikasi berbasis **PHP + Apache + MySQL dalam satu container**. Yang dimaksud satu container adalah container aplikasi `app`, yaitu tempat Apache, PHP, MySQL, dan OpenSSL berjalan bersama. Service `snort` pada `compose.dev.yaml` adalah sidecar IDS tambahan untuk monitoring jaringan, bukan pemisahan web server atau database ke container lain.
+
+Aplikasi dapat diakses lewat browser, menyediakan form **register** dan **login**, lalu menampilkan:
 
 1. halaman welcome jika login berhasil,
 2. halaman "belum terdaftar" jika login gagal.
@@ -25,7 +27,8 @@ Selain flow utama tersebut, implementasi juga menutup requirement keamanan yang 
 3. privasi data di database,
 4. mitigasi buffer overflow,
 5. proteksi SQL injection,
-6. proteksi XSS.
+6. proteksi XSS,
+7. Snort IDS dan ACL jaringan.
 
 ## Pemetaan Requirement Dosen ke Implementasi
 
@@ -319,6 +322,8 @@ Tambahan dari catatan "Snort + ACL" diterapkan pada level jaringan container dev
 5. ACL menolak akses langsung ke MySQL dan SSH dari luar container,
 6. MySQL tetap bind ke `127.0.0.1` sehingga hanya aplikasi di dalam container yang memakainya.
 
+Catatan batas cakupan: sidecar Snort tidak mengubah pemenuhan requirement satu container untuk server dan database, karena Apache, PHP, dan MySQL tetap berjalan bersama di container `app`.
+
 Cuplikan rule lokal Snort:
 
 ```conf
@@ -365,10 +370,11 @@ curl -k -I https://localhost:10443
 
 ## Catatan Implementasi
 
-Ada dua catatan penting supaya penjelasan ke dosen tetap jujur dan jelas:
+Ada tiga catatan penting supaya penjelasan ke dosen tetap jujur dan jelas:
 
 1. penggunaan satu container adalah keputusan yang sengaja mengikuti requirement tugas, bukan pola deployment produksi yang paling ideal,
-2. halaman gagal login dibuat khusus ke "belum terdaftar" karena itu yang diminta di soal, walaupun pada sistem produksi biasanya pesan gagal dibuat lebih generik.
+2. Snort berjalan sebagai sidecar IDS untuk kebutuhan tambahan monitoring jaringan, bukan sebagai pemisahan web server atau database,
+3. halaman gagal login dibuat khusus ke "belum terdaftar" karena itu yang diminta di soal, walaupun pada sistem produksi biasanya pesan gagal dibuat lebih generik.
 
 ## Kesimpulan
 
@@ -382,6 +388,7 @@ Secara cakupan, proyek ini sudah mengimplementasikan inti requirement dosen:
 6. HTTPS aktif,
 7. integritas form dilindungi,
 8. data akun di database tidak disimpan dalam bentuk asli,
-9. ada mitigasi untuk buffer overflow, SQL injection, dan XSS.
+9. ada mitigasi untuk buffer overflow, SQL injection, dan XSS,
+10. Snort IDS dan ACL jaringan sudah dicakup sebagai tambahan requirement jaringan.
 
 Jadi isi laporan ini sekarang berfungsi sebagai **dokumen cakupan implementasi requirement**, bukan sebagai dump seluruh source code.
