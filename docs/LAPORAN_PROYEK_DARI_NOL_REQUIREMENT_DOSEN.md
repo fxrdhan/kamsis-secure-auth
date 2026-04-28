@@ -53,7 +53,7 @@ Dengan pendahuluan ini, bagian requirement pada section berikut tidak lagi dibac
 | --- | --- |
 | Satu container berisi server dan database | Satu image/container memuat Apache, PHP, MySQL, OpenSSL |
 | Web server bisa diakses via browser | Port HTTP/HTTPS dipublish ke host |
-| Ada form login dan register | Halaman awal menyediakan dua form |
+| Ada form login dan register | Halaman awal menyediakan mode register dan login |
 | Login sukses masuk landing page selamat datang + username | Session login aktif, username ditampilkan |
 | Login gagal masuk landing page belum terdaftar | Redirect ke halaman khusus gagal login |
 | Minimal harus bisa login | Flow register -> login -> welcome lulus uji |
@@ -3738,7 +3738,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 | Login sukses ke welcome + username | Tahap 13, 14 |
 | Login gagal ke belum terdaftar | Tahap 13, 14 |
 | HTTPS | Tahap 4 |
-| Integritas form | Tahap 9, 13, 15 |
+| Integritas form | Tahap 9, 12, 13, 15 |
 | Privasi data di database | Tahap 8, 9 |
 | Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 dan 6.4 |
 | SQL injection | Tahap 10 |
