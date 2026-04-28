@@ -5,8 +5,8 @@ Dokumen ini merangkum status audit kutipan pada [LAPORAN_PROYEK_DARI_NOL_REQUIRE
 Scope saat ini:
 - Total `Referensi terkait:` di laporan: `79`
 - Total referensi unik: `66`
-- Sudah diaudit/cocokkan dengan file scrape lokal: `50`
-- Belum diaudit/cocokkan dengan file scrape lokal: `16`
+- Sudah diaudit/cocokkan dengan file scrape lokal: `52`
+- Belum diaudit/cocokkan dengan file scrape lokal: `14`
 
 ## Sudah Diaudit Dengan Scrape
 
@@ -16,6 +16,8 @@ Scope saat ini:
 | OWASP Password Storage Cheat Sheet | 153, 2210 | `/home/fxrdhan/Downloads/cheatsheetseries.owasp.org_cheatsheets_Password_Storage_Cheat_Sheet.html.2026-04-17T18_25_29.830Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menegaskan bahwa password harus di-hash, bukan dienkripsi, lalu menghubungkan pemilihan Argon2id dan pemakaian `pepper_secret` dengan rekomendasi hardening penyimpanan password. |
 | OWASP SQL Injection Prevention Cheat Sheet | 187, 2323 | `/home/fxrdhan/Downloads/cheatsheetseries.owasp.org_cheatsheets_SQL_Injection_Prevention_Cheat_Sheet.html.2026-04-17T18_26_03.403Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menegaskan prepared statement dengan parameterized query sebagai pertahanan utama, sehingga alasan penggunaan `PDO::prepare()` dan binding parameter di lapisan database menjadi lebih defensible. |
 | OWASP XSS Prevention Cheat Sheet | 200, 1828 | `/home/fxrdhan/Downloads/cheatsheetseries.owasp.org_cheatsheets_Cross_Site_Scripting_Prevention_Cheat_Sheet.html.2026-04-17T17_58_14.179Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menghubungkan output encoding dan kewajiban melewatkan setiap variabel UI ke fungsi encoding, sesuai helper `escape_html()` di aplikasi. |
+| OWASP Input Validation Cheat Sheet | 172, 1977 | `/home/fxrdhan/Downloads/cheatsheetseries.owasp.org_cheatsheets_Input_Validation_Cheat_Sheet.html.2026-04-28T06_04_50.155Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sudah disesuaikan agar verbatim dengan scrape: tujuan input validation, validasi sedini mungkin, semua sumber tidak tepercaya, minimum/maximum length, allowlist, dan kewajiban server-side validation sebelum data diproses aplikasi. |
+| Docker Docs - Building best practices | 111 | `/home/fxrdhan/Downloads/docs.docker.com_build_building_best-practices_.2026-04-28T05_53_29.771Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan menegaskan manfaat multi-stage build untuk memisahkan proses build dan output final, serta bagian `Decouple applications` dipakai sebagai konteks bahwa satu concern per container adalah best practice umum yang sengaja dikompromikan karena requirement tugas meminta satu container. |
 | Docker Docs - Dockerfile overview | 497 | `/home/fxrdhan/Downloads/docs.docker.com_build_concepts_dockerfile_.2026-04-17T19_09_54.388Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan Dockerfile sebagai input inti build image dan mengaitkannya dengan automated multi-layer build, sesuai keputusan membuat satu image yang merakit seluruh runtime proyek. |
 | Docker CLI - docker image build | 514 | `/home/fxrdhan/Downloads/docs.docker.com_reference_cli_docker_image_build_.2026-04-17T19_22_16.937Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menjelaskan deskripsi perintah, alias `docker build`, serta arti build context sebagai argumen posisi, sehingga hubungan antara Dockerfile proyek dan proses build image lebih jelas. |
 | Dockerfile reference - FROM | 532 | `/home/fxrdhan/Downloads/docs.docker.com_reference_dockerfile_#from.2026-04-17T19_10_31.816Z.md` | Sudah dicocokkan ke scrape lokal; kutipan di laporan sekarang menegaskan fungsi `FROM` sebagai penentu base image dan aturan bahwa Dockerfile valid harus dimulai dari `FROM`, sesuai `FROM ubuntu:25.10` pada image proyek. |
@@ -67,8 +69,6 @@ Scope saat ini:
 
 | Referensi | Line di laporan | URL |
 | --- | --- | --- |
-| Docker Docs - Building best practices | 111 | https://docs.docker.com/build/building/best-practices/ |
-| OWASP Input Validation Cheat Sheet | 172, 1977 | https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html |
 | MITRE CWE-122 | 215 | https://cwe.mitre.org/data/definitions/122.html |
 | MITRE CWE-125 | 222 | https://cwe.mitre.org/data/definitions/125.html |
 | Apache HTTP Server - Mapping URLs to Filesystem Locations | 421 | https://httpd.apache.org/docs/current/urlmapping.html |

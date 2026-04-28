@@ -171,14 +171,18 @@ Validasi harus dilakukan sedini mungkin dan tetap berada di server-side.
 
 Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
 
-> Input validation is performed to ensure only properly formed data is entering the workflow in an information system.
+> Input validation is performed to ensure only properly formed data is entering the workflow in an information system, preventing malformed data from persisting in the database and triggering malfunction of various downstream components.
 > Input validation should happen as early as possible in the data flow, preferably as soon as the data is received from the external party.
-> Data from all potentially untrusted sources should be subject to input validation.
+> Data from all potentially untrusted sources should be subject to input validation, including not only Internet-facing web clients but also backend feeds over extranets, from [suppliers, partners, vendors or regulators](https://badcyber.com/several-polish-banks-hacked-information-stolen-by-unknown-attackers/), each of which may be compromised on their own and start sending malformed data.
+> Allowlist validation is appropriate for all input fields provided by the user.
+> Input validation **must** be implemented on the server-side before any data is processed by an application’s functions, as any JavaScript-based input validation performed on the client-side can be circumvented by an attacker who disables JavaScript or uses a web proxy.
 >
 > **Translated:**
-> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi.
+> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi, mencegah data yang rusak tersimpan di database dan memicu gangguan pada komponen berikutnya.
 > Validasi input sebaiknya dilakukan sedini mungkin dalam alur data, idealnya segera setelah data diterima dari pihak eksternal.
-> Data dari semua sumber yang berpotensi tidak tepercaya harus dikenai validasi input.
+> Semua data dari sumber yang berpotensi tidak tepercaya harus divalidasi, termasuk klien web yang menghadap internet maupun feed backend dari pihak eksternal.
+> Validasi allowlist cocok untuk semua field input dari user.
+> Validasi input harus diterapkan di sisi server sebelum data diproses oleh fungsi aplikasi.
 
 #### OWASP SQL Injection Prevention Cheat Sheet
 
@@ -1976,12 +1980,20 @@ Referensi yang dicari: `OWASP Input Validation Cheat Sheet`.
 
 Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
 
-> Input validation is performed to ensure only properly formed data is entering the workflow in an information system.
-> Input validation should happen as early as possible in the data flow.
+> Input validation is performed to ensure only properly formed data is entering the workflow in an information system, preventing malformed data from persisting in the database and triggering malfunction of various downstream components.
+> Input validation should happen as early as possible in the data flow, preferably as soon as the data is received from the external party.
+> Input validation can be implemented using any programming technique that allows effective enforcement of syntactic and semantic correctness, for example:
+> Minimum and maximum value range check for numerical parameters and dates, minimum and maximum length check for strings.
+> Allowlist validation is appropriate for all input fields provided by the user.
+> Input validation **must** be implemented on the server-side before any data is processed by an application’s functions, as any JavaScript-based input validation performed on the client-side can be circumvented by an attacker who disables JavaScript or uses a web proxy.
 >
 > **Translated:**
-> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi.
-> Validasi input sebaiknya dilakukan sedini mungkin dalam alur data.
+> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi, mencegah data yang rusak tersimpan di database dan memicu gangguan pada komponen berikutnya.
+> Validasi input sebaiknya dilakukan sedini mungkin dalam alur data, idealnya segera setelah data diterima dari pihak eksternal.
+> Validasi input dapat diterapkan dengan teknik apa pun yang menegakkan kebenaran sintaksis dan semantik secara efektif.
+> Untuk string, lakukan pemeriksaan panjang minimum dan maksimum.
+> Validasi allowlist cocok untuk semua field input dari user.
+> Validasi input harus diterapkan di sisi server sebelum data diproses oleh fungsi aplikasi.
 
 Langkah implementasi: validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
 
