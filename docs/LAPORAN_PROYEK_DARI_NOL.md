@@ -58,32 +58,6 @@ Posisi masalah untuk tugas ini adalah:
 1. target utama adalah **demo aplikasi login-register yang benar-benar berjalan**,
 2. pengujian dilakukan lewat browser dan konfigurasi container,
 3. diminta **satu container** untuk web server dan database,
-4. requirement keamanan yang diminta bersifat **aplikatif dan dapat dibuktikan**, bukan sekadar disebutkan,
-5. solusi yang dipilih harus **mudah dijelaskan ulang** saat ditanya alasan teknisnya.
-
-Karena itu, ukuran keputusan yang dipakai bukan “paling modern” atau “paling enterprise”, melainkan:
-
-1. paling selaras dengan requirement tugas,
-2. paling kecil jumlah komponennya,
-3. paling jelas hubungan antara ancaman dan kontrolnya,
-4. paling mudah diuji saat demo,
-5. paling mudah dipertanggungjawabkan saat ditanya “kenapa memilih ini, bukan alternatif lain”.
-
-Tabel berikut menyiapkan jawaban kritis sebelum dokumen masuk ke requirement teknis yang lebih rinci.
-
-| Pertanyaan kritis yang mungkin muncul | Jawaban dan justifikasi teknis |
-| --- | --- |
-| Kenapa Apache + PHP native + MySQL, bukan Node, Laravel, atau stack lain? | Karena kombinasi ini paling lurus untuk tugas browser-based berbasis form. Apache kuat untuk redirect HTTP ke HTTPS, TLS, dan security headers. PHP native membuat hubungan requirement -> kode -> kontrol keamanan tetap terlihat jelas tanpa tertutup abstraksi framework besar. MySQL dipilih karena umum, mudah diuji, dan langsung relevan dengan requirement penyimpanan akun. |
-| Kenapa tidak memakai framework penuh agar lebih cepat? | Framework memang bisa mempercepat fitur, tetapi tugas ini menuntut transparansi kontrol keamanan. Jika terlalu banyak abstraksi, penjelasan saat evaluasi menjadi lebih sulit karena banyak mekanisme berjalan “di balik layar”. Untuk tugas akademik seperti ini, transparansi lebih bernilai daripada akselerasi fitur. |
-| Kenapa autentikasi berbasis session, bukan JWT? | Karena aplikasi diuji lewat browser dengan form login biasa, bukan API stateless. Session cookie lebih natural untuk skenario ini, lebih mudah dipadukan dengan CSRF protection, dan logout server-side menjadi sederhana. JWT justru menambah kompleksitas yang tidak diminta oleh requirement. |
-| Kenapa password di-hash, bukan dienkripsi? | Karena tujuan requirement privasi database adalah mencegah attacker membaca password asli saat database bocor. Hash satu arah memenuhi tujuan itu. Enkripsi justru menyisakan kemungkinan pemulihan plaintext jika key ikut bocor, sehingga tidak cocok sebagai mekanisme utama penyimpanan password. |
-| Kenapa username tidak langsung disimpan plaintext? | Karena requirement privasi juga menyentuh data akun. Namun landing page sukses tetap harus menampilkan username asli. Solusi yang proporsional adalah memisahkan fungsi pencarian dan fungsi tampilan: `username_lookup` untuk pencarian stabil, `username_encrypted` untuk pemulihan tampilan asli. |
-| Kenapa tetap perlu validasi input kalau sudah memakai prepared statement? | Karena keduanya menutup risiko yang berbeda. Prepared statement adalah pertahanan utama terhadap SQL injection. Validasi input berguna untuk membatasi format, panjang, dan kualitas data sejak awal. Kombinasi keduanya membuat jalur input lebih rapih dan lebih aman. |
-| Kenapa XSS tidak cukup ditangani hanya dengan CSP? | Karena CSP adalah defense in depth, bukan pelindung utama. Pertahanan utama tetap output encoding yang konsisten pada setiap data dinamis. CSP dipasang untuk menambah hambatan jika ada celah yang lolos. |
-| Kenapa requirement buffer overflow diterjemahkan lewat limit input dan hardening runtime? | Karena logika aplikasi ditulis di PHP userland, bukan manipulasi buffer manual di C. Dalam konteks tugas ini, interpretasi yang jujur dan realistis adalah memilih runtime high-level, membatasi ukuran input, mematikan upload, dan mengurangi permukaan parsing. Itu lebih dapat dipertanggungjawabkan daripada membuat klaim proteksi yang tidak benar-benar dibangun. |
-| Kenapa sertifikat self-signed tetap dipakai? | Karena target deploy untuk tugas ini adalah demo lokal. Self-signed cukup untuk membuktikan HTTPS aktif dan alur redirect berjalan. Dokumen tetap harus menyatakan bahwa untuk host publik, sertifikat tepercaya lebih tepat. |
-
-Dengan pendahuluan ini, bagian requirement pada section berikut tidak lagi dibaca sebagai daftar pilihan mendadak, tetapi sebagai turunan langsung dari batas tugas, ancaman yang ingin ditutup, dan kebutuhan presentasi yang harus bisa dijelaskan ulang secara teknis.
 
 ## 2. Requirement Tugas Yang Diterjemahkan Menjadi Target Teknis
 
@@ -464,6 +438,10 @@ Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man
 
 Keputusan ini bukan keputusan “paling modern”, tetapi keputusan yang paling tepat untuk tugas ini.
 
+Kombinasi Apache + PHP native + MySQL dipilih karena paling lurus untuk tugas browser-based berbasis form. Apache kuat untuk redirect HTTP ke HTTPS, TLS, dan security headers. PHP native membuat hubungan requirement -> kode -> kontrol keamanan tetap terlihat jelas tanpa tertutup abstraksi framework besar. MySQL dipilih karena umum, mudah diuji, dan langsung relevan dengan requirement penyimpanan akun.
+
+Framework penuh seperti Laravel atau stack Node bisa mempercepat pembuatan fitur, tetapi pada tugas ini transparansi lebih penting daripada akselerasi. Jika terlalu banyak mekanisme keamanan berjalan di balik abstraksi framework, penjelasan saat evaluasi menjadi lebih sulit karena hubungan antara ancaman, referensi, dan potongan kode tidak lagi terlihat langsung.
+
 | Opsi | Kelebihan | Kekurangan | Keputusan |
 | --- | --- | --- | --- |
 | Nginx + PHP-FPM + MySQL | arsitektur umum produksi | butuh lebih banyak proses dan konfigurasi | ditolak untuk tugas minimal karena kompleksitas naik |
@@ -480,9 +458,13 @@ Form login web biasa yang ditest via browser lebih cocok memakai session karena:
 3. logout server-side sederhana,
 4. requirement tugas tidak butuh API stateless.
 
+JWT tidak dipakai karena aplikasi ini bukan API stateless. Memaksakan JWT justru menambah isu baru seperti penyimpanan token di browser, invalidasi token saat logout, dan kebutuhan mekanisme revocation yang tidak diminta oleh requirement. Session cookie lebih natural untuk form login biasa dan lebih mudah dijelaskan pada demo browser.
+
 ### 5.3. Mengapa password di-hash, tetapi username dienkripsi + diindeks dengan HMAC
 
 Requirement landing page meminta username asli tetap bisa ditampilkan setelah login. Itu membuat satu hash saja tidak cukup.
+
+Password tidak dienkripsi dua arah karena tujuan requirement privasi database adalah mencegah attacker membaca password asli ketika database bocor. Hash satu arah memenuhi tujuan itu, sedangkan enkripsi password masih menyisakan kemungkinan plaintext dipulihkan jika key ikut bocor. Karena itu password memakai hash Argon2id, bukan ciphertext.
 
 Keputusan yang tepat:
 
@@ -490,6 +472,8 @@ Keputusan yang tepat:
 2. username disimpan dalam dua bentuk:
    - `username_lookup`: HMAC-SHA256 dari username yang sudah dinormalisasi,
    - `username_encrypted`: ciphertext AES-256-GCM agar username asli bisa ditampilkan lagi.
+
+Username tidak disimpan langsung sebagai plaintext karena requirement privasi juga menyentuh data akun, tetapi username asli tetap perlu ditampilkan di landing page sukses. Solusi yang proporsional adalah memisahkan fungsi pencarian dan fungsi tampilan: `username_lookup` untuk pencarian stabil tanpa plaintext, dan `username_encrypted` untuk pemulihan tampilan asli setelah login valid.
 
 Alasan:
 
@@ -682,6 +666,8 @@ Membuat satu image yang memuat Apache, PHP, MySQL, dan OpenSSL.
 #### Analisis alur
 
 Tugas memperbolehkan satu container untuk server dan database. Karena itu, image harus langsung memasang semua komponen inti. Pemilihan Apache mengurangi kompleksitas dibanding Nginx + PHP-FPM.
+
+Stack ini sengaja dibuat kecil dan eksplisit. Apache menangani akses browser, redirect, TLS, dan security headers; PHP native menangani form register-login tanpa framework besar; MySQL menangani penyimpanan akun yang mudah diinspeksi saat demo. Dengan begitu, evaluator bisa mengikuti alur dari requirement ke Dockerfile, konfigurasi Apache, kode PHP, lalu isi database tanpa harus membuka lapisan framework yang tidak menjadi fokus tugas.
 
 #### Jejak referensi sebelum implementasi
 
@@ -1029,6 +1015,8 @@ Membuat container bisa menyala dari nol tanpa setup manual tambahan.
 #### Analisis alur
 
 Tanpa entrypoint, container satu-image akan sulit menghidupkan MySQL lebih dulu, menyiapkan secret runtime, merender template Apache, lalu menyalakan Apache. Entry point menjadi pusat orkestrasi internal container.
+
+Sertifikat self-signed dibuat di tahap ini karena target deploy laporan adalah demo lokal. Tujuannya bukan mengklaim trust publik seperti sertifikat CA, tetapi membuktikan bahwa HTTPS aktif, Apache memakai key/certificate, dan redirect HTTP ke HTTPS benar-benar berjalan. Jika aplikasi dipindahkan ke host publik, sertifikat tepercaya tetap menjadi pilihan yang benar.
 
 #### Jejak referensi sebelum implementasi
 
@@ -1455,6 +1443,8 @@ Memberi perlindungan baseline terhadap XSS, sniffing, clickjacking, dan downgrad
 
 OWASP menekankan bahwa CSP bukan pertahanan utama XSS, tetapi tetap sangat bernilai sebagai defense in depth. Karena itu, encoding output tetap wajib di level PHP, lalu dilengkapi header di Apache.
 
+CSP tidak diperlakukan sebagai pengganti escaping. Pertahanan utama XSS tetap output encoding konsisten pada setiap data dinamis yang masuk ke HTML, sedangkan CSP dipakai sebagai pagar tambahan jika suatu saat ada celah rendering yang lolos dari layer aplikasi.
+
 #### Jejak referensi sebelum implementasi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi identitas server Apache, konfigurasi header Apache, dan deskripsi fungsi setiap response header keamanan yang akan dipasang.
@@ -1729,6 +1719,8 @@ Membatasi permukaan serangan pada interpreter.
 #### Analisis alur
 
 Inilah bagian yang paling dekat dengan requirement “buffer overflow” pada level tugas. Logika bisnis memang ada di PHP userland, tetapi pembatasan ukuran input dan menonaktifkan fitur yang tidak dipakai tetap perlu agar request berbahaya tidak melebar ke komponen yang tidak relevan.
+
+Requirement buffer overflow tidak dibesar-besarkan menjadi klaim bahwa Apache, PHP, atau MySQL kebal terhadap bug native. Interpretasi yang lebih jujur adalah memilih runtime high-level untuk kode aplikasi, membatasi ukuran input/request, mematikan upload, dan mengurangi permukaan parsing yang tidak dibutuhkan oleh form login-register.
 
 #### Jejak referensi sebelum implementasi
 
@@ -2171,6 +2163,8 @@ Menyatukan validasi input, CSRF, hashing password, enkripsi username, escaping o
 
 Bagian ini adalah jantung keamanan aplikasi. Jika helper ini rapi, endpoint publik tinggal merangkai alur tanpa mengulang logika sensitif.
 
+Validasi input, output encoding, CSRF, hashing, dan enkripsi username sengaja dipisah sebagai helper karena masing-masing menutup risiko yang berbeda. Prepared statement tidak membuat validasi input menjadi tidak perlu, dan CSP tidak membuat output encoding boleh dilewati. Kombinasi kontrol ini membuat jalur input dan output tetap kecil, eksplisit, dan mudah diuji.
+
 #### Jejak referensi sebelum implementasi
 
 Tahap ini adalah titik paling jelas untuk pola: requirement keamanan -> cari referensi -> baca bagian yang relevan -> tempel kutipan -> implementasi helper. Karena tiap helper menutup ancaman yang berbeda, bukti referensi ditempel per subbagian agar alurnya tidak putus.
@@ -2180,6 +2174,8 @@ Tahap ini adalah titik paling jelas untuk pola: requirement keamanan -> cari ref
 **Langkah 1:**
 
 - Output encoding.
+
+Output encoding ditempatkan sebagai pertahanan utama XSS di level aplikasi. CSP sudah dipasang di Apache pada Tahap 5, tetapi tugas encoding tetap berada di view karena hanya layer aplikasi yang tahu nilai mana yang berasal dari data dinamis.
 
 Referensi yang dicari: `OWASP XSS Prevention Cheat Sheet` dan PHP `htmlspecialchars()`.
 
@@ -2333,6 +2329,8 @@ function verify_csrf_or_fail(?string $submittedToken): void
 **Langkah 3:**
 
 - Validasi username dan password.
+
+Validasi tetap diperlukan walaupun query database sudah memakai prepared statement. Prepared statement menutup jalur SQL injection, sedangkan validasi membatasi format, panjang, dan kualitas data sebelum data masuk ke helper auth, query, session, atau tampilan.
 
 Referensi yang dicari: `OWASP Input Validation Cheat Sheet`.
 
@@ -2605,6 +2603,8 @@ Blok ini memastikan hasil dekripsi valid. Jika tag autentikasi gagal atau data r
 
 - Privasi password.
 
+Password diperlakukan sebagai secret yang tidak boleh bisa dipulihkan kembali dari database. Karena itu mekanismenya adalah hashing satu arah, bukan enkripsi dua arah. Enkripsi cocok untuk username karena username perlu ditampilkan kembali, tetapi tidak cocok sebagai mekanisme utama penyimpanan password.
+
 Referensi yang dicari: `OWASP Password Storage Cheat Sheet`, PHP `password_hash()`, PHP `password_verify()`, dan `PHP Password Hashing FAQ`.
 
 Referensi terkait: [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
@@ -2715,6 +2715,8 @@ Menutup celah SQL injection dan memastikan akses data konsisten.
 #### Analisis alur
 
 OWASP menempatkan parameterized query sebagai pertahanan utama. Karena itu, seluruh operasi `SELECT`, `INSERT`, `UPDATE`, dan `DELETE` harus lewat prepared statement.
+
+Prepared statement adalah kontrol utama terhadap SQL injection, tetapi bukan pengganti validasi input. Di dokumen ini keduanya sengaja dipasang berlapis: validasi membatasi bentuk data sejak awal, sedangkan prepared statement memastikan data yang lolos tetap masuk SQL sebagai parameter, bukan sebagai bagian dari struktur query.
 
 #### Jejak referensi sebelum implementasi
 
