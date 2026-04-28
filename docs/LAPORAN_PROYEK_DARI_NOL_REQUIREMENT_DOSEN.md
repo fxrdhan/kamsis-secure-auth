@@ -229,7 +229,20 @@ Referensi terkait: [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.ht
 
 Referensi terkait: [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html)
 
+> The product reads data past the end, or before the beginning, of the intended buffer.
+> Implementation: Strategy: _Input Validation_
+> Assume all input is malicious. Use an "accept known good" input validation strategy, i.e., use a list of acceptable inputs that strictly conform to specifications.
 > To reduce the likelihood of introducing an out-of-bounds read, ensure that you validate and ensure correct calculations for any length argument, buffer size calculation, or offset.
+> Architecture and Design: Strategy: _Language Selection_
+> Use a language that provides appropriate memory abstractions.
+>
+> **Translated:**
+> Produk membaca data melewati akhir, atau sebelum awal, dari buffer yang dimaksud.
+> Implementasi: Strategi: _Input Validation_
+> Anggap semua input berbahaya. Gunakan strategi validasi input "accept known good", yaitu memakai daftar input yang dapat diterima dan sesuai secara ketat dengan spesifikasi.
+> Untuk mengurangi kemungkinan terjadinya out-of-bounds read, pastikan Anda memvalidasi dan menghitung dengan benar setiap argumen panjang, perhitungan ukuran buffer, atau offset.
+> Arsitektur dan desain: Strategi: _Language Selection_
+> Gunakan bahasa yang menyediakan abstraksi memori yang sesuai.
 
 #### Docker Recipes - Snort 3 Docker Compose
 
@@ -433,12 +446,14 @@ Referensi terkait: [Apache HTTP Server - Mapping URLs to Filesystem Locations](h
 > **Translated:**
 > Saat menentukan file apa yang harus dilayani untuk sebuah request, perilaku default `httpd` adalah mengambil URL path request lalu menambahkannya ke akhir `DocumentRoot` yang ditentukan di file konfigurasi. Karena itu, file dan direktori di bawah `DocumentRoot` membentuk pohon dokumen dasar yang akan terlihat dari web.
 
-Referensi terkait: [Symfony Docs - The Front Controller](https://symfony.com/doc/current/create_framework/front_controller.html)
+Referensi terkait: [Martin Fowler - Front Controller](https://martinfowler.com/eaaCatalog/frontController.html)
 
-> Now, configure your web server root directory to point to `web/` and all other files will no longer be accessible from the client.
+> A controller that handles all requests for a Web site.
+> The Front Controller consolidates all request handling by channeling requests through a single handler object.
 >
 > **Translated:**
-> Sekarang arahkan root directory web server ke `web/`, maka semua file lain tidak lagi bisa diakses oleh client.
+> Controller yang menangani semua request untuk sebuah situs web.
+> Front Controller mengonsolidasikan seluruh penanganan request dengan mengalirkan request melalui satu objek handler.
 
 Referensi terkait: [Microsoft Learn - Program organization](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/program-structure/program-organization)
 
@@ -826,11 +841,17 @@ Referensi terkait: [MySQL - GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant
 Referensi terkait: [MySQL - mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html)
 
 > [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) is a client for performing administrative operations.
-> `ping`: Check whether the server is available.
+> Invoke [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) like this:
+> `mysqladmin [options] command [command-arg] [command [command-arg]] ...`
+> `ping`: Check whether the server is available. The return status from [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) is 0 if the server is running, 1 if it is not.
+> `shutdown`: Stop the server.
 >
 > **Translated:**
 > [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) adalah client untuk melakukan operasi administratif.
-> `ping`: memeriksa apakah server tersedia.
+> Panggil [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) dengan format:
+> `mysqladmin [options] command [command-arg] [command [command-arg]] ...`
+> `ping`: memeriksa apakah server tersedia. Status return dari [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) adalah 0 jika server berjalan, 1 jika tidak.
+> `shutdown`: menghentikan server.
 
 Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/master/man1/openssl-req/)
 
@@ -3167,10 +3188,14 @@ Referensi terkait: [Docker CLI - docker compose build](https://docs.docker.com/r
 
 > Description: Build or rebuild services
 > Usage: `docker compose build [OPTIONS] [SERVICE...]`
+> Services are built once and then tagged, by default as `project-service`.
+> If you change a service's `Dockerfile` or the contents of its build directory, run `docker compose build` to rebuild it.
 >
 > **Translated:**
 > Deskripsi: membangun atau membangun ulang service.
 > Pemakaian: `docker compose build [OPTIONS] [SERVICE...]`
+> Service dibuild sekali lalu diberi tag, secara default sebagai `project-service`.
+> Jika `Dockerfile` milik service atau isi direktori build berubah, jalankan `docker compose build` untuk membangunnya ulang.
 
 Referensi terkait: [Docker CLI - docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/)
 
