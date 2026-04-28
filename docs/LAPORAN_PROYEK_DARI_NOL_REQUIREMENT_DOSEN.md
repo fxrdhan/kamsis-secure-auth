@@ -3821,7 +3821,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya lan
 
 ### Bukti Screenshot Verifikasi
 
-Bagian ini melampirkan bukti visual dari verifikasi aktual yang sudah dijalankan. Screenshot yang dipilih hanya yang menunjukkan hasil berhasil; screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final.
+Bagian ini melampirkan bukti visual dari verifikasi aktual yang sudah dijalankan. Screenshot yang dipilih menunjukkan hasil final yang berhasil, termasuk uji positif dan uji negatif keamanan; screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final.
 
 #### Screenshot 1 - Container app dan Snort aktif
 
@@ -3877,6 +3877,42 @@ Gambar ini menunjukkan alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web s
 
 Gambar ini menunjukkan chain `AU7H_INPUT` aktif, port web `8080,8443` diizinkan, port MySQL `3306` dan SSH `22` ditolak, serta ICMP echo request di-drop.
 
+#### Screenshot 10 - Build ulang container berhasil sebelum uji negatif
+
+![Build ulang container berhasil sebelum uji negatif](assets/screenshots/10-dev-up-build.png)
+
+Gambar ini menunjukkan `bun run dev:up` menjalankan `docker compose -f compose.dev.yaml up -d --build`, image `au7h` berhasil dibangun, dan container `au7h-app-1` serta `au7h-snort-1` berjalan.
+
+#### Screenshot 11 - CSRF tanpa token ditolak
+
+![CSRF tanpa token ditolak](assets/screenshots/11-csrf-403.png)
+
+Gambar ini menunjukkan request `POST` ke `/login.php` tanpa `csrf_token` menerima respons `HTTP/1.1 403 Forbidden`, sehingga integritas form benar-benar divalidasi di server.
+
+#### Screenshot 12 - Payload SQL injection tidak membypass login
+
+![Payload SQL injection tidak membypass login](assets/screenshots/12-sql-injection-blocked.png)
+
+Gambar ini menunjukkan payload username `' OR 1=1 --` tetap menerima `HTTP/1.1 302 Found` menuju `/not-registered.php`, sehingga input dianggap sebagai data biasa dan tidak membypass autentikasi.
+
+#### Screenshot 13 - Payload XSS ditolak validasi input
+
+![Payload XSS ditolak validasi input](assets/screenshots/13-xss-blocked.png)
+
+Gambar ini menunjukkan payload `<script>alert(1)</script>` pada username register ditolak dengan pesan `Username hanya boleh huruf, angka, spasi, titik, strip, atau underscore.`
+
+#### Screenshot 14 - Oversized username ditolak
+
+![Oversized username ditolak](assets/screenshots/14-oversized-input-blocked.png)
+
+Gambar ini menunjukkan username panjang berlebih ditolak dengan pesan `Username harus 3-32 karakter.`, sehingga batas ukuran input berjalan di sisi server.
+
+#### Screenshot 15 - Rate limit login aktif
+
+![Rate limit login aktif](assets/screenshots/15-rate-limit-429.png)
+
+Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, lalu percobaan keenam menerima `HTTP 429` dengan pesan `Terlalu banyak percobaan`.
+
 ## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
@@ -3889,7 +3925,7 @@ Gambar ini menunjukkan chain `AU7H_INPUT` aktif, port web `8080,8443` diizinkan,
 | HTTPS | Tahap 4 |
 | Integritas form | Tahap 9, 12, 13, 15 |
 | Privasi data di database | Tahap 8, 9 |
-| Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 dan 6.4 |
+| Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 + Decision Log 6.4 |
 | SQL injection | Tahap 10 |
 | XSS | Tahap 5, 9, 11, 14 |
 | Snort IDS + rule lokal | Tahap 18 |
