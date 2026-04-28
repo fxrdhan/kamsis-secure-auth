@@ -218,10 +218,14 @@ Terjemahkan requirement “buffer overflow” ke mitigasi yang realistis untuk a
 
 Referensi terkait: [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html)
 
+> A heap overflow condition is a buffer overflow, where the buffer that can be overwritten is allocated in the heap portion of memory, generally meaning that the buffer was allocated using a routine such as malloc().
 > Pre-design: Use a language or compiler that performs automatic bounds checking.
+> Implementation: Implement and perform bounds checking on input.
 >
 > **Translated:**
+> Kondisi heap overflow adalah buffer overflow ketika buffer yang dapat ditimpa dialokasikan pada bagian heap dari memori, umumnya berarti buffer tersebut dialokasikan menggunakan routine seperti malloc().
 > Pada tahap pra-perancangan, gunakan bahasa atau compiler yang melakukan pemeriksaan batas secara otomatis.
+> Pada tahap implementasi, terapkan dan lakukan pemeriksaan batas pada input.
 
 Referensi terkait: [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html)
 
