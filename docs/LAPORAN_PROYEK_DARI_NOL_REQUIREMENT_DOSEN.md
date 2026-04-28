@@ -106,7 +106,7 @@ Alur kerja pada laporan ini dimulai dari requirement, lalu diterjemahkan menjadi
 
 #### Docker Docs - Building best practices
 
-Dipakai saat menilai bagaimana keputusan container dibaca secara jujur: Docker punya best practice umum, tetapi implementasi tugas tetap boleh mengambil kompromi selama alasan teknisnya dijelaskan.
+Dipakai saat menilai bagaimana keputusan container dibaca secara jujur: Docker punya best practice umum, tetapi implementasi tugas tetap boleh mengambil kompromi selama alasan teknisnya dijelaskan. Referensi yang sama juga dipakai untuk menjelaskan kenapa Dockerfile memakai multi-stage build: Bun hanya dipakai pada tahap build frontend, sedangkan image runtime akhir tetap berisi komponen yang diperlukan untuk menjalankan aplikasi.
 
 Referensi terkait: [Docker Docs - Building best practices](https://docs.docker.com/build/building/best-practices/)
 
@@ -118,6 +118,20 @@ Referensi terkait: [Docker Docs - Building best practices](https://docs.docker.c
 > **Translated:**
 > Multi-stage build membantu mengurangi ukuran image final dengan membuat pemisahan yang lebih bersih antara proses membangun image dan hasil akhirnya.
 > Pecah instruksi Dockerfile ke tahap-tahap yang berbeda agar output akhir hanya berisi file yang memang dibutuhkan untuk menjalankan aplikasi.
+>
+> Each container should have only one concern. Decoupling applications into
+> multiple containers makes it easier to scale horizontally and reuse containers.
+>
+> Limiting each container to one process is a good rule of thumb, but it's not a
+> hard and fast rule.
+>
+> **Translated:**
+> Setiap container sebaiknya hanya memiliki satu concern. Memisahkan aplikasi ke
+> beberapa container membuat aplikasi lebih mudah diskalakan secara horizontal
+> dan container lebih mudah digunakan ulang.
+>
+> Membatasi setiap container ke satu proses adalah aturan praktis yang baik,
+> tetapi bukan aturan mutlak.
 
 #### Apache `mod_ssl`
 
@@ -446,15 +460,6 @@ Referensi terkait: [Apache HTTP Server - Mapping URLs to Filesystem Locations](h
 > **Translated:**
 > Saat menentukan file apa yang harus dilayani untuk sebuah request, perilaku default `httpd` adalah mengambil URL path request lalu menambahkannya ke akhir `DocumentRoot` yang ditentukan di file konfigurasi. Karena itu, file dan direktori di bawah `DocumentRoot` membentuk pohon dokumen dasar yang akan terlihat dari web.
 
-Referensi terkait: [Martin Fowler - Front Controller](https://martinfowler.com/eaaCatalog/frontController.html)
-
-> A controller that handles all requests for a Web site.
-> The Front Controller consolidates all request handling by channeling requests through a single handler object.
->
-> **Translated:**
-> Controller yang menangani semua request untuk sebuah situs web.
-> Front Controller mengonsolidasikan seluruh penanganan request dengan mengalirkan request melalui satu objek handler.
-
 Referensi terkait: [MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
 
 > MVC (Model-View-Controller) is a pattern in software design commonly used to implement user interfaces, data, and controlling logic.
@@ -485,7 +490,7 @@ Referensi terkait: [The Twelve-Factor App - Config](https://12factor.net/config)
 > Uji sederhananya: apakah codebase bisa dibuat open source kapan saja tanpa membocorkan credential.
 > Aplikasi twelve-factor menyimpan config di environment variables (sering disingkat env vars atau env).
 
-Dengan empat referensi ini, justifikasi saat presentasi bisa dijelaskan singkat seperti berikut: `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar database-auth-view tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan `config/bootstrap.php` menjadi titik bootstrap tunggal agar seluruh endpoint memulai alur request secara konsisten.
+Dengan tiga referensi ini, justifikasi saat presentasi bisa dijelaskan singkat seperti berikut: `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar data, tampilan, dan controlling logic tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan konfigurasi deploy tetap diambil dari environment variable alih-alih ditanam sebagai konstanta kode.
 
 ## 8. Tahapan Implementasi Bertahap
 
@@ -647,13 +652,24 @@ Setelah format image, arti `FROM` dan `RUN`, serta peran `COPY`, `ENV`, `EXPOSE`
 
 ### Implementasi
 
-Langkah implementasi terarah: mulai dari pemilihan base image yang stabil untuk paket sistem, lalu pasang seluruh komponen yang membuat satu container mampu melayani HTTP/HTTPS, mengeksekusi PHP, dan menjalankan MySQL tanpa service terpisah.
+Langkah implementasi terarah: mulai dari tahap build frontend yang hanya menghasilkan CSS, lalu lanjut ke base image runtime yang stabil untuk paket sistem. Dengan pola ini, Bun dipakai untuk proses build, sedangkan image akhir tetap memuat komponen runtime yang membuat satu container mampu melayani HTTP/HTTPS, mengeksekusi PHP, menjalankan MySQL, dan menerapkan ACL jaringan.
 
-Sumber: [Dockerfile:1-16](/home/fxrdhan/au7h/Dockerfile:1)
+Sumber: [Dockerfile:1](/home/fxrdhan/au7h/Dockerfile:1)
 
-Alur kode: image dimulai dari base Ubuntu, lalu mode instalasi non-interaktif diaktifkan, paket inti web dan database dipasang, modul Apache yang dibutuhkan dinyalakan, dan sisa cache apt dibersihkan agar layer awal tetap ringkas.
+Alur kode: stage `frontend-builder` menginstall dependency frontend dan membangun CSS. Setelah itu stage runtime dimulai dari Ubuntu, mode instalasi non-interaktif diaktifkan, paket inti web, database, TLS, dan ACL dipasang, modul Apache yang dibutuhkan dinyalakan, dan sisa cache apt dibersihkan agar layer runtime tetap ringkas.
 
 ```dockerfile
+FROM oven/bun:1.3.6 AS frontend-builder
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY resources ./resources
+COPY public ./public
+RUN bun run build:css
+
 FROM ubuntu:25.10
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -662,6 +678,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     apache2 \
     gettext-base \
+    iptables \
     libapache2-mod-php8.4 \
     mysql-server \
     openssl \
@@ -672,25 +689,28 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 ```
 
-Langkah implementasi terarah berikutnya adalah menyalin semua file yang dibutuhkan image, mengaktifkan konfigurasi global Apache, menyiapkan direktori data persisten, lalu menetapkan proses startup utama container.
+Langkah implementasi terarah berikutnya adalah menyalin semua file yang dibutuhkan image, memasang script ACL, membawa hasil build CSS dari stage frontend, mengaktifkan konfigurasi global Apache, menyiapkan direktori data persisten, lalu menetapkan proses startup utama container.
 
-Sumber: [Dockerfile:32-51](/home/fxrdhan/au7h/Dockerfile:32)
+Sumber: [Dockerfile:44](/home/fxrdhan/au7h/Dockerfile:44)
 
-Alur kode: semua file runtime proyek disalin lebih dulu ke image, lalu direktori persisten dan izin file disiapkan, setelah itu port, volume, entrypoint, dan proses utama container dideklarasikan sebagai urutan startup final.
+Alur kode: semua file runtime proyek disalin lebih dulu ke image, script ACL ikut dipasang sebagai executable, hasil CSS dari stage frontend disalin ke image final, lalu direktori persisten dan izin file disiapkan. Setelah itu port, volume, entrypoint, dan proses utama container dideklarasikan sebagai urutan startup final.
 
 ```dockerfile
 COPY docker/php.ini /etc/php/8.4/apache2/conf.d/90-au7h-security.ini
 COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
 COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
 COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
+COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
 COPY config /var/www/html/config
 COPY public /var/www/html/public
+COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
 COPY src /var/www/html/src
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
 
 RUN mkdir -p /var/www/data /var/www/certs /var/run/mysqld /var/lib/mysql \
   && a2enconf zzz-au7h-global \
   && chmod +x /usr/local/bin/docker-entrypoint-custom.sh \
+  && chmod +x /usr/local/bin/au7h-apply-acl.sh \
   && chown -R www-data:www-data /var/www \
   && chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
 
@@ -703,9 +723,11 @@ CMD ["apache2ctl", "-D", "FOREGROUND"]
 
 ### Keputusan penting
 
-1. `openssl` dipasang karena sertifikat perlu dibuat otomatis jika belum ada.
-2. `gettext-base` dipasang untuk `envsubst` saat merender template Apache.
-3. `libapache2-mod-php8.4` dipakai agar PHP langsung dilayani Apache tanpa FPM tambahan.
+1. `frontend-builder` dipakai hanya untuk membangun CSS; image runtime akhir tetap menjalankan aplikasi dalam satu container.
+2. `openssl` dipasang karena sertifikat perlu dibuat otomatis jika belum ada.
+3. `gettext-base` dipasang untuk `envsubst` saat merender template Apache.
+4. `iptables` dipasang karena ACL container diterapkan dari dalam container aplikasi.
+5. `libapache2-mod-php8.4` dipakai agar PHP langsung dilayani Apache tanpa FPM tambahan.
 
 ## Tahap 2 - Menetapkan environment inti container
 
@@ -791,7 +813,7 @@ Setelah makna `ENV`, efek perubahan nilainya, dan persistensinya jelas, semua po
 
 Langkah implementasi terarah: deklarasikan semua variabel lingkungan yang akan dipakai bersama oleh entrypoint, Apache, PHP, dan koneksi database, sehingga tidak ada nilai penting yang terselip hard-code di banyak file.
 
-Sumber: [Dockerfile:18-30](/home/fxrdhan/au7h/Dockerfile:18)
+Sumber: [Dockerfile:30](/home/fxrdhan/au7h/Dockerfile:30)
 
 Alur kode: blok ini menetapkan satu set environment variable bersama yang nanti dibaca ulang oleh entrypoint, Apache, PHP, dan MySQL agar seluruh komponen bootstrap memakai nilai yang sama.
 
@@ -3644,6 +3666,27 @@ Yang harus terlihat:
 3. port `3306` dan `22` berstatus `REJECT`,
 4. ICMP echo request berstatus `DROP` kecuali `ACL_ALLOW_ICMP=1`.
 
+## Hasil Verifikasi Aktual
+
+Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya langkah uji yang direncanakan.
+
+| Area yang diuji | Perintah atau cara uji | Hasil aktual |
+| --- | --- | --- |
+| Unit security helper | `bun run test` | `Auth security tests passed.` |
+| Container app + Snort | `docker compose -f compose.dev.yaml up -d --build` lalu `docker compose -f compose.dev.yaml ps` | service `app` dan `snort` berstatus `Up`; port `10080->8080` dan `10443->8443` terpublish |
+| Redirect HTTP ke HTTPS | `curl -k -I http://localhost:10080` | `HTTP/1.1 301 Moved Permanently`, `Location: https://localhost:10443/` |
+| Form dan CSRF | `curl -k -s https://localhost:10443/` | HTML memuat form `POST`, action `/register.php`, dan hidden field `csrf_token` |
+| Register berhasil | Submit form register dengan username unik, password valid, dan `confirm_password` cocok | response `302 Found`, `Location: /?mode=login` |
+| Login berhasil | Submit form login memakai akun hasil register | response `302 Found`, `Location: /welcome.php` |
+| Welcome username | Buka `/welcome.php` dengan cookie session login | halaman memuat teks `Welcome, <username>!` |
+| Login gagal | Submit username yang tidak terdaftar | response `302 Found`, `Location: /not-registered.php` |
+| Logout | Submit `/logout.php` dengan CSRF token dari halaman welcome | response `302 Found`, `Location: /`; akses ulang `/welcome.php` kembali redirect |
+| CSRF protection | Submit `POST /login.php` tanpa `csrf_token` | status `403` |
+| Privasi database | Query `SELECT username_lookup, username_encrypted, password_hash FROM users ORDER BY id DESC LIMIT 1` | username tampil sebagai HMAC 64 hex, username terenkripsi berbentuk payload `iv.tag.ciphertext`, password berbentuk hash `$argon2id$...` |
+| Rate limiting | Login gagal 6 kali beruntun untuk subject yang sama | percobaan 1-5 menghasilkan `302`, percobaan ke-6 menghasilkan `429` |
+| Snort rules | `bun run snort:test-rules` | Snort berhasil validasi konfigurasi, `644` rules loaded, `0 warnings` |
+| ACL container | `bun run acl:status` | chain `AU7H_INPUT` aktif; HTTP/HTTPS `ACCEPT`; MySQL `3306` dan SSH `22` `REJECT`; ICMP echo request `DROP` |
+
 ## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
@@ -3675,33 +3718,33 @@ Yang harus terlihat:
 Langkah pembacaan terarah: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement dosen yang tertinggal saat presentasi berlangsung.
 
 ```text
-[ ] docker compose up berhasil
-[ ] http:// redirect ke https://
-[ ] form register tampil
-[ ] form login tampil
-[ ] register sukses
-[ ] login sukses
-[ ] login gagal menuju halaman belum terdaftar
-[ ] welcome page menampilkan username
-[ ] logout berhasil
-[ ] CSRF token divalidasi
-[ ] session cookie secure + httponly + samesite
-[ ] password hash Argon2id
-[ ] username terenkripsi
-[ ] lookup username via HMAC
-[ ] prepared statement aktif
-[ ] emulate prepares dimatikan
-[ ] CSP aktif
-[ ] input validation aktif
-[ ] rate limiting aktif
-[ ] file upload dimatikan
-[ ] ukuran POST dibatasi
-[ ] Snort service aktif
-[ ] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH
-[ ] snort:test-rules berhasil
-[ ] acl:status menampilkan chain AU7H_INPUT
-[ ] HTTP/HTTPS diizinkan ACL
-[ ] MySQL 3306 dan SSH 22 ditolak ACL
+[x] docker compose up berhasil
+[x] http:// redirect ke https://
+[x] form register tampil
+[x] form login tampil
+[x] register sukses
+[x] login sukses
+[x] login gagal menuju halaman belum terdaftar
+[x] welcome page menampilkan username
+[x] logout berhasil
+[x] CSRF token divalidasi
+[x] session cookie secure + httponly + samesite
+[x] password hash Argon2id
+[x] username terenkripsi
+[x] lookup username via HMAC
+[x] prepared statement aktif
+[x] emulate prepares dimatikan
+[x] CSP aktif
+[x] input validation aktif
+[x] rate limiting aktif
+[x] file upload dimatikan
+[x] ukuran POST dibatasi
+[x] Snort service aktif
+[x] local.rules memuat ICMP, HTTP/HTTPS, MySQL, dan SSH
+[x] snort:test-rules berhasil
+[x] acl:status menampilkan chain AU7H_INPUT
+[x] HTTP/HTTPS diizinkan ACL
+[x] MySQL 3306 dan SSH 22 ditolak ACL
 ```
 
 ## 13. Ringkasan Strategi Dari Nol
@@ -3729,7 +3772,7 @@ Berbeda dari versi sebelumnya, bukti kutipan literal tidak lagi dipisah sebagai 
 ### 14.1. Status Cakupan Referensi
 
 - `Tercakup`: backend PHP, keamanan auth, database MySQL, Docker, Apache HTTPS, Tailwind, Bun, GitHub Actions, dan library frontend yang dibundel.
-- `Perlu verifikasi manual`: asal upstream font lokal `public/assets/Backwards.ttf` belum bisa dipastikan 100% hanya dari repo, walau metadata font mengarah ke font `backwards`.
+- `Catatan non-requirement`: font lokal `public/assets/Backwards.ttf` hanya aset visual pendukung UI. Asal upstream font tidak memengaruhi pemenuhan requirement dosen karena requirement inti berada pada container, autentikasi, HTTPS, privasi database, mitigasi input, Snort, dan ACL.
 
 ### 14.2. Bootstrap, Session, Cookie, dan HTTP Flow
 
@@ -3931,10 +3974,11 @@ File repo terkait:
 
 Referensi utama:
 - [Apache SSL/TLS How-To](https://httpd.apache.org/docs/current/ssl/ssl_howto.html)
+- [OpenSSL `openssl req`](https://docs.openssl.org/master/man1/openssl-req/)
 
 Catatan:
-- Repo ini membuat sertifikat self-signed via `openssl req`, tetapi link manpage OpenSSL spesifik belum dimasukkan agar daftar tetap ringkas.
-- Jika dosen meminta bukti lebih granular untuk command sertifikat, dokumentasi `openssl req` dari situs OpenSSL dapat ditambahkan sebagai lampiran tambahan.
+- Repo ini membuat sertifikat self-signed via `openssl req`.
+- Link manpage OpenSSL sudah dicantumkan karena Tahap 3 memakai opsi `-x509`, `-newkey`, `-keyout`, `-out`, `-subj`, `-days`, dan `-addext`.
 
 ### 14.11. Tailwind CSS, Tema, dan Build CSS
 
