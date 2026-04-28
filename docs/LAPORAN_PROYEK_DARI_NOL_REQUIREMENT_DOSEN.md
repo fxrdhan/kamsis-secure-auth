@@ -37,7 +37,7 @@
   - [Uji 4 - Register berhasil](#uji-4---register-berhasil)
   - [Uji 5 - Login berhasil](#uji-5---login-berhasil)
   - [Uji 6 - Login gagal](#uji-6---login-gagal)
-  - [Uji 7 - Password tidak terbaca asli di database](#uji-7---password-tidak-terbaca-asli-di-database)
+  - [Uji 7 - Username dan password tidak terbaca asli di database](#uji-7---username-dan-password-tidak-terbaca-asli-di-database)
   - [Uji 8 - CSRF protection](#uji-8---csrf-protection)
   - [Uji 9 - SQL injection](#uji-9---sql-injection)
   - [Uji 10 - XSS](#uji-10---xss)
@@ -3772,7 +3772,7 @@ Hasil yang harus muncul:
 2. teks bahwa username atau password salah,
 3. session lama dibersihkan.
 
-### Uji 7 - Password tidak terbaca asli di database
+### Uji 7 - Username dan password tidak terbaca asli di database
 
 Langkah uji terarah: periksa isi tabel secara langsung untuk membuktikan bahwa database hanya menyimpan lookup, ciphertext, dan hash, bukan kredensial plaintext.
 
@@ -4022,9 +4022,11 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 | Satu container web server + database | Tahap 1, 2, 3 |
 | Bisa diakses browser | Tahap 4, 17 |
 | Form login dan register | Tahap 11 |
+| Minimal harus bisa login | Tahap 12, 13, 14 |
 | Login sukses ke welcome + username | Tahap 13, 14 |
 | Login gagal ke belum terdaftar | Tahap 13, 14 |
 | HTTPS | Tahap 4 |
+| Algoritma enkripsi web server boleh default | Tahap 1, 3, 4 |
 | Integritas form | Tahap 9, 12, 13, 15 |
 | Privasi data di database | Tahap 8, 9 |
 | Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 + Decision Log 6.4 |
