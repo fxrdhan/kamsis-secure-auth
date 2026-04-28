@@ -1,5 +1,56 @@
 # Laporan Rancang Bangun Proyek Dari Nol
 
+## Daftar Isi
+
+- [1. Posisi Dokumen](#1-posisi-dokumen)
+- [2. Pendahuluan](#2-pendahuluan)
+- [3. Requirement Tugas Yang Diterjemahkan Menjadi Target Teknis](#3-requirement-tugas-yang-diterjemahkan-menjadi-target-teknis)
+- [4. Urutan Kerja Wajib](#4-urutan-kerja-wajib)
+- [5. Jejak Riset Internet Sebelum Implementasi](#5-jejak-riset-internet-sebelum-implementasi)
+- [6. Decision Log Dari Nol](#6-decision-log-dari-nol)
+- [7. Blueprint Struktur Proyek Dari Nol](#7-blueprint-struktur-proyek-dari-nol)
+- [8. Tahapan Implementasi Bertahap](#8-tahapan-implementasi-bertahap)
+  - [Tahap 0 - Membuat folder kosong dan baseline tooling](#tahap-0---membuat-folder-kosong-dan-baseline-tooling)
+  - [Tahap 1 - Menentukan image dasar dan isi container](#tahap-1---menentukan-image-dasar-dan-isi-container)
+  - [Tahap 2 - Menetapkan environment inti container](#tahap-2---menetapkan-environment-inti-container)
+  - [Tahap 3 - Menulis entrypoint untuk bootstrap runtime, secret, sertifikat, dan MySQL](#tahap-3---menulis-entrypoint-untuk-bootstrap-runtime-secret-sertifikat-dan-mysql)
+  - [Tahap 4 - Menyalakan HTTPS dan redirect HTTP ke HTTPS](#tahap-4---menyalakan-https-dan-redirect-http-ke-https)
+  - [Tahap 5 - Menambahkan security headers di level web server](#tahap-5---menambahkan-security-headers-di-level-web-server)
+  - [Tahap 6 - Mengatur hardening PHP runtime](#tahap-6---mengatur-hardening-php-runtime)
+  - [Tahap 7 - Menulis konfigurasi aplikasi dan bootstrap](#tahap-7---menulis-konfigurasi-aplikasi-dan-bootstrap)
+  - [Tahap 8 - Mendesain schema database yang memenuhi privasi dan rate limit](#tahap-8---mendesain-schema-database-yang-memenuhi-privasi-dan-rate-limit)
+  - [Tahap 9 - Menulis helper keamanan inti](#tahap-9---menulis-helper-keamanan-inti)
+  - [Tahap 10 - Menulis seluruh query database dengan prepared statement](#tahap-10---menulis-seluruh-query-database-dengan-prepared-statement)
+  - [Tahap 11 - Membuat halaman awal berisi form register dan login](#tahap-11---membuat-halaman-awal-berisi-form-register-dan-login)
+  - [Tahap 12 - Menulis endpoint registrasi](#tahap-12---menulis-endpoint-registrasi)
+  - [Tahap 13 - Menulis endpoint login](#tahap-13---menulis-endpoint-login)
+  - [Tahap 14 - Menulis landing page sukses dan gagal](#tahap-14---menulis-landing-page-sukses-dan-gagal)
+  - [Tahap 15 - Menambahkan logout aman](#tahap-15---menambahkan-logout-aman)
+  - [Tahap 16 - Menambahkan rate limiting login dan register](#tahap-16---menambahkan-rate-limiting-login-dan-register)
+  - [Tahap 17 - Menyiapkan Docker Compose untuk development dan demo](#tahap-17---menyiapkan-docker-compose-untuk-development-dan-demo)
+  - [Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan](#tahap-18---menambahkan-snort-ids-dan-acl-jaringan)
+- [9. Urutan Verifikasi Setelah Implementasi](#9-urutan-verifikasi-setelah-implementasi)
+  - [Uji 1 - Container hidup](#uji-1---container-hidup)
+  - [Uji 2 - HTTP redirect ke HTTPS](#uji-2---http-redirect-ke-https)
+  - [Uji 3 - Form tampil di browser](#uji-3---form-tampil-di-browser)
+  - [Uji 4 - Register berhasil](#uji-4---register-berhasil)
+  - [Uji 5 - Login berhasil](#uji-5---login-berhasil)
+  - [Uji 6 - Login gagal](#uji-6---login-gagal)
+  - [Uji 7 - Password tidak terbaca asli di database](#uji-7---password-tidak-terbaca-asli-di-database)
+  - [Uji 8 - CSRF protection](#uji-8---csrf-protection)
+  - [Uji 9 - SQL injection](#uji-9---sql-injection)
+  - [Uji 10 - XSS](#uji-10---xss)
+  - [Uji 11 - Buffer overflow / oversized input](#uji-11---buffer-overflow--oversized-input)
+  - [Uji 12 - Rate limit](#uji-12---rate-limit)
+  - [Uji 13 - Snort IDS dan rule lokal](#uji-13---snort-ids-dan-rule-lokal)
+  - [Uji 14 - ACL port jaringan](#uji-14---acl-port-jaringan)
+  - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
+  - [Bukti Screenshot Verifikasi](#bukti-screenshot-verifikasi)
+- [10. Pemetaan Requirement Tugas Ke Tahap Implementasi](#10-pemetaan-requirement-tugas-ke-tahap-implementasi)
+- [11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#11-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
+- [12. Checklist Final Sebelum Presentasi](#12-checklist-final-sebelum-presentasi)
+- [13. Ringkasan Strategi Dari Nol](#13-ringkasan-strategi-dari-nol)
+
 ## 1. Posisi Dokumen
 
 Dokumen ini memperlakukan proyek sebagai **greenfield**: belum ada file, belum ada container, belum ada database, dan belum ada flow autentikasi. Target akhirnya adalah aplikasi login-register berbasis browser dengan **satu container** yang memuat **web server + aplikasi PHP + database MySQL**, lalu memenuhi requirement keamanan yang diminta pada tugas.
@@ -418,7 +469,9 @@ au7h/
 │   └── bootstrap.php
 ├── src/
 │   ├── Infrastructure/Database.php
-│   ├── Security/Auth.php
+│   ├── Security/
+│   │   ├── Auth.php
+│   │   └── RateLimiter.php
 │   ├── Support/Config.php
 │   ├── Support/Http.php
 │   └── Presentation/
@@ -441,9 +494,9 @@ Blueprint ini tidak disusun sekadar supaya folder terlihat rapi. Struktur awal d
 Alasan struktur:
 
 1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
-2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
+2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), rate limiting di [src/Security/RateLimiter.php](/home/fxrdhan/au7h/src/Security/RateLimiter.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
 3. `docker/` dipisahkan karena isinya bukan logika bisnis aplikasi, melainkan concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, dan pengaturan PHP dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1) serta [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
-4. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Auth`, `Views`, dan `Http`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
+4. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
 
 ### Referensi khusus folder `docker/`
 
@@ -452,6 +505,15 @@ Detail referensi isi file di folder `docker/` sengaja tidak diletakkan di bluepr
 1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dibahas di Tahap 4 karena di sana alur redirect HTTP dan aktivasi HTTPS baru benar-benar diimplementasikan.
 2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12) dibahas di Tahap 5 karena fokus tahap itu adalah hardening HTTP-level di web server.
 3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) dibahas di Tahap 6 karena isinya adalah hardening runtime PHP dan penguatan session cookie.
+
+### File pendukung UI, tooling, dan test
+
+File berikut bukan pusat requirement keamanan, tetapi tetap bagian dari implementasi repo dan ikut dipetakan agar struktur proyek terbaca utuh:
+
+1. [resources/tailwind.css](/home/fxrdhan/au7h/resources/tailwind.css:1) adalah source styling, sedangkan [public/styles.css](/home/fxrdhan/au7h/public/styles.css:1) adalah output build yang dilayani browser dan disalin ke image lewat `Dockerfile`.
+2. [public/favicon.svg](/home/fxrdhan/au7h/public/favicon.svg:1), font [public/assets/Backwards.ttf](/home/fxrdhan/au7h/public/assets/Backwards.ttf:1), [public/assets/Nunito-400.ttf](/home/fxrdhan/au7h/public/assets/Nunito-400.ttf:1), [public/assets/Nunito-500.ttf](/home/fxrdhan/au7h/public/assets/Nunito-500.ttf:1), [public/assets/Nunito-600.ttf](/home/fxrdhan/au7h/public/assets/Nunito-600.ttf:1), [public/assets/Nunito-700.ttf](/home/fxrdhan/au7h/public/assets/Nunito-700.ttf:1), [public/assets/Nunito-800.ttf](/home/fxrdhan/au7h/public/assets/Nunito-800.ttf:1), [public/theme.js](/home/fxrdhan/au7h/public/theme.js:1), [public/password-validation.js](/home/fxrdhan/au7h/public/password-validation.js:1), [public/page-shell.js](/home/fxrdhan/au7h/public/page-shell.js:1), [public/matrix-rain.js](/home/fxrdhan/au7h/public/matrix-rain.js:1), [public/vendor/motion.js](/home/fxrdhan/au7h/public/vendor/motion.js:1), dan [public/vendor/matrix-animation.js](/home/fxrdhan/au7h/public/vendor/matrix-animation.js:1) adalah lapisan presentasi yang dipanggil oleh layout HTML, bukan sumber keputusan autentikasi atau kontrol server-side.
+3. [scripts/sync-motion-vendor.mjs](/home/fxrdhan/au7h/scripts/sync-motion-vendor.mjs:1) menyalin bundle Motion ke folder publik, sedangkan [scripts/update-snort-community-rules.sh](/home/fxrdhan/au7h/scripts/update-snort-community-rules.sh:1) memperbarui [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) yang kemudian dimuat oleh `au7h.rules`.
+4. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) adalah test helper keamanan yang memverifikasi validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
 
 ### Jejak referensi desain
 
@@ -1685,7 +1747,7 @@ Setelah urutan nama session -> cookie params -> start session jelas, bootstrap a
 
 Langkah 1: bangun file bootstrap yang selalu dimuat oleh endpoint publik, sehingga semua helper, konfigurasi, dan koneksi database aktif dari jalur yang sama.
 
-Sumber: [config/bootstrap.php:1-13](/home/fxrdhan/au7h/config/bootstrap.php:1)
+Sumber: [config/bootstrap.php:1-14](/home/fxrdhan/au7h/config/bootstrap.php:1)
 
 Alur kode: file bootstrap ini menjadi pintu masuk bersama, jadi ia memuat seluruh helper inti lebih dulu lalu mengeksekusi `ensure_app_booted()` agar session, header, dan database selalu siap sebelum endpoint berjalan.
 
@@ -1698,9 +1760,10 @@ const APP_ROOT = __DIR__ . '/..';
 
 require_once APP_ROOT . '/src/Support/Config.php';
 require_once APP_ROOT . '/src/Infrastructure/Database.php';
-require_once APP_ROOT . '/src/Security/Auth.php';
-require_once APP_ROOT . '/src/Presentation/Views.php';
 require_once APP_ROOT . '/src/Support/Http.php';
+require_once APP_ROOT . '/src/Security/Auth.php';
+require_once APP_ROOT . '/src/Security/RateLimiter.php';
+require_once APP_ROOT . '/src/Presentation/Views.php';
 
 ensure_app_booted();
 ```
@@ -3104,7 +3167,7 @@ Karena itu, implementasi proyek ini memilih throttling ringan berbasis database 
 
 Langkah 1: bentuk `rate_key` yang stabil dari alamat klien, bucket aksi, dan subject opsional agar throttling bisa dibedakan antara login dan register.
 
-Sumber: [src/Infrastructure/Database.php:106-116](/home/fxrdhan/au7h/src/Infrastructure/Database.php:106)
+Sumber: [src/Security/RateLimiter.php:5-15](/home/fxrdhan/au7h/src/Security/RateLimiter.php:5)
 
 Alur kode: helper ini menyusun identitas throttle dari IP klien, nama bucket aksi, dan subject opsional, lalu mengubah gabungan itu menjadi hash tetap yang aman dipakai sebagai primary key rate limit.
 
@@ -3124,7 +3187,7 @@ function auth_rate_limit_key(string $bucket, ?string $subject = null): string
 
 Langkah 2: tentukan policy per bucket supaya batas register bisa lebih ketat daripada login tanpa membuat fungsi pengecekan bercabang liar.
 
-Sumber: [src/Infrastructure/Database.php:118-134](/home/fxrdhan/au7h/src/Infrastructure/Database.php:118)
+Sumber: [src/Security/RateLimiter.php:17-33](/home/fxrdhan/au7h/src/Security/RateLimiter.php:17)
 
 Alur kode: policy rate limit dibaca dari konfigurasi aplikasi, lalu helper ini memilih policy bucket spesifik bila ada atau jatuh ke default bila bucket tersebut belum diatur.
 
@@ -3150,7 +3213,7 @@ function auth_rate_limit_policy(string $bucket): array
 
 Langkah 3: baca record rate limit aktif dari database untuk mengetahui apakah jendela percobaan lama masih berlaku atau perlu direset.
 
-Sumber: [src/Infrastructure/Database.php:136-147](/home/fxrdhan/au7h/src/Infrastructure/Database.php:136)
+Sumber: [src/Security/RateLimiter.php:35-46](/home/fxrdhan/au7h/src/Security/RateLimiter.php:35)
 
 Alur kode: fungsi ini hanya bertugas mengambil record throttling aktif untuk kombinasi bucket-subject tertentu, sehingga logika keputusan blokir bisa dipisahkan dari query mentahnya.
 
@@ -3171,7 +3234,7 @@ function find_auth_rate_limit_record(string $bucket, ?string $subject = null): ?
 
 Langkah 4: fungsi pengecekan membandingkan jumlah percobaan dengan policy aktif dan mengembalikan keputusan blokir secara deterministik.
 
-Sumber: [src/Infrastructure/Database.php:149-162](/home/fxrdhan/au7h/src/Infrastructure/Database.php:149)
+Sumber: [src/Security/RateLimiter.php:48-61](/home/fxrdhan/au7h/src/Security/RateLimiter.php:48)
 
 Alur kode: keputusan blokir dihitung dengan membaca policy, waktu sekarang, dan record aktif; bila window lama sudah lewat maka percobaan dianggap bersih lagi, kalau belum maka jumlah attempts dibandingkan dengan batas policy.
 
@@ -3194,7 +3257,7 @@ function auth_rate_limit_exceeded(string $bucket, ?string $subject = null): bool
 
 Langkah 5: jika terjadi kegagalan autentikasi, pencatatan percobaan dilakukan lewat upsert awal atau increment lanjutan pada window yang sama.
 
-Sumber: [src/Infrastructure/Database.php:164-192](/home/fxrdhan/au7h/src/Infrastructure/Database.php:164)
+Sumber: [src/Security/RateLimiter.php:63-91](/home/fxrdhan/au7h/src/Security/RateLimiter.php:63)
 
 Alur kode: saat autentikasi gagal, helper ini memeriksa apakah window lama masih berlaku; jika tidak, ia membuat atau me-reset record dengan `upsert`, jika ya, ia cukup menambah counter attempts pada record yang sama.
 
@@ -3232,7 +3295,7 @@ function record_auth_rate_limit_failure(string $bucket, ?string $subject = null)
 
 Langkah 6: setelah login atau register sukses, record throttling untuk jalur terkait harus dibersihkan agar user sah tidak tetap terkena pembatasan lama.
 
-Sumber: [src/Infrastructure/Database.php:194-201](/home/fxrdhan/au7h/src/Infrastructure/Database.php:194)
+Sumber: [src/Security/RateLimiter.php:93-100](/home/fxrdhan/au7h/src/Security/RateLimiter.php:93)
 
 Alur kode: begitu login atau registrasi berhasil, helper ini menghapus record throttling yang sesuai agar user sah tidak mewarisi penalti dari kegagalan sebelumnya.
 
@@ -3249,7 +3312,7 @@ function clear_auth_rate_limit(string $bucket, ?string $subject = null): void
 
 Langkah 7: sebelum endpoint melanjutkan logika bisnis, helper enforcement mengubah status blokir menjadi respons HTTP 429 yang jelas.
 
-Sumber: [src/Security/Auth.php:151-159](/home/fxrdhan/au7h/src/Security/Auth.php:151)
+Sumber: [src/Security/Auth.php:141-149](/home/fxrdhan/au7h/src/Security/Auth.php:141)
 
 Alur kode: helper enforcement ini berada di tepi endpoint; ia memanggil pengecekan rate limit dan langsung menghentikan request dengan halaman 429 bila bucket tersebut sedang diblokir.
 
