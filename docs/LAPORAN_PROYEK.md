@@ -5,8 +5,7 @@
 - [1. Pendahuluan](#1-pendahuluan)
 - [2. Target](#2-target)
 - [3. Decision Logs](#3-decision-logs)
-- [4. Blueprint](#4-blueprint)
-- [5. Tahapan Implementasi](#5-tahapan-implementasi)
+- [4. Tahapan Implementasi](#4-tahapan-implementasi)
   - [Tahap 0 - Membuat folder kosong dan baseline tooling](#tahap-0---membuat-folder-kosong-dan-baseline-tooling)
   - [Tahap 0A - Menetapkan threat model containering dan security](#tahap-0a---menetapkan-threat-model-containering-dan-security)
   - [Tahap 1 - Menentukan image dasar dan isi container](#tahap-1---menentukan-image-dasar-dan-isi-container)
@@ -33,8 +32,8 @@
   - [Tahap 22 - Memeriksa supply-chain image dan dependency container](#tahap-22---memeriksa-supply-chain-image-dan-dependency-container)
   - [Tahap 23 - Menutup lifecycle secret dan batas privilege database](#tahap-23---menutup-lifecycle-secret-dan-batas-privilege-database)
   - [Tahap 24 - Menambahkan healthcheck container](#tahap-24---menambahkan-healthcheck-container)
-- [6. Alur Demo Singkat Saat Presentasi](#6-alur-demo-singkat-saat-presentasi)
-- [7. Urutan Verifikasi Setelah Implementasi](#7-urutan-verifikasi-setelah-implementasi)
+- [5. Alur Demo Singkat Saat Presentasi](#5-alur-demo-singkat-saat-presentasi)
+- [6. Urutan Verifikasi Setelah Implementasi](#6-urutan-verifikasi-setelah-implementasi)
   - [Uji 1 - Container hidup](#uji-1---container-hidup)
   - [Uji 2 - HTTP redirect ke HTTPS](#uji-2---http-redirect-ke-https)
   - [Uji 3 - Form tampil di browser](#uji-3---form-tampil-di-browser)
@@ -56,10 +55,11 @@
   - [Uji 19 - Lifecycle secret dan privilege database](#uji-19---lifecycle-secret-dan-privilege-database)
   - [Uji 20 - Healthcheck container](#uji-20---healthcheck-container)
   - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
-- [8. Pemetaan Requirement Tugas Ke Tahap Implementasi](#8-pemetaan-requirement-tugas-ke-tahap-implementasi)
-- [9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#9-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
-- [10. Checklist Final Sebelum Presentasi](#10-checklist-final-sebelum-presentasi)
-- [11. Ringkasan Strategi Dari Nol](#11-ringkasan-strategi-dari-nol)
+- [7. Pemetaan Requirement Tugas Ke Tahap Implementasi](#7-pemetaan-requirement-tugas-ke-tahap-implementasi)
+- [8. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#8-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
+- [9. Checklist Final Sebelum Presentasi](#9-checklist-final-sebelum-presentasi)
+- [10. Ringkasan Strategi Dari Nol](#10-ringkasan-strategi-dari-nol)
+- [11. Struktur Akhir Proyek](#11-struktur-akhir-proyek)
 
 ## 1. Pendahuluan
 
@@ -149,110 +149,7 @@ Interpretasi yang realistis:
 5. parsing file biner tidak dipakai,
 6. request yang tidak sesuai ukuran/format dipotong sejak awal.
 
-## 4. Blueprint
-
-Blueprint berikut adalah bentuk akhir repositori setelah seluruh tahap implementasi selesai. Susunannya memisahkan area yang boleh diakses browser, area logika aplikasi, area hardening container, pengujian, dan monitoring jaringan.
-
-```text
-au7h/
-├── Dockerfile
-├── docker-entrypoint.sh
-├── compose.dev.yaml
-├── docker/
-│   ├── apache-global.conf
-│   ├── apache-http.conf.template
-│   ├── apache-ssl.conf.template
-│   ├── acl.sh
-│   ├── healthcheck.php
-│   └── php.ini
-├── config/
-│   └── bootstrap.php
-├── src/
-│   ├── Infrastructure/Database.php
-│   ├── Security/
-│   │   ├── Auth.php
-│   │   └── RateLimiter.php
-│   ├── Support/Config.php
-│   ├── Support/Http.php
-│   └── Presentation/
-│       ├── Views.php
-│       ├── Components.php
-│       ├── AuthViews.php
-│       └── ResultViews.php
-├── public/
-│   ├── index.php
-│   ├── register.php
-│   ├── login.php
-│   ├── welcome.php
-│   ├── not-registered.php
-│   └── logout.php
-├── security/
-│   └── snort/
-│       ├── snort.lua
-│       └── rules/
-│           ├── au7h.rules
-│           ├── local.rules
-│           └── community.rules
-├── tests/
-│   └── AuthSecurityTest.php
-└── certs/
-```
-
-Struktur akhir ini dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
-
-Alasan struktur:
-
-1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
-2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), rate limiting di [src/Security/RateLimiter.php](/home/fxrdhan/au7h/src/Security/RateLimiter.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
-3. `docker/` berisi concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, pengaturan PHP, dan ACL jaringan dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1), [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1), serta [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
-4. `security/snort/` dipisah karena Snort IDS adalah concern monitoring jaringan. [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1) memuat konfigurasi IDS, sedangkan [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1), [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1), dan [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) memisahkan rule aggregator, rule lokal, dan rule komunitas.
-5. `tests/` disiapkan untuk verifikasi helper keamanan. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) memeriksa validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
-6. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
-
-### Folder `docker/`
-
-Detail referensi isi file di folder `docker/`:
-
-1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) berisi alur redirect HTTP dan aktivasi HTTPS
-2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)  fokus pada hardening HTTP-level di web server.
-3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) isinya adalah hardening runtime PHP dan penguatan session cookie.
-4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) isinya adalah ACL jaringan container dengan `iptables`.
-5. [docker/healthcheck.php](/home/fxrdhan/au7h/docker/healthcheck.php:1) isinya adalah healthcheck HTTPS lokal untuk memastikan Apache, PHP, dan bootstrap database merespons dari dalam container.
-
-### File pendukung UI, tooling, dan test
-
-1. [resources/tailwind.css](/home/fxrdhan/au7h/resources/tailwind.css:1) adalah source styling, sedangkan [public/styles.css](/home/fxrdhan/au7h/public/styles.css:1) adalah output build yang dilayani browser dan disalin ke image lewat `Dockerfile`.
-2. [public/favicon.svg](/home/fxrdhan/au7h/public/favicon.svg:1), fonts, [public/theme.js](/home/fxrdhan/au7h/public/theme.js:1), [public/password-validation.js](/home/fxrdhan/au7h/public/password-validation.js:1), [public/page-shell.js](/home/fxrdhan/au7h/public/page-shell.js:1), [public/matrix-rain.js](/home/fxrdhan/au7h/public/matrix-rain.js:1), [public/vendor/motion.js](/home/fxrdhan/au7h/public/vendor/motion.js:1), dan [public/vendor/matrix-animation.js](/home/fxrdhan/au7h/public/vendor/matrix-animation.js:1) adalah lapisan presentasi yang dipanggil oleh layout HTML.
-3. [scripts/sync-motion-vendor.mjs](/home/fxrdhan/au7h/scripts/sync-motion-vendor.mjs:1) menyalin bundle Motion ke folder publik, sedangkan [scripts/update-snort-community-rules.sh](/home/fxrdhan/au7h/scripts/update-snort-community-rules.sh:1) memperbarui [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) yang kemudian dimuat oleh `au7h.rules`.
-4. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) adalah test helper keamanan yang memverifikasi validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
-
-### Referensi desain
-
-Referensi berikut dipakai untuk menguatkan prinsip desain yang memang diterapkan di proyek ini: batasi web root ke folder publik, pisahkan concern aplikasi, dan jangan campur config deploy dengan kode inti.
-
-[Apache HTTP Server - Mapping URLs to Filesystem Locations](https://httpd.apache.org/docs/current/urlmapping.html)
-
-> In deciding what file to serve for a given request, httpd's default behavior is to take the URL-Path for the request (the part of the URL following the hostname and port) and add it to the end of the `DocumentRoot` specified in your configuration files. Therefore, the files and directories underneath the `DocumentRoot` make up the basic document tree which will be visible from the web.
-
-[MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
-
-> MVC (Model-View-Controller) is a pattern in software design commonly used to implement user interfaces, data, and controlling logic.
-> It emphasizes a separation between the software's business logic and display.
-> This "separation of concerns" provides for a better division of labor and improved maintenance.
-> Model: Manages data and business logic.
-> View: Handles layout and display.
-> Controller: Routes commands to the model and view parts.
-
-[The Twelve-Factor App - Config](https://12factor.net/config)
-
-> An app's config is everything that is likely to vary between deploys (staging, production, developer environments, etc).
-> Apps sometimes store config as constants in the code. This is a violation of twelve-factor, which requires strict separation of config from code.
-> A litmus test for whether an app has all config correctly factored out of the code is whether the codebase could be made open source at any moment, without compromising any credentials.
-> The twelve-factor app stores config in environment variables (often shortened to env vars or env).
-
-Dengan tiga referensi ini, maka pemisahan folder dilakukan sesuai kebutuhan masing-masing. `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar data, tampilan, dan controlling logic tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan konfigurasi deploy tetap diambil dari environment variable alih-alih ditanam sebagai konstanta kode.
-
-## 5. Tahapan Implementasi
+## 4. Tahapan Implementasi
 
 ### Tahap 0 - Membuat folder kosong dan baseline tooling
 
@@ -4188,7 +4085,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD php /
 
 Container aplikasi sekarang punya healthcheck internal. Jika Apache, PHP, HTTPS, atau bootstrap database gagal melayani halaman awal, status healthcheck akan berubah menjadi `unhealthy` sehingga demo tidak hanya bergantung pada status proses `Up`.
 
-## 6. Alur Demo Singkat Saat Presentasi
+## 5. Alur Demo Singkat Saat Presentasi
 
 Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat sesi evaluasi meminta bukti langsung.
 
@@ -4329,7 +4226,7 @@ Yang ditunjukkan:
 8. secret runtime berada di volume data dan tidak masuk Git/build context,
 9. healthcheck container tersedia dan dapat dibaca dari state Docker.
 
-## 7. Urutan Verifikasi Setelah Implementasi
+## 6. Urutan Verifikasi Setelah Implementasi
 
 Bukti visual ditempel langsung pada uji yang relevan, bukan dikumpulkan sebagai lampiran di akhir. Screenshot yang dipilih menunjukkan hasil final yang berhasil, termasuk uji positif dan uji negatif keamanan; uji yang tidak punya screenshot tersendiri tetap dicatat pada tabel hasil aktual. Screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final. Screenshot Trivy dicatat sebagai hasil scan manual supply-chain, bukan sebagai klaim bahwa workflow CI sudah memiliki vulnerability gate.
 
@@ -4814,7 +4711,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Lifecycle secret dan privilege database | Review `docker-entrypoint.sh`, ignore file, dan bootstrap SQL | secret dibuat runtime di `/var/www/data`, `data/` dan `certs/` dikecualikan dari Git/build context, grant user aplikasi dibatasi ke database aplikasi, `GRANT ALL` dijelaskan sebagai tradeoff bootstrap demo |
 | Healthcheck container | `docker image inspect --format '{{json .Config.Healthcheck}}' au7h`, `docker container inspect --format '{{json .State.Health}}' au7h-app-1`, dan `docker compose -f compose.dev.yaml ps` | metadata image memuat `Test:["CMD-SHELL","php /usr/local/bin/au7h-healthcheck.php"]`; container `au7h-app-1` berstatus `healthy`; Compose menampilkan `Up ... (healthy)` |
 
-## 8. Pemetaan Requirement Tugas Ke Tahap Implementasi
+## 7. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
 | --- | --- |
@@ -4841,7 +4738,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Lifecycle secret dan batas privilege database | Tahap 23 |
 | Healthcheck container | Tahap 24 |
 
-## 9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
+## 8. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
 1. Satu container dipilih karena requirement tugas, bukan karena itu pola terbaik produksi.
 2. “Buffer overflow protection” di sini diterapkan secara realistis pada level aplikasi: bahasa high-level, limit ukuran, nonaktif upload, hardening runtime. Ini bukan klaim bahwa seluruh dependency native bebas bug.
@@ -4857,7 +4754,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 12. Image utama memakai tag versi/rilis dan dependency memakai lockfile frozen, tetapi belum semua image dipin ke digest. `ciscotalos/snort3:latest` tetap dicatat sebagai tradeoff demo.
 13. User database aplikasi mendapat `GRANT ALL PRIVILEGES` pada database aplikasi agar bootstrap schema demo bisa otomatis. Untuk produksi, hak runtime sebaiknya dipersempit dan dipisah dari user migration.
 
-## 10. Checklist Final Sebelum Presentasi
+## 9. Checklist Final Sebelum Presentasi
 
 Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement yang tertinggal saat presentasi berlangsung.
 
@@ -4919,7 +4816,7 @@ Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebe
 [x] script healthcheck valid secara sintaks
 ```
 
-## 11. Ringkasan Strategi Dari Nol
+## 10. Ringkasan Strategi Dari Nol
 
 Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan untuk tugas ini adalah:
 
@@ -4939,3 +4836,106 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 14. cocokkan satu per satu dengan requirement.
 
 Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat alasan teknisnya perlu dipertanggungjawabkan di sesi evaluasi.
+
+## 11. Struktur Akhir Proyek
+
+Bagian ini menunjukkan susunan repositori pada kondisi akhir proyek. Susunannya memisahkan area yang boleh diakses browser, area logika aplikasi, area hardening container, pengujian, dan monitoring jaringan.
+
+```text
+au7h/
+├── Dockerfile
+├── docker-entrypoint.sh
+├── compose.dev.yaml
+├── docker/
+│   ├── apache-global.conf
+│   ├── apache-http.conf.template
+│   ├── apache-ssl.conf.template
+│   ├── acl.sh
+│   ├── healthcheck.php
+│   └── php.ini
+├── config/
+│   └── bootstrap.php
+├── src/
+│   ├── Infrastructure/Database.php
+│   ├── Security/
+│   │   ├── Auth.php
+│   │   └── RateLimiter.php
+│   ├── Support/Config.php
+│   ├── Support/Http.php
+│   └── Presentation/
+│       ├── Views.php
+│       ├── Components.php
+│       ├── AuthViews.php
+│       └── ResultViews.php
+├── public/
+│   ├── index.php
+│   ├── register.php
+│   ├── login.php
+│   ├── welcome.php
+│   ├── not-registered.php
+│   └── logout.php
+├── security/
+│   └── snort/
+│       ├── snort.lua
+│       └── rules/
+│           ├── au7h.rules
+│           ├── local.rules
+│           └── community.rules
+├── tests/
+│   └── AuthSecurityTest.php
+└── certs/
+```
+
+Struktur akhir ini dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
+
+Alasan struktur:
+
+1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
+2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), rate limiting di [src/Security/RateLimiter.php](/home/fxrdhan/au7h/src/Security/RateLimiter.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
+3. `docker/` berisi concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, pengaturan PHP, dan ACL jaringan dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1), [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1), serta [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
+4. `security/snort/` dipisah karena Snort IDS adalah concern monitoring jaringan. [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1) memuat konfigurasi IDS, sedangkan [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1), [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1), dan [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) memisahkan rule aggregator, rule lokal, dan rule komunitas.
+5. `tests/` disiapkan untuk verifikasi helper keamanan. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) memeriksa validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
+6. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
+
+### Folder `docker/`
+
+Detail referensi isi file di folder `docker/`:
+
+1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) berisi alur redirect HTTP dan aktivasi HTTPS
+2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)  fokus pada hardening HTTP-level di web server.
+3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) isinya adalah hardening runtime PHP dan penguatan session cookie.
+4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) isinya adalah ACL jaringan container dengan `iptables`.
+5. [docker/healthcheck.php](/home/fxrdhan/au7h/docker/healthcheck.php:1) isinya adalah healthcheck HTTPS lokal untuk memastikan Apache, PHP, dan bootstrap database merespons dari dalam container.
+
+### File pendukung UI, tooling, dan test
+
+1. [resources/tailwind.css](/home/fxrdhan/au7h/resources/tailwind.css:1) adalah source styling, sedangkan [public/styles.css](/home/fxrdhan/au7h/public/styles.css:1) adalah output build yang dilayani browser dan disalin ke image lewat `Dockerfile`.
+2. [public/favicon.svg](/home/fxrdhan/au7h/public/favicon.svg:1), fonts, [public/theme.js](/home/fxrdhan/au7h/public/theme.js:1), [public/password-validation.js](/home/fxrdhan/au7h/public/password-validation.js:1), [public/page-shell.js](/home/fxrdhan/au7h/public/page-shell.js:1), [public/matrix-rain.js](/home/fxrdhan/au7h/public/matrix-rain.js:1), [public/vendor/motion.js](/home/fxrdhan/au7h/public/vendor/motion.js:1), dan [public/vendor/matrix-animation.js](/home/fxrdhan/au7h/public/vendor/matrix-animation.js:1) adalah lapisan presentasi yang dipanggil oleh layout HTML.
+3. [scripts/sync-motion-vendor.mjs](/home/fxrdhan/au7h/scripts/sync-motion-vendor.mjs:1) menyalin bundle Motion ke folder publik, sedangkan [scripts/update-snort-community-rules.sh](/home/fxrdhan/au7h/scripts/update-snort-community-rules.sh:1) memperbarui [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) yang kemudian dimuat oleh `au7h.rules`.
+4. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) adalah test helper keamanan yang memverifikasi validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
+
+### Referensi desain
+
+Referensi berikut dipakai untuk menguatkan prinsip desain yang memang diterapkan di proyek ini: batasi web root ke folder publik, pisahkan concern aplikasi, dan jangan campur config deploy dengan kode inti.
+
+[Apache HTTP Server - Mapping URLs to Filesystem Locations](https://httpd.apache.org/docs/current/urlmapping.html)
+
+> In deciding what file to serve for a given request, httpd's default behavior is to take the URL-Path for the request (the part of the URL following the hostname and port) and add it to the end of the `DocumentRoot` specified in your configuration files. Therefore, the files and directories underneath the `DocumentRoot` make up the basic document tree which will be visible from the web.
+
+[MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
+
+> MVC (Model-View-Controller) is a pattern in software design commonly used to implement user interfaces, data, and controlling logic.
+> It emphasizes a separation between the software's business logic and display.
+> This "separation of concerns" provides for a better division of labor and improved maintenance.
+> Model: Manages data and business logic.
+> View: Handles layout and display.
+> Controller: Routes commands to the model and view parts.
+
+[The Twelve-Factor App - Config](https://12factor.net/config)
+
+> An app's config is everything that is likely to vary between deploys (staging, production, developer environments, etc).
+> Apps sometimes store config as constants in the code. This is a violation of twelve-factor, which requires strict separation of config from code.
+> A litmus test for whether an app has all config correctly factored out of the code is whether the codebase could be made open source at any moment, without compromising any credentials.
+> The twelve-factor app stores config in environment variables (often shortened to env vars or env).
+
+Dengan tiga referensi ini, maka pemisahan folder dilakukan sesuai kebutuhan masing-masing. `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar data, tampilan, dan controlling logic tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan konfigurasi deploy tetap diambil dari environment variable alih-alih ditanam sebagai konstanta kode.
