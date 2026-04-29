@@ -151,7 +151,7 @@ Interpretasi yang realistis:
 
 ## 4. Blueprint
 
-Struktur ini dibangun untuk memisahkan area yang boleh diakses browser, area logika aplikasi, dan area hardening container sebelum implementasi.
+Blueprint berikut adalah bentuk akhir repositori setelah seluruh tahap implementasi selesai. Susunannya memisahkan area yang boleh diakses browser, area logika aplikasi, area hardening container, pengujian, dan monitoring jaringan.
 
 ```text
 au7h/
@@ -198,7 +198,7 @@ au7h/
 └── certs/
 ```
 
-Struktur awal dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
+Struktur akhir ini dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
 
 Alasan struktur:
 
@@ -258,33 +258,31 @@ Dengan tiga referensi ini, maka pemisahan folder dilakukan sesuai kebutuhan masi
 
 #### Tujuan
 
-Menyediakan fondasi kerja yang rapi sebelum instalasi dependency.
+Menyediakan titik mulai minimum untuk container, konfigurasi server, bootstrap aplikasi, dan halaman awal.
 
 #### Analisis alur
 
-Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint akan cepat tercampur.
+Fondasi pertama cukup berisi file yang diperlukan agar proyek punya bentuk kerja: Dockerfile, entrypoint, Compose, konfigurasi Apache/PHP, bootstrap PHP, dan satu entry point publik. Folder lain ditambahkan pada tahap ketika fiturnya mulai dibuat.
 
 #### Implementasi
 
 **Langkah 1:**
 
-- Buat seluruh folder dan placeholder file inti lebih dulu.
-- Pastikan file siap diisi secara bertahap.
+- Buat folder awal untuk runtime container, konfigurasi aplikasi, dan web root.
+- Buat file kosong yang akan diisi pada tahap Docker, entrypoint, HTTPS, PHP hardening, dan halaman awal.
 
 ```bash
-mkdir -p au7h/{docker,config,src/Infrastructure,src/Security,src/Support,src/Presentation,public,certs}
+mkdir -p au7h/{docker,config,public}
 cd au7h
 touch Dockerfile docker-entrypoint.sh compose.dev.yaml
-touch docker/apache-global.conf docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini docker/acl.sh docker/healthcheck.php
+touch docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini
 touch config/bootstrap.php
-touch src/Infrastructure/Database.php src/Security/Auth.php src/Security/RateLimiter.php src/Support/Config.php src/Support/Http.php src/Presentation/Views.php src/Presentation/Components.php
-touch public/index.php public/register.php public/login.php public/welcome.php public/not-registered.php public/logout.php
-mkdir -p tests security/snort/rules scripts .github/workflows
-touch tests/AuthSecurityTest.php security/snort/snort.lua security/snort/rules/au7h.rules security/snort/rules/local.rules security/snort/rules/community.rules
-touch .gitignore .dockerignore .github/workflows/ci.yml package.json
+touch public/index.php
 ```
 
-Tambahan pada skeleton ini sengaja dibatasi ke file yang berhubungan dengan keamanan dan verifikasi: `RateLimiter.php`, `acl.sh`, direktori Snort, test helper keamanan, hygiene ignore file, dan workflow CI. File visual/UI tidak dibesarkan di tahap ini karena bukan inti kontrol keamanan.
+#### Hasil tahap
+
+Repo sudah punya fondasi paling kecil untuk mulai membangun container dan halaman awal. Setelah fondasi ini, file keamanan aplikasi, tampilan, Snort, test, CI, dan hygiene repo ditambahkan mengikuti tahap fiturnya.
 
 ### Tahap 0A - Menetapkan threat model containering dan security
 
@@ -1054,6 +1052,12 @@ Setelah fungsi masing-masing header dibaca, kombinasi header yang benar-benar re
 - Rapikan fingerprint server di konfigurasi global Apache.
 - Salin dan aktifkan konfigurasi global Apache di image.
 
+File konfigurasi global Apache mulai ditambahkan pada tahap ini karena kebutuhan hardening header dan fingerprint server baru muncul setelah virtual host HTTPS siap.
+
+```bash
+touch docker/apache-global.conf
+```
+
 **Sumber:** [Dockerfile:26](/home/fxrdhan/au7h/Dockerfile:26), [Dockerfile:45](/home/fxrdhan/au7h/Dockerfile:45), [Dockerfile:57](/home/fxrdhan/au7h/Dockerfile:57), dan [docker/apache-global.conf:1](/home/fxrdhan/au7h/docker/apache-global.conf:1)
 
 **Alur kode:** Dockerfile mengaktifkan modul header, membawa konfigurasi global Apache ke image, lalu mengaktifkan konfigurasi itu. Isi konfigurasi globalnya merapikan fingerprint server dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
@@ -1268,6 +1272,16 @@ Setelah urutan nama session -> cookie params -> start session jelas, bootstrap a
 
 - Bangun file bootstrap yang selalu dimuat oleh endpoint publik.
 - Pastikan semua helper, konfigurasi, dan koneksi database aktif dari jalur yang sama.
+
+Pada tahap bootstrap, struktur kode aplikasi mulai dipisah dari `public/`. Folder `src/` dibuat bersama file helper yang akan diisi oleh tahap database, HTTP, security, rate limit, dan presentation.
+
+```bash
+mkdir -p src/Infrastructure src/Support src/Security src/Presentation
+touch src/Support/Config.php src/Support/Http.php
+touch src/Infrastructure/Database.php
+touch src/Security/Auth.php src/Security/RateLimiter.php
+touch src/Presentation/Views.php src/Presentation/Components.php
+```
 
 **Sumber:** [config/bootstrap.php:1-14](/home/fxrdhan/au7h/config/bootstrap.php:1)
 
@@ -2148,6 +2162,20 @@ Halaman awal harus menjadi titik masuk tunggal. Flow tugas akan jauh lebih mudah
 #### Referensi
 
 Tahap ini tidak menambah referensi internet baru. Setelah helper CSRF, escaping, dan session siap pada tahap sebelumnya, tahap ini langsung menerjemahkan requirement browser-facing menjadi form yang benar-benar bisa diuji.
+
+#### Penambahan struktur halaman
+
+Pada tahap ini folder presentation dilengkapi dengan view auth dan view hasil. Endpoint publik juga bertambah mengikuti flow browser yang sudah jelas: register, login, welcome, gagal login, dan logout. Asset frontend disiapkan bersamaan karena form sudah mulai dipoles untuk demo browser.
+
+```bash
+touch src/Presentation/AuthViews.php src/Presentation/ResultViews.php
+touch public/register.php public/login.php public/welcome.php public/not-registered.php public/logout.php
+mkdir -p resources public/assets public/vendor scripts
+touch resources/tailwind.css public/styles.css
+touch public/theme.js public/password-validation.js public/page-shell.js public/matrix-rain.js public/favicon.svg
+touch public/vendor/motion.js public/vendor/matrix-animation.js
+touch scripts/sync-motion-vendor.mjs package.json
+```
 
 #### Tambahan Dockerfile Untuk File Aplikasi dan UI
 
@@ -3240,6 +3268,15 @@ Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokument
 - Tambahkan service Snort ke Compose setelah service aplikasi sudah bisa berjalan.
 - Pasang Snort sebagai sidecar yang memakai network namespace `app`.
 
+Folder Snort mulai ditambahkan pada tahap jaringan karena kebutuhan IDS baru muncul setelah service aplikasi dan port demo sudah jelas.
+
+```bash
+mkdir -p security/snort/rules
+touch security/snort/snort.lua
+touch security/snort/rules/au7h.rules security/snort/rules/local.rules security/snort/rules/community.rules
+touch scripts/update-snort-community-rules.sh
+```
+
 **Sumber cuplikan relevan:** [compose.dev.yaml:26](/home/fxrdhan/au7h/compose.dev.yaml:26)
 
 **Alur kode:** service `snort` ditambahkan belakangan pada file Compose final. Ia bergantung pada `app`, memakai image Snort resmi, berbagi network namespace aplikasi, menjatuhkan capability default, lalu menambahkan ulang capability jaringan yang diperlukan untuk membaca traffic.
@@ -3381,6 +3418,12 @@ alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:10000
 
 - Tambahkan tool ACL ke image aplikasi.
 
+Script ACL juga ditambahkan pada tahap jaringan karena ia baru dipakai saat aturan port dan ICMP mulai diterapkan.
+
+```bash
+touch docker/acl.sh
+```
+
 **Sumber:** [Dockerfile:20](/home/fxrdhan/au7h/Dockerfile:20)
 
 **Alur kode:** `iptables` baru ditambahkan pada tahap jaringan ini agar container aplikasi punya tool untuk memasang aturan ACL.
@@ -3515,6 +3558,13 @@ Tahap ini tidak menambah referensi internet baru. Test otomatis langsung memveri
 - Buat test runner PHP sederhana tanpa framework tambahan.
 - Pakai direktori data sementara agar test tidak menyentuh data demo.
 - Pakai secret test eksplisit agar output kriptografi tidak bergantung pada secret runtime container.
+
+Folder test mulai ditambahkan setelah helper keamanan stabil, sehingga test yang ditulis langsung mengarah ke fungsi yang sudah ada.
+
+```bash
+mkdir -p tests
+touch tests/AuthSecurityTest.php
+```
 
 **Sumber:** [tests/AuthSecurityTest.php:5](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:5)
 
@@ -3724,6 +3774,14 @@ Tahap ini memakai prinsip yang sudah dipakai sebelumnya: config dan secret harus
 
 - Abaikan dependency lokal, data runtime, sertifikat lokal, artefak browser test, backup, dan catatan privat.
 - Pastikan secret demo lokal tidak tersimpan ke repository.
+
+File hygiene repo mulai ditambahkan saat kebutuhan berbagi repo, build image, dan menjalankan CI sudah masuk ke alur proyek.
+
+```bash
+touch .gitignore .dockerignore
+mkdir -p .github/workflows
+touch .github/workflows/ci.yml
+```
 
 **Sumber:** [.gitignore:1](/home/fxrdhan/au7h/.gitignore:1)
 
@@ -4074,6 +4132,12 @@ Pada container multi-proses demo ini, proses Apache bisa saja masih hidup sement
 - Tambahkan script healthcheck kecil berbasis PHP.
 - Abaikan verifikasi CA karena endpoint yang dicek adalah loopback internal container dan sertifikat lokal bisa berasal dari self-signed fallback atau mkcert.
 - Gagal jika endpoint HTTPS tidak mengembalikan HTTP 200.
+
+Script healthcheck ditambahkan di akhir setelah endpoint HTTPS, bootstrap database, dan Compose sudah bekerja.
+
+```bash
+touch docker/healthcheck.php
+```
 
 **Sumber:** [docker/healthcheck.php:1](/home/fxrdhan/au7h/docker/healthcheck.php:1)
 
