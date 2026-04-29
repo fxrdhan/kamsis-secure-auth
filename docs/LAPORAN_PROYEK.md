@@ -1,14 +1,12 @@
-# Laporan Rancang Bangun Proyek Dari Nol
+# Laporan Rancang Bangun Proyek
 
 ## Daftar Isi
 
 - [1. Pendahuluan](#1-pendahuluan)
-- [2. Requirement Tugas Yang Diterjemahkan Menjadi Target Teknis](#2-requirement-tugas-yang-diterjemahkan-menjadi-target-teknis)
-- [3. Urutan Kerja Wajib](#3-urutan-kerja-wajib)
-- [4. Jejak Riset Internet Sebelum Implementasi](#4-jejak-riset-internet-sebelum-implementasi)
-- [5. Decision Log Dari Nol](#5-decision-log-dari-nol)
-- [6. Blueprint Struktur Proyek Dari Nol](#6-blueprint-struktur-proyek-dari-nol)
-- [7. Tahapan Implementasi Bertahap](#7-tahapan-implementasi-bertahap)
+- [2. Requirement](#2-requirement)
+- [3. Decision Log Dari Nol](#3-decision-log-dari-nol)
+- [4. Blueprint Struktur Proyek Dari Nol](#4-blueprint-struktur-proyek-dari-nol)
+- [5. Tahapan Implementasi Bertahap](#5-tahapan-implementasi-bertahap)
   - [Tahap 0 - Membuat folder kosong dan baseline tooling](#tahap-0---membuat-folder-kosong-dan-baseline-tooling)
   - [Tahap 1 - Menentukan image dasar dan isi container](#tahap-1---menentukan-image-dasar-dan-isi-container)
   - [Tahap 2 - Menetapkan environment inti container](#tahap-2---menetapkan-environment-inti-container)
@@ -28,8 +26,8 @@
   - [Tahap 16 - Menambahkan rate limiting login dan register](#tahap-16---menambahkan-rate-limiting-login-dan-register)
   - [Tahap 17 - Menyiapkan Docker Compose untuk development dan demo](#tahap-17---menyiapkan-docker-compose-untuk-development-dan-demo)
   - [Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan](#tahap-18---menambahkan-snort-ids-dan-acl-jaringan)
-- [8. Alur Demo Singkat Saat Presentasi](#8-alur-demo-singkat-saat-presentasi)
-- [9. Urutan Verifikasi Setelah Implementasi](#9-urutan-verifikasi-setelah-implementasi)
+- [6. Alur Demo Singkat Saat Presentasi](#6-alur-demo-singkat-saat-presentasi)
+- [7. Urutan Verifikasi Setelah Implementasi](#7-urutan-verifikasi-setelah-implementasi)
   - [Uji 1 - Container hidup](#uji-1---container-hidup)
   - [Uji 2 - HTTP redirect ke HTTPS](#uji-2---http-redirect-ke-https)
   - [Uji 3 - Form tampil di browser](#uji-3---form-tampil-di-browser)
@@ -46,10 +44,10 @@
   - [Uji 14 - ACL port jaringan](#uji-14---acl-port-jaringan)
   - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
   - [Bukti Screenshot Verifikasi](#bukti-screenshot-verifikasi)
-- [10. Pemetaan Requirement Tugas Ke Tahap Implementasi](#10-pemetaan-requirement-tugas-ke-tahap-implementasi)
-- [11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#11-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
-- [12. Checklist Final Sebelum Presentasi](#12-checklist-final-sebelum-presentasi)
-- [13. Ringkasan Strategi Dari Nol](#13-ringkasan-strategi-dari-nol)
+- [8. Pemetaan Requirement Tugas Ke Tahap Implementasi](#8-pemetaan-requirement-tugas-ke-tahap-implementasi)
+- [9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#9-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
+- [10. Checklist Final Sebelum Presentasi](#10-checklist-final-sebelum-presentasi)
+- [11. Ringkasan Strategi Dari Nol](#11-ringkasan-strategi-dari-nol)
 
 ## 1. Pendahuluan
 
@@ -59,9 +57,9 @@ Posisi masalah untuk tugas ini adalah:
 2. pengujian dilakukan lewat browser dan konfigurasi container,
 3. diminta **satu container** untuk web server dan database,
 
-## 2. Requirement Tugas Yang Diterjemahkan Menjadi Target Teknis
+## 2. Target 
 
-| Requirement tugas | Target teknis yang harus jadi |
+| Kebutuhan | Target |
 | --- | --- |
 | Satu container berisi server dan database | Satu image/container memuat Apache, PHP, MySQL, OpenSSL |
 | Web server bisa diakses via browser | Port HTTP/HTTPS dipublish ke host |
@@ -79,377 +77,22 @@ Posisi masalah untuk tugas ini adalah:
 | Tambahan Snort IDS | Snort 3 berjalan sebagai sidecar IDS dan membaca rule lokal/komunitas |
 | Tambahan ACL jaringan | `iptables` container membatasi traffic masuk: web diizinkan, MySQL/SSH/ICMP dibatasi |
 
-Catatan penting tentang istilah **satu container**: requirement inti satu container mengacu pada container aplikasi `app`, yaitu container yang memuat **Apache + PHP + MySQL + OpenSSL** dalam satu runtime. Service `snort` pada `compose.dev.yaml` adalah IDS sidecar tambahan untuk requirement jaringan, berbagi network namespace dengan `app` melalui `network_mode: service:app`. Sidecar ini tidak memisahkan database dari web server, sehingga requirement satu container web server + database tetap terpenuhi.
+Container memuat **Apache + PHP + MySQL + OpenSSL** dalam satu runtime. Service `snort` pada `compose.dev.yaml` adalah IDS sidecar tambahan untuk jaringan, berbagi network namespace dengan `app` melalui `network_mode: service:app`. Sidecar tidak memisahkan database dari web server, sehingga satu container web server + database tetap terpenuhi.
 
-## 3. Urutan Kerja Wajib
+## 3. Decision Logs
 
-Urutan kerja yang aman dan transparan untuk tugas ini bukan langsung coding. Urutannya harus:
+### 3.1. Satu container
 
-1. baca requirement tugas sampai menjadi acceptance criteria,
-2. cari referensi internet resmi atau otoritatif,
-3. ambil bagian referensi yang benar-benar relevan,
-4. putuskan arsitektur dan kontrol keamanan,
-5. implementasikan skeleton paling kecil yang bisa jalan,
-6. tambahkan kontrol keamanan satu per satu,
-7. uji flow utama dan uji serangan dasar,
-8. cocokkan hasil dengan requirement.
-
-Urutan ini penting karena tanpa riset awal, kontrol keamanan sering dipasang sekadar formalitas dan tidak nyambung dengan ancaman nyata.
-
-## 4. Jejak Riset Internet Sebelum Implementasi
-
-Bagian ini menjawab pertanyaan “search dulu di internet ambil bagian mananya”.
-
-Tabel berikut memuat sumber inti yang langsung memengaruhi keputusan teknis utama.
-
-| Kebutuhan keputusan | Query awal yang dicari | Referensi utama | Bagian yang diambil | Dampak ke implementasi |
-| --- | --- | --- | --- | --- |
-| Topologi container | `Docker docs one concern per container` | [Docker Docs - Building best practices](https://docs.docker.com/build/building/best-practices/) | bagian **Decouple applications** dan catatan bahwa satu concern per container adalah rule of thumb, bukan hukum mutlak | memilih **satu container** sebagai kompromi tugas, sambil tetap mencatat bahwa produksi normalnya dipisah |
-| TLS web server | `Apache mod_ssl SSLProtocol TLSv1.2 TLSv1.3` | [Apache `mod_ssl`](https://httpd.apache.org/docs/current/mod/mod_ssl.html) | bagian `SSLProtocol` dan `mod_ssl relies on OpenSSL` | memilih Apache + OpenSSL, mematikan protokol lama |
-| Penyimpanan password | `OWASP Password Storage Cheat Sheet Argon2id pepper` | [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) | bagian **Argon2id**, **Hashing vs Encryption**, **Peppering** | memilih `PASSWORD_ARGON2ID` + pepper; password **tidak** dienkripsi |
-| Implementasi hash password di PHP | `PHP password_hash Argon2id manual` | [PHP Manual `password_hash`](https://www.php.net/manual/en/function.password-hash.php) | bagian `PASSWORD_ARGON2ID`, salt otomatis, informasi hash tersimpan di output | memilih `password_hash(..., PASSWORD_ARGON2ID)` dan `password_verify()` |
-| Integritas form | `OWASP CSRF Prevention Cheat Sheet synchronizer token pattern` | [OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) | bagian **Synchronizer Token Pattern**, **SameSite Cookie Attribute**, larangan `GET` untuk state-changing action | memilih CSRF token di session, hidden input, `POST` only, `SameSite=Strict` |
-| Validasi input | `OWASP Input Validation Cheat Sheet allowlist length limit` | [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html) | bagian **Allowlist vs Denylist**, **minimum and maximum length**, **server-side validation** | memilih regex allowlist + batas panjang username/password |
-| SQL injection | `OWASP SQL Injection Prevention Cheat Sheet prepared statements` | [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html) | bagian **Prepared Statements (with Parameterized Queries)** | seluruh query auth harus PDO prepared statements |
-| XSS | `OWASP XSS Prevention Cheat Sheet output encoding CSP` | [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html) | bagian **Output Encoding** dan catatan bahwa **CSP hanya defense in depth** | memilih `htmlspecialchars` untuk output dan CSP header di Apache |
-| Buffer overflow | `CWE buffer overflow language selection bounds checks` | [MITRE CWE-120](https://cwe.mitre.org/data/definitions/120.html), [MITRE CWE-787](https://cwe.mitre.org/data/definitions/787.html), [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html), dan [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html) | bagian **classic buffer overflow**, **out-of-bounds write**, **Use a language that provides memory abstractions**, **bounds checking**, **validate length arguments** | memilih PHP userland untuk logika auth, membatasi input dan request size, mematikan upload |
-| Rate limiting autentikasi | `OWASP Authentication Cheat Sheet login throttling` | [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html) dan [OWASP Blocking Brute Force Attacks](https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks) | bagian **Login Throttling**, lockout threshold, observation window, dan risiko denial of service pada lockout penuh | menambahkan throttling berbasis database dan response `429` |
-| Snort IDS di Docker | `Snort 3 Docker Compose ciscotalos/snort3 tutorial` | [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3) dan [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3) | image `ciscotalos/snort3`, capability `NET_ADMIN`/`NET_RAW`, mount rules/logs, command `-i eth0 -c snort.lua` | menambahkan service Snort IDS sidecar di Compose |
-| Konfigurasi dan rule Snort 3 | `Snort 3 configuration snort.lua local.rules` | [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration) dan [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules) | `snort.lua`, `snort_defaults.lua`, `ips.include`, file `.rules`, `alert_fast` | membuat `security/snort/snort.lua`, `local.rules`, `community.rules`, dan command validasi rule |
-| Sidecar network namespace | `Docker Compose network_mode service` | [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode) | `network_mode: service:[service name]` | Snort berbagi network namespace dengan container aplikasi agar dapat memonitor traffic yang sama |
-| ACL container dengan iptables | `Docker iptables restrict external connections to containers` | [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/), [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html), dan [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html) | Docker membuat chain iptables; `iptables` menjelaskan chain, policy, `ACCEPT`/`DROP`; extensions menjelaskan `conntrack`, `multiport`, dan `icmp` | menambahkan ACL `iptables` untuk mengizinkan web dan menolak akses langsung ke MySQL/SSH |
-
-Alur kerja pada laporan ini dimulai dari requirement, lalu diterjemahkan menjadi target teknis, kemudian cari referensi, membaca bagian yang relevan, menempelkan kutipan penting ke dokumen, dan setelah itu masuk ke implementasi. 
-
-### Docker Docs - Building best practices
-
-Dipakai saat menilai bagaimana keputusan container dibaca secara jujur: Docker punya best practice umum, tetapi implementasi tugas tetap boleh mengambil kompromi selama alasan teknisnya dijelaskan. Referensi yang sama juga dipakai untuk menjelaskan kenapa Dockerfile memakai multi-stage build: Bun hanya dipakai pada tahap build frontend, sedangkan image runtime akhir tetap berisi komponen yang diperlukan untuk menjalankan aplikasi.
-
-Referensi terkait: [Docker Docs - Building best practices](https://docs.docker.com/build/building/best-practices/)
-
-> Multi-stage builds let you reduce the size of your final image, by creating a
-> cleaner separation between the building of your image and the final output.
-> Split your Dockerfile instructions into distinct stages to make sure that the
-> resulting output only contains the files that are needed to run the application.
->
-> **Translated:**
-> Multi-stage build membantu mengurangi ukuran image final dengan membuat pemisahan yang lebih bersih antara proses membangun image dan hasil akhirnya.
-> Pecah instruksi Dockerfile ke tahap-tahap yang berbeda agar output akhir hanya berisi file yang memang dibutuhkan untuk menjalankan aplikasi.
->
-> Each container should have only one concern. Decoupling applications into
-> multiple containers makes it easier to scale horizontally and reuse containers.
->
-> Limiting each container to one process is a good rule of thumb, but it's not a
-> hard and fast rule.
->
-> **Translated:**
-> Setiap container sebaiknya hanya memiliki satu concern. Memisahkan aplikasi ke
-> beberapa container membuat aplikasi lebih mudah diskalakan secara horizontal
-> dan container lebih mudah digunakan ulang.
->
-> Membatasi setiap container ke satu proses adalah aturan praktis yang baik,
-> tetapi bukan aturan mutlak.
-
-### Apache `mod_ssl`
-
-Dipakai untuk menetapkan bahwa HTTPS Apache bertumpu pada modul TLS berbasis OpenSSL, lalu diaktifkan melalui `SSLEngine` dengan sertifikat, private key, dan pembatasan versi protokol yang jelas.
-
-Referensi terkait: [Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html)
-
-> This module relies on [OpenSSL](https://www.openssl.org/) to provide the cryptography engine.
->
-> This directive toggles the usage of the SSL/TLS Protocol Engine.
->
-> This directive points to a file with certificate data in PEM format, or the certificate identifier through a configured cryptographic token. If using a PEM file, at minimum, the file must include an end-entity (leaf) certificate.
->
-> This directive points to the PEM-encoded private key file for the server, or the key ID through a configured cryptographic token.
->
-> This directive can be used to control which versions of the SSL/TLS protocol will be accepted in new connections.
->
-> **Translated:**
-> Modul ini mengandalkan [OpenSSL](https://www.openssl.org/) untuk menyediakan mesin kriptografi.
->
-> Directive ini menyalakan atau mematikan mesin protokol SSL/TLS.
->
-> Directive ini menunjuk ke file berisi data sertifikat dalam format PEM, atau identifier sertifikat melalui token kriptografi yang sudah dikonfigurasi. Jika memakai file PEM, minimal file itu harus memuat sertifikat end-entity atau leaf certificate.
->
-> Directive ini menunjuk ke file private key server dalam format PEM, atau key ID melalui token kriptografi yang sudah dikonfigurasi.
->
-> Directive ini dapat dipakai untuk mengatur versi protokol SSL/TLS mana saja yang diterima pada koneksi baru.
-
-### OWASP Password Storage Cheat Sheet
-
-Password harus di-hash dan algoritma yang dipilih adalah Argon2id, bukan enkripsi dua arah.
-
-Referensi terkait: [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-
-> This cheat sheet advises you on the proper methods for storing passwords for authentication.
-> When passwords are stored, they must be protected from an attacker even if the application or database is compromised.
-> To sum up our recommendations:
->
-> - Use Argon2id with a minimum configuration of 19 MiB of memory, an iteration count of 2, and 1 degree of parallelism.
->
-> **Translated:**
-> Cheat sheet ini memberi panduan tentang metode yang tepat untuk menyimpan password untuk keperluan autentikasi.
-> Saat password disimpan, password itu harus tetap terlindungi dari penyerang bahkan jika aplikasi atau database sudah dikompromikan.
-> Ringkasan rekomendasinya:
->
-> - Gunakan Argon2id dengan konfigurasi minimum 19 MiB memori, jumlah iterasi 2, dan derajat paralelisme 1.
-
-### OWASP Input Validation Cheat Sheet
-
-Validasi harus dilakukan sedini mungkin dan tetap berada di server-side.
-
-Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
-
-> Input validation is performed to ensure only properly formed data is entering the workflow in an information system, preventing malformed data from persisting in the database and triggering malfunction of various downstream components.
-> Input validation should happen as early as possible in the data flow, preferably as soon as the data is received from the external party.
-> Data from all potentially untrusted sources should be subject to input validation, including not only Internet-facing web clients but also backend feeds over extranets, from [suppliers, partners, vendors or regulators](https://badcyber.com/several-polish-banks-hacked-information-stolen-by-unknown-attackers/), each of which may be compromised on their own and start sending malformed data.
-> Allowlist validation is appropriate for all input fields provided by the user.
-> Input validation **must** be implemented on the server-side before any data is processed by an application’s functions, as any JavaScript-based input validation performed on the client-side can be circumvented by an attacker who disables JavaScript or uses a web proxy.
->
-> **Translated:**
-> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi, mencegah data yang rusak tersimpan di database dan memicu gangguan pada komponen berikutnya.
-> Validasi input sebaiknya dilakukan sedini mungkin dalam alur data, idealnya segera setelah data diterima dari pihak eksternal.
-> Semua data dari sumber yang berpotensi tidak tepercaya harus divalidasi, termasuk klien web yang menghadap internet maupun feed backend dari pihak eksternal.
-> Validasi allowlist cocok untuk semua field input dari user.
-> Validasi input harus diterapkan di sisi server sebelum data diproses oleh fungsi aplikasi.
-
-### OWASP SQL Injection Prevention Cheat Sheet
-
-Pastikan jalur query tidak pernah dibangun lewat concat string mentah dari input pengguna.
-
-Referensi terkait: [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
-
-> This cheat sheet will help you prevent SQL injection flaws in your applications.
-> Attackers can use SQL injection on an application if it has dynamic database queries that use string concatenation and user-supplied input.
->
-> **Translated:**
-> Cheat sheet ini akan membantu Anda mencegah celah SQL injection pada aplikasi.
-> Penyerang bisa memanfaatkan SQL injection pada aplikasi jika aplikasi memiliki query database dinamis yang dibangun dengan penggabungan string dan input dari pengguna.
-
-### OWASP XSS Prevention Cheat Sheet
-
-Tempatkan output encoding sebagai pertahanan utama, sementara CSP dipasang sebagai pertahanan tambahan.
-
-Referensi terkait: [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
-
-> This cheat sheet helps developers prevent XSS vulnerabilities.
-> Cross-Site Scripting (XSS) is a misnomer. Originally this term was derived from early versions of the attack that were primarily focused on stealing data cross-site. Since then, the term has widened to include injection of basically any content. XSS attacks are serious and can lead to account impersonation, observing user behaviour, loading external content, stealing sensitive data, and more.
-> **This cheatsheet contains techniques to prevent or limit the impact of XSS. Since no single technique will solve XSS, using the right combination of defensive techniques will be necessary to prevent XSS.**
->
-> **Translated:**
-> Cheat sheet ini membantu developer mencegah kerentanan XSS.
-> Cross-Site Scripting (XSS) adalah istilah yang agak menyesatkan. Awalnya istilah ini berasal dari versi awal serangan yang terutama berfokus pada pencurian data lintas situs. Sejak itu, maknanya meluas hingga mencakup penyisipan hampir semua jenis konten. Serangan XSS bersifat serius dan dapat menyebabkan peniruan akun, pengamatan perilaku pengguna, pemuatan konten eksternal, pencurian data sensitif, dan lain-lain.
-> **Cheat sheet ini berisi teknik untuk mencegah atau membatasi dampak XSS. Karena tidak ada satu teknik pun yang bisa menyelesaikan XSS sendirian, kombinasi teknik pertahanan yang tepat tetap diperlukan untuk mencegah XSS.**
-
-### MITRE CWE-120, CWE-787, CWE-122, dan CWE-125
-
-Terjemahkan requirement “buffer overflow” ke mitigasi yang realistis untuk aplikasi PHP userland.
-
-Referensi terkait: [MITRE CWE-120](https://cwe.mitre.org/data/definitions/120.html)
-
-> CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')
->
-> Use a language that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.
->
-> Implementation: Strategy: _Input Validation_
->
-> **Translated:**
-> CWE-120 adalah buffer copy tanpa pemeriksaan ukuran input, atau classic buffer overflow.
->
-> Gunakan bahasa yang tidak memungkinkan kelemahan ini terjadi, atau menyediakan konstruksi yang membuat kelemahan ini lebih mudah dihindari.
->
-> Implementasi: strategi input validation.
-
-Referensi terkait: [MITRE CWE-787](https://cwe.mitre.org/data/definitions/787.html)
-
-> CWE-787: Out-of-bounds Write
->
-> Often used to describe the consequences of writing to memory outside the bounds of a buffer, or to memory that is otherwise invalid.
->
-> Use a language that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.
->
-> **Translated:**
-> CWE-787 adalah out-of-bounds write.
->
-> Istilah ini sering dipakai untuk menjelaskan konsekuensi penulisan ke memori di luar batas buffer, atau ke memori yang tidak valid.
->
-> Gunakan bahasa yang tidak memungkinkan kelemahan ini terjadi, atau menyediakan konstruksi yang membuat kelemahan ini lebih mudah dihindari.
-
-Referensi terkait: [MITRE CWE-122](https://cwe.mitre.org/data/definitions/122.html)
-
-> A heap overflow condition is a buffer overflow, where the buffer that can be overwritten is allocated in the heap portion of memory, generally meaning that the buffer was allocated using a routine such as malloc().
-> Pre-design: Use a language or compiler that performs automatic bounds checking.
-> Implementation: Implement and perform bounds checking on input.
->
-> **Translated:**
-> Kondisi heap overflow adalah buffer overflow ketika buffer yang dapat ditimpa dialokasikan pada bagian heap dari memori, umumnya berarti buffer tersebut dialokasikan menggunakan routine seperti malloc().
-> Pada tahap pra-perancangan, gunakan bahasa atau compiler yang melakukan pemeriksaan batas secara otomatis.
-> Pada tahap implementasi, terapkan dan lakukan pemeriksaan batas pada input.
-
-Referensi terkait: [MITRE CWE-125](https://cwe.mitre.org/data/definitions/125.html)
-
-> The product reads data past the end, or before the beginning, of the intended buffer.
-> Implementation: Strategy: _Input Validation_
-> Assume all input is malicious. Use an "accept known good" input validation strategy, i.e., use a list of acceptable inputs that strictly conform to specifications.
-> To reduce the likelihood of introducing an out-of-bounds read, ensure that you validate and ensure correct calculations for any length argument, buffer size calculation, or offset.
-> Architecture and Design: Strategy: _Language Selection_
-> Use a language that provides appropriate memory abstractions.
->
-> **Translated:**
-> Produk membaca data melewati akhir, atau sebelum awal, dari buffer yang dimaksud.
-> Implementasi: Strategi: _Input Validation_
-> Anggap semua input berbahaya. Gunakan strategi validasi input "accept known good", yaitu memakai daftar input yang dapat diterima dan sesuai secara ketat dengan spesifikasi.
-> Untuk mengurangi kemungkinan terjadinya out-of-bounds read, pastikan Anda memvalidasi dan menghitung dengan benar setiap argumen panjang, perhitungan ukuran buffer, atau offset.
-> Arsitektur dan desain: Strategi: _Language Selection_
-> Gunakan bahasa yang menyediakan abstraksi memori yang sesuai.
-
-### Docker Recipes - Snort 3 Docker Compose
-
-Dipakai sebagai pembanding praktis untuk menjalankan Snort 3 lewat Docker Compose. Bagian yang diambil bukan seluruh topologi `network_mode: host`, melainkan pola penggunaan image `ciscotalos/snort3`, capability jaringan, mount rules/logs, dan command Snort yang menunjuk interface serta file konfigurasi.
-
-Referensi terkait: [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
-
-> image: ciscotalos/snort3:latest
-> cap_add:
->   - NET_ADMIN
->   - NET_RAW
-> volumes:
->   - snort_rules:/usr/local/etc/rules
->   - snort_logs:/var/log/snort
-> command: -i eth0 -c /usr/local/etc/snort/snort.lua
->
-> **Translated:**
-> Contoh Compose Snort memakai image `ciscotalos/snort3`, capability `NET_ADMIN` dan `NET_RAW`, volume untuk rules/logs, serta command yang menjalankan Snort pada interface `eth0` dengan file `snort.lua`.
-
-### Docker Hub - ciscotalos/snort3
-
-Dipakai untuk memastikan image Snort 3 yang digunakan memang image publik dari Cisco Talos, bukan image acak yang tidak jelas asalnya.
-
-Referensi terkait: [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3)
-
-> docker pull ciscotalos/snort3
->
-> **Translated:**
-> Image Snort 3 dapat diambil dari Docker Hub dengan nama `ciscotalos/snort3`.
-
-### Snort 3 Configuration Guide
-
-Dipakai untuk menentukan bentuk file `security/snort/snort.lua`, termasuk penggunaan Lua, `snort.lua`, `snort_defaults.lua`, dan validasi konfigurasi lewat argumen `-c`.
-
-Referensi terkait: [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
-
-> Snort 3 configuration is now all done in Lua, and these configuration options can be supplied to Snort in three different ways: via the command line, with a single Lua configuration file, or with multiple Lua configuration files.
->
-> The default files are located in the `lua/` directory, and the `snort.lua` and `snort_defaults.lua` files present there make up what is considered to be the the base configuration.
->
-> **Translated:**
-> Konfigurasi Snort 3 dilakukan dengan Lua. File `snort.lua` dan `snort_defaults.lua` menjadi konfigurasi dasar yang dapat dipakai sebagai template.
-
-### Snort 3 Rule Writing Guide
-
-Dipakai untuk dasar pemisahan rule ke file `.rules`, pemuatan rule lewat `ips.include`, dan mode alert `alert_fast` yang dipakai pada service Snort.
-
-Referensi terkait: [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
-
-> Snort rules can be placed directly in one's Lua configuration file(s) via the `ips` module, but for the most part they will live in distinct `.rules` files that get "included".
->
-> Snort provides a few different "alert mode" options that can be set on the command line to tweak the way alerts are displayed.
->
-> **Translated:**
-> Rule Snort umumnya disimpan pada file `.rules` terpisah yang di-include dari konfigurasi, dan output alert dapat diatur memakai opsi alert mode seperti `alert_fast`.
-
-### Docker Compose Services - network_mode
-
-Dipakai untuk menjelaskan keputusan menjalankan Snort sebagai sidecar dengan `network_mode: service:app`, bukan `network_mode: host`. Dengan pola ini, Snort melihat network namespace yang sama dengan aplikasi.
-
-Referensi terkait: [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode)
-
-> `network_mode` sets a service container's network mode.
->
-> - `service:{name}`: Gives the container access to the specified container by referring to its service name.
->
-> **Translated:**
-> `network_mode` mengatur mode jaringan container. Nilai `service:{name}` memberi container akses ke container service yang dituju berdasarkan nama service.
-
-### Docker Docs - Docker with iptables
-
-Dipakai untuk dasar ACL jaringan di konteks Docker. Referensi Docker menjelaskan bagaimana Docker berhubungan dengan `iptables`, sedangkan man page `iptables` dan `iptables-extensions` dipakai untuk menjelaskan semantik rule yang benar-benar muncul di `docker/acl.sh`: chain `INPUT`, policy `DROP`, target `ACCEPT`/`DROP`, `conntrack`, `multiport`, dan filter ICMP.
-
-Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
-
-> Docker creates iptables rules in the host's network namespace for bridge networks. For bridge and other network types, iptables rules for DNS are also created in the container's network namespace.
->
-> You may need to allow responses from servers outside the permitted external address ranges. The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
->
-> **Translated:**
-> Docker membuat rule `iptables` untuk jaringan bridge, dan pada beberapa tipe jaringan juga membuat rule di namespace container. Saat membatasi koneksi, traffic yang sudah termasuk koneksi `RELATED` atau `ESTABLISHED` perlu tetap diizinkan agar respons koneksi yang sah tidak ikut terblokir.
-
-Referensi terkait: [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html)
-
-> A firewall rule specifies criteria for a packet and a target.
->
-> The target can be one of the special values `ACCEPT`, `DROP` or `RETURN`.
->
-> `ACCEPT` means to let the packet through. `DROP` means to drop the packet on the floor.
->
-> The filter table contains the built-in chains `INPUT`, `FORWARD`, and `OUTPUT`.
->
-> **Translated:**
-> Rule firewall menetapkan kriteria paket dan target.
->
-> Target dapat berupa nilai khusus seperti `ACCEPT`, `DROP`, atau `RETURN`.
->
-> `ACCEPT` berarti paket diizinkan lewat. `DROP` berarti paket dijatuhkan.
->
-> Tabel filter memuat chain bawaan `INPUT`, `FORWARD`, dan `OUTPUT`.
-
-Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html)
-
-> `conntrack`
->
-> `--ctstate statelist`
->
-> `ESTABLISHED`
->
-> `RELATED`
->
-> `multiport`
->
-> This module matches a set of source or destination ports.
->
-> `--destination-ports`, `--dports`
->
-> `icmp`
->
-> `--icmp-type`
->
-> **Translated:**
-> Extension `conntrack` menyediakan pencocokan state koneksi seperti `ESTABLISHED` dan `RELATED`.
->
-> Extension `multiport` mencocokkan sekumpulan port sumber atau tujuan, termasuk melalui opsi `--dports`.
->
-> Extension `icmp` menyediakan filter tipe ICMP melalui opsi `--icmp-type`.
-
-## 5. Decision Log Dari Nol
-
-### 5.1. Mengapa Apache + PHP native + MySQL dalam satu container
-
-Keputusan ini bukan keputusan “paling modern”, tetapi keputusan yang paling tepat untuk tugas ini.
-
-Kombinasi Apache + PHP native + MySQL dipilih karena paling lurus untuk tugas browser-based berbasis form. Apache kuat untuk redirect HTTP ke HTTPS, TLS, dan security headers. PHP native membuat hubungan requirement -> kode -> kontrol keamanan tetap terlihat jelas tanpa tertutup abstraksi framework besar. MySQL dipilih karena umum, mudah diuji, dan langsung relevan dengan requirement penyimpanan akun.
-
-Framework penuh seperti Laravel atau stack Node bisa mempercepat pembuatan fitur, tetapi pada tugas ini transparansi lebih penting daripada akselerasi. Jika terlalu banyak mekanisme keamanan berjalan di balik abstraksi framework, penjelasan saat evaluasi menjadi lebih sulit karena hubungan antara ancaman, referensi, dan potongan kode tidak lagi terlihat langsung.
+Satu container yang memuat kombinasi Apache, PHP native, MySQL dipilih karena paling lurus untuk browser-based berbasis form. Apache kuat untuk redirect HTTP ke HTTPS, TLS, dan security headers. PHP native membuat hubungan requirement ke kode dan kontrol keamanan tetap terlihat jelas tanpa tertutup abstraksi framework. MySQL dipilih karena umum, mudah diuji, dan relevan dengan kebutuhan penyimpanan akun saja.
 
 | Opsi | Kelebihan | Kekurangan | Keputusan |
 | --- | --- | --- | --- |
-| Nginx + PHP-FPM + MySQL | arsitektur umum produksi | butuh lebih banyak proses dan konfigurasi | ditolak untuk tugas minimal karena kompleksitas naik |
+| Nginx + PHP-FPM + MySQL | arsitektur umum produksi | butuh lebih banyak proses dan konfigurasi | tidak dipilih karena kompleksitas naik |
 | Apache + mod_php + MySQL | HTTPS, rewrite, header security, PHP langsung di satu stack | bukan pemisahan service ideal produksi | **dipilih** karena paling lurus untuk tugas satu container |
-| Laravel/Node framework penuh | cepat untuk fitur | terlalu banyak abstraksi, laporan jadi kurang transparan | ditolak agar hubungan requirement -> implementasi terlihat jelas |
+| Laravel/Node framework | cepat untuk fitur | terlalu banyak abstraksi                  | tidak dipilih agar transparansi implementasi terlihat jelas |
 | PHP native procedural terstruktur | sangat transparan, dependency kecil | butuh disiplin struktur file | **dipilih** |
 
-### 5.2. Mengapa autentikasi berbasis session, bukan JWT
+### 3.2. Autentikasi berbasis session
 
 Form login web biasa yang ditest via browser lebih cocok memakai session karena:
 
@@ -458,13 +101,13 @@ Form login web biasa yang ditest via browser lebih cocok memakai session karena:
 3. logout server-side sederhana,
 4. requirement tugas tidak butuh API stateless.
 
-JWT tidak dipakai karena aplikasi ini bukan API stateless. Memaksakan JWT justru menambah isu baru seperti penyimpanan token di browser, invalidasi token saat logout, dan kebutuhan mekanisme revocation yang tidak diminta oleh requirement. Session cookie lebih natural untuk form login biasa dan lebih mudah dijelaskan pada demo browser.
+JWT tidak dipakai karena aplikasi ini bukan API stateless. Memaksakan JWT bisa menambah isu baru seperti penyimpanan token di browser, invalidasi token saat logout, dan kebutuhan mekanisme revocation. Session cookie lebih natural untuk form login biasa dan lebih mudah dijelaskan.
 
-### 5.3. Mengapa password di-hash, tetapi username dienkripsi + diindeks dengan HMAC
+### 3.3. Password di-hash dan username dienkripsi serta diindeks dengan HMAC
 
 Requirement landing page meminta username asli tetap bisa ditampilkan setelah login. Itu membuat satu hash saja tidak cukup.
 
-Password tidak dienkripsi dua arah karena tujuan requirement privasi database adalah mencegah attacker membaca password asli ketika database bocor. Hash satu arah memenuhi tujuan itu, sedangkan enkripsi password masih menyisakan kemungkinan plaintext dipulihkan jika key ikut bocor. Karena itu password memakai hash Argon2id, bukan ciphertext.
+Password tidak dienkripsi dua arah karena tujuan privasi database adalah mencegah attacker membaca password asli ketika database bocor. Hash satu arah memenuhi tujuan itu, sedangkan enkripsi password masih menyisakan kemungkinan plaintext dipulihkan jika key ikut bocor. Karena itu password memakai hash Argon2id, bukan ciphertext.
 
 Keputusan yang tepat:
 
@@ -473,7 +116,7 @@ Keputusan yang tepat:
    - `username_lookup`: HMAC-SHA256 dari username yang sudah dinormalisasi,
    - `username_encrypted`: ciphertext AES-256-GCM agar username asli bisa ditampilkan lagi.
 
-Username tidak disimpan langsung sebagai plaintext karena requirement privasi juga menyentuh data akun, tetapi username asli tetap perlu ditampilkan di landing page sukses. Solusi yang proporsional adalah memisahkan fungsi pencarian dan fungsi tampilan: `username_lookup` untuk pencarian stabil tanpa plaintext, dan `username_encrypted` untuk pemulihan tampilan asli setelah login valid.
+Username tidak disimpan langsung sebagai plaintext karena privasi juga menyentuh data akun, tetapi username asli tetap perlu ditampilkan di landing page sukses. Solusi yang proporsional adalah memisahkan fungsi pencarian dan fungsi tampilan: `username_lookup` untuk pencarian stabil tanpa plaintext, dan `username_encrypted` untuk pemulihan tampilan asli setelah login valid.
 
 Alasan:
 
@@ -481,11 +124,11 @@ Alasan:
 2. halaman welcome butuh nilai asli,
 3. database bocor tetap tidak langsung membuka username plaintext.
 
-### 5.4. Mengapa “buffer overflow” diterjemahkan sebagai mitigasi realistis di level aplikasi
+### 3.4. Buffer overflow
 
-Tugas ini berbasis PHP + Apache + MySQL. Logika bisnis auth ditulis di PHP userland, bukan di C manual. Itu menurunkan risiko buffer overflow pada kode aplikasi yang ditulis sendiri, tetapi **tidak berarti** seluruh stack native menjadi kebal secara absolut.
+Proyek ini berbasis PHP dengan Apache dan MySQL. Logika bisnis auth ditulis di PHP userland, bukan di C manual. Itu menurunkan risiko buffer overflow pada kode aplikasi yang ditulis sendiri, tetapi tidak berarti seluruh stack native menjadi kebal secara absolut.
 
-Interpretasi yang realistis dan jujur:
+Interpretasi yang realistis:
 
 1. logika auth ditulis di bahasa high-level,
 2. panjang input dibatasi ketat,
@@ -494,13 +137,9 @@ Interpretasi yang realistis dan jujur:
 5. parsing file biner tidak dipakai,
 6. request yang tidak sesuai ukuran/format dipotong sejak awal.
 
-Catatan transparansi:
+## 4. Blueprint
 
-Requirement ini dipenuhi pada level **aplikasi tugas** dan **hardening konfigurasi**, bukan dengan menciptakan proteksi kernel-level baru untuk Apache/MySQL.
-
-## 6. Blueprint Struktur Proyek Dari Nol
-
-Catatan pembacaan: struktur ini dibangun untuk memisahkan area yang boleh diakses browser, area logika aplikasi, dan area hardening container sebelum satu baris implementasi ditulis.
+Struktur ini dibangun untuk memisahkan area yang boleh diakses browser, area logika aplikasi, dan area hardening container sebelum implementasi.
 
 ```text
 au7h/
@@ -546,47 +185,42 @@ au7h/
 └── certs/
 ```
 
-Blueprint ini tidak disusun sekadar supaya folder terlihat rapi. Struktur awal dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
+Struktur awal dipilih untuk membatasi area yang boleh disentuh browser, memusatkan bootstrap request, memisahkan concern aplikasi, dan memisahkan concern runtime container dari logika PHP.
 
 Alasan struktur:
 
 1. `public/` dijadikan area yang boleh diakses browser karena Apache pada repo ini memang diarahkan ke `DocumentRoot /var/www/html/public` dan `DirectoryIndex index.php`, sehingga file di luar folder ini tidak ikut terekspos ke web. Pola ini terlihat di [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dan cocok dengan endpoint yang memang berada di [public/index.php](/home/fxrdhan/au7h/public/index.php:1), [public/register.php](/home/fxrdhan/au7h/public/register.php:1), [public/login.php](/home/fxrdhan/au7h/public/login.php:1), [public/welcome.php](/home/fxrdhan/au7h/public/welcome.php:1), [public/not-registered.php](/home/fxrdhan/au7h/public/not-registered.php:1), dan [public/logout.php](/home/fxrdhan/au7h/public/logout.php:1).
 2. `src/` dipisah berdasarkan concern karena alur aplikasi ini memang terbagi jelas: akses database diletakkan di [src/Infrastructure/Database.php](/home/fxrdhan/au7h/src/Infrastructure/Database.php:1), autentikasi di [src/Security/Auth.php](/home/fxrdhan/au7h/src/Security/Auth.php:1), rate limiting di [src/Security/RateLimiter.php](/home/fxrdhan/au7h/src/Security/RateLimiter.php:1), helper umum di [src/Support/Config.php](/home/fxrdhan/au7h/src/Support/Config.php:1) dan [src/Support/Http.php](/home/fxrdhan/au7h/src/Support/Http.php:1), lalu HTML dirender lewat aggregator [src/Presentation/Views.php](/home/fxrdhan/au7h/src/Presentation/Views.php:1) yang memuat komponen di [src/Presentation/Components.php](/home/fxrdhan/au7h/src/Presentation/Components.php:1), form auth di [src/Presentation/AuthViews.php](/home/fxrdhan/au7h/src/Presentation/AuthViews.php:1), dan halaman hasil di [src/Presentation/ResultViews.php](/home/fxrdhan/au7h/src/Presentation/ResultViews.php:1). Pemisahan ini membuat perubahan tampilan tidak langsung mengganggu query database atau aturan login.
-3. `docker/` dipisahkan karena isinya bukan logika bisnis aplikasi, melainkan concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, pengaturan PHP, dan ACL jaringan dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1), [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1), serta [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
+3. `docker/` berisi concern runtime dan hardening container: template virtual host Apache, header keamanan, TLS, pengaturan PHP, dan ACL jaringan dibaca oleh [Dockerfile](/home/fxrdhan/au7h/Dockerfile:1), [docker-entrypoint.sh](/home/fxrdhan/au7h/docker-entrypoint.sh:1), serta [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1). Dengan begitu, konfigurasi server dapat diubah tanpa mencampur file endpoint atau fungsi autentikasi.
 4. `security/snort/` dipisah karena Snort IDS adalah concern monitoring jaringan. [security/snort/snort.lua](/home/fxrdhan/au7h/security/snort/snort.lua:1) memuat konfigurasi IDS, sedangkan [security/snort/rules/au7h.rules](/home/fxrdhan/au7h/security/snort/rules/au7h.rules:1), [security/snort/rules/local.rules](/home/fxrdhan/au7h/security/snort/rules/local.rules:1), dan [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) memisahkan rule aggregator, rule lokal, dan rule komunitas.
 5. `tests/` disiapkan untuk verifikasi helper keamanan. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) memeriksa validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
 6. `config/bootstrap.php` dipakai sebagai bootstrap aplikasi agar semua endpoint publik memulai request dari titik inisialisasi yang sama. File ini me-load `Config`, `Database`, `Http`, `Auth`, `RateLimiter`, dan `Views`, lalu memanggil `ensure_app_booted();`, sehingga setup koneksi, session, helper HTTP, rate limit, dan renderer tidak perlu diulang di setiap file endpoint. Pola ini terlihat di [config/bootstrap.php](/home/fxrdhan/au7h/config/bootstrap.php:1) dan dipakai ulang dari [public/index.php](/home/fxrdhan/au7h/public/index.php:1).
 
-### Referensi khusus folder `docker/`
+### Folder `docker/`
 
-Detail referensi isi file di folder `docker/` sengaja tidak diletakkan di blueprint struktur, melainkan di tahap implementasi saat file-file itu benar-benar dipakai:
+Detail referensi isi file di folder `docker/`:
 
-1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) dibahas di Tahap 4 karena di sana alur redirect HTTP dan aktivasi HTTPS baru benar-benar diimplementasikan.
-2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12) dibahas di Tahap 5 karena fokus tahap itu adalah hardening HTTP-level di web server.
-3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) dibahas di Tahap 6 karena isinya adalah hardening runtime PHP dan penguatan session cookie.
-4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) dibahas di Tahap 18 karena isinya adalah ACL jaringan container dengan `iptables`.
+1. [docker/apache-http.conf.template](/home/fxrdhan/au7h/docker/apache-http.conf.template:1) dan [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1) berisi alur redirect HTTP dan aktivasi HTTPS
+2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)  fokus pada hardening HTTP-level di web server.
+3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) isinya adalah hardening runtime PHP dan penguatan session cookie.
+4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) isinya adalah ACL jaringan container dengan `iptables`.
 
 ### File pendukung UI, tooling, dan test
 
-File berikut bukan pusat requirement keamanan, tetapi tetap bagian dari implementasi repo dan ikut dipetakan agar struktur proyek terbaca utuh:
-
 1. [resources/tailwind.css](/home/fxrdhan/au7h/resources/tailwind.css:1) adalah source styling, sedangkan [public/styles.css](/home/fxrdhan/au7h/public/styles.css:1) adalah output build yang dilayani browser dan disalin ke image lewat `Dockerfile`.
-2. [public/favicon.svg](/home/fxrdhan/au7h/public/favicon.svg:1), font [public/assets/Backwards.ttf](/home/fxrdhan/au7h/public/assets/Backwards.ttf:1), [public/assets/Nunito-400.ttf](/home/fxrdhan/au7h/public/assets/Nunito-400.ttf:1), [public/assets/Nunito-500.ttf](/home/fxrdhan/au7h/public/assets/Nunito-500.ttf:1), [public/assets/Nunito-600.ttf](/home/fxrdhan/au7h/public/assets/Nunito-600.ttf:1), [public/assets/Nunito-700.ttf](/home/fxrdhan/au7h/public/assets/Nunito-700.ttf:1), [public/assets/Nunito-800.ttf](/home/fxrdhan/au7h/public/assets/Nunito-800.ttf:1), [public/theme.js](/home/fxrdhan/au7h/public/theme.js:1), [public/password-validation.js](/home/fxrdhan/au7h/public/password-validation.js:1), [public/page-shell.js](/home/fxrdhan/au7h/public/page-shell.js:1), [public/matrix-rain.js](/home/fxrdhan/au7h/public/matrix-rain.js:1), [public/vendor/motion.js](/home/fxrdhan/au7h/public/vendor/motion.js:1), dan [public/vendor/matrix-animation.js](/home/fxrdhan/au7h/public/vendor/matrix-animation.js:1) adalah lapisan presentasi yang dipanggil oleh layout HTML, bukan sumber keputusan autentikasi atau kontrol server-side.
+2. [public/favicon.svg](/home/fxrdhan/au7h/public/favicon.svg:1), fonts, [public/theme.js](/home/fxrdhan/au7h/public/theme.js:1), [public/password-validation.js](/home/fxrdhan/au7h/public/password-validation.js:1), [public/page-shell.js](/home/fxrdhan/au7h/public/page-shell.js:1), [public/matrix-rain.js](/home/fxrdhan/au7h/public/matrix-rain.js:1), [public/vendor/motion.js](/home/fxrdhan/au7h/public/vendor/motion.js:1), dan [public/vendor/matrix-animation.js](/home/fxrdhan/au7h/public/vendor/matrix-animation.js:1) adalah lapisan presentasi yang dipanggil oleh layout HTML.
 3. [scripts/sync-motion-vendor.mjs](/home/fxrdhan/au7h/scripts/sync-motion-vendor.mjs:1) menyalin bundle Motion ke folder publik, sedangkan [scripts/update-snort-community-rules.sh](/home/fxrdhan/au7h/scripts/update-snort-community-rules.sh:1) memperbarui [security/snort/rules/community.rules](/home/fxrdhan/au7h/security/snort/rules/community.rules:1) yang kemudian dimuat oleh `au7h.rules`.
 4. [tests/AuthSecurityTest.php](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:1) adalah test helper keamanan yang memverifikasi validasi input, normalisasi username, HMAC lookup, enkripsi username, hashing password, CSRF token, dan policy rate limit.
 
-### Jejak referensi desain
+### Referensi desain
 
-Referensi berikut dipakai bukan untuk menyalin struktur framework besar, melainkan untuk menguatkan prinsip desain yang memang diterapkan di repo ini: batasi web root ke folder publik, pisahkan concern aplikasi, dan jangan campur config deploy dengan kode inti.
+Referensi berikut dipakai untuk menguatkan prinsip desain yang memang diterapkan di proyek ini: batasi web root ke folder publik, pisahkan concern aplikasi, dan jangan campur config deploy dengan kode inti.
 
-Referensi terkait: [Apache HTTP Server - Mapping URLs to Filesystem Locations](https://httpd.apache.org/docs/current/urlmapping.html)
+[Apache HTTP Server - Mapping URLs to Filesystem Locations](https://httpd.apache.org/docs/current/urlmapping.html)
 
 > In deciding what file to serve for a given request, httpd's default behavior is to take the URL-Path for the request (the part of the URL following the hostname and port) and add it to the end of the `DocumentRoot` specified in your configuration files. Therefore, the files and directories underneath the `DocumentRoot` make up the basic document tree which will be visible from the web.
->
-> **Translated:**
-> Saat menentukan file apa yang harus dilayani untuk sebuah request, perilaku default `httpd` adalah mengambil URL path request lalu menambahkannya ke akhir `DocumentRoot` yang ditentukan di file konfigurasi. Karena itu, file dan direktori di bawah `DocumentRoot` membentuk pohon dokumen dasar yang akan terlihat dari web.
 
-Referensi terkait: [MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
+[MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary/MVC)
 
 > MVC (Model-View-Controller) is a pattern in software design commonly used to implement user interfaces, data, and controlling logic.
 > It emphasizes a separation between the software's business logic and display.
@@ -594,33 +228,17 @@ Referensi terkait: [MDN - MVC](https://developer.mozilla.org/en-US/docs/Glossary
 > Model: Manages data and business logic.
 > View: Handles layout and display.
 > Controller: Routes commands to the model and view parts.
->
-> **Translated:**
-> MVC (Model-View-Controller) adalah pola desain software yang umum dipakai untuk mengimplementasikan user interface, data, dan controlling logic.
-> Pola ini menekankan pemisahan antara business logic software dan tampilan.
-> "Separation of concerns" ini memberi pembagian kerja yang lebih baik dan maintenance yang lebih mudah.
-> Model: mengelola data dan business logic.
-> View: menangani layout dan tampilan.
-> Controller: mengarahkan command ke bagian model dan view.
 
-Referensi terkait: [The Twelve-Factor App - Config](https://12factor.net/config)
+[The Twelve-Factor App - Config](https://12factor.net/config)
 
 > An app's config is everything that is likely to vary between deploys (staging, production, developer environments, etc).
 > Apps sometimes store config as constants in the code. This is a violation of twelve-factor, which requires strict separation of config from code.
 > A litmus test for whether an app has all config correctly factored out of the code is whether the codebase could be made open source at any moment, without compromising any credentials.
 > The twelve-factor app stores config in environment variables (often shortened to env vars or env).
->
-> **Translated:**
-> Config aplikasi adalah semua hal yang kemungkinan berubah antar-deploy (staging, production, environment developer, dan seterusnya).
-> Aplikasi kadang menyimpan konfigurasi sebagai konstanta di dalam kode. Ini melanggar prinsip twelve-factor, yang menuntut pemisahan ketat antara konfigurasi dan kode.
-> Uji sederhananya: apakah codebase bisa dibuat open source kapan saja tanpa membocorkan credential.
-> Aplikasi twelve-factor menyimpan config di environment variables (sering disingkat env vars atau env).
 
-Dengan tiga referensi ini, justifikasi saat presentasi bisa dijelaskan singkat seperti berikut: `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar data, tampilan, dan controlling logic tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan konfigurasi deploy tetap diambil dari environment variable alih-alih ditanam sebagai konstanta kode.
+Dengan tiga referensi ini, maka pemisahan folder dilakukan sesuai kebutuhan masing-masing. `public/` dipilih untuk membatasi permukaan akses browser, `src/` dipisah agar data, tampilan, dan controlling logic tidak bercampur, `docker/` dipisah agar hardening server dan runtime container tidak masuk ke logika aplikasi, dan konfigurasi deploy tetap diambil dari environment variable alih-alih ditanam sebagai konstanta kode.
 
-## 7. Tahapan Implementasi Bertahap
-
-Mulai section ini, tiap tahap dibaca dengan alur yang sama: apa yang diminta, target teknis tahap itu, referensi apa yang dicari, bagian sumber mana yang benar-benar dibaca dan ditempel ke laporan, lalu baru implementasinya. Dengan pola ini, hubungan requirement -> referensi -> kode tetap terlihat menyambung.
+## 5. Tahapan Implementasi
 
 ### Tahap 0 - Membuat folder kosong dan baseline tooling
 
@@ -630,18 +248,14 @@ Menyediakan fondasi kerja yang rapi sebelum instalasi dependency.
 
 #### Analisis alur
 
-Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint akan cepat tercampur. Untuk tugas yang dinilai berdasarkan hasil demonstrasi, struktur jelas memudahkan debugging saat presentasi.
-
-#### Jejak referensi sebelum implementasi
-
-Tahap ini tidak membutuhkan referensi internet baru. Alurnya langsung bergerak dari requirement umum proyek ke target paling dasar: siapkan kerangka folder dan file inti dulu, baru tahap-tahap berikutnya mengisi detail implementasi dan referensi keamanan.
+Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint akan cepat tercampur.
 
 #### Implementasi
 
 **Langkah 1:**
 
 - Buat seluruh folder dan placeholder file inti lebih dulu.
-- Pastikan tahapan berikutnya tinggal mengisi isi file, bukan terus-menerus mengubah struktur proyek.
+- Pastikan file siap diisi secara bertahap.
 
 ```bash
 mkdir -p au7h/{docker,config,src/Infrastructure,src/Security,src/Support,src/Presentation,public,certs}
@@ -653,10 +267,6 @@ touch src/Infrastructure/Database.php src/Security/Auth.php src/Support/Config.p
 touch public/index.php public/register.php public/login.php public/welcome.php public/not-registered.php public/logout.php
 ```
 
-#### Hasil tahap
-
-Folder proyek siap diisi tanpa perubahan struktur besar di tengah jalan.
-
 ### Tahap 1 - Menentukan image dasar dan isi container
 
 #### Tujuan
@@ -667,11 +277,11 @@ Membuat satu image yang memuat Apache, PHP, MySQL, dan OpenSSL.
 
 Tugas memperbolehkan satu container untuk server dan database. Karena itu, image harus langsung memasang semua komponen inti. Pemilihan Apache mengurangi kompleksitas dibanding Nginx + PHP-FPM.
 
-Stack ini sengaja dibuat kecil dan eksplisit. Apache menangani akses browser, redirect, TLS, dan security headers; PHP native menangani form register-login tanpa framework besar; MySQL menangani penyimpanan akun yang mudah diinspeksi saat demo. Dengan begitu, evaluator bisa mengikuti alur dari requirement ke Dockerfile, konfigurasi Apache, kode PHP, lalu isi database tanpa harus membuka lapisan framework yang tidak menjadi fokus tugas.
+Stack ini sengaja dibuat kecil dan eksplisit. Apache menjadi web server, PHP native menjalankan logika aplikasi tanpa framework besar, dan MySQL menangani penyimpanan akun yang mudah diinspeksi. Dengan begitu, evaluator bisa mengikuti alur dari requirement ke Dockerfile, konfigurasi server, kode PHP, lalu isi database tanpa harus membuka lapisan framework.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
-Referensi terkait: [Docker Docs - Dockerfile overview](https://docs.docker.com/build/concepts/dockerfile/)
+[Docker Docs - Dockerfile overview](https://docs.docker.com/build/concepts/dockerfile/)
 
 > Docker can build images automatically by reading the instructions from a
 > Dockerfile. A Dockerfile is a text file containing instructions for building
@@ -680,15 +290,8 @@ Referensi terkait: [Docker Docs - Dockerfile overview](https://docs.docker.com/b
 >
 > Dockerfiles are crucial inputs for image builds and can facilitate automated,
 > multi-layer image builds based on your unique configurations.
->
-> **Translated:**
-> Docker dapat membangun image secara otomatis dengan membaca instruksi dari sebuah Dockerfile.
-> Dockerfile adalah file teks yang berisi instruksi untuk membangun source code.
-> Sintaks instruksi Dockerfile didefinisikan oleh spesifikasi pada Dockerfile reference.
->
-> Dockerfile adalah masukan penting untuk proses build image dan dapat memfasilitasi build image berlapis yang otomatis sesuai konfigurasi unik proyek.
 
-Referensi terkait: [Docker CLI - docker image build](https://docs.docker.com/reference/cli/docker/image/build/)
+[Docker CLI - docker image build](https://docs.docker.com/reference/cli/docker/image/build/)
 
 > | Description | Build an image from a Dockerfile |
 > | Usage | `docker image build [OPTIONS] PATH | URL | -` |
@@ -698,30 +301,16 @@ Referensi terkait: [Docker CLI - docker image build](https://docs.docker.com/ref
 > command. In the following example, the context is `.`, meaning the current
 > working directory.
 >
-> **Translated:**
-> | Deskripsi | Membangun image dari sebuah Dockerfile |
-> | Pemakaian | `docker image build [OPTIONS] PATH | URL | -` |
-> | Alias | `docker build` `docker builder build` |
->
-> Build context adalah argumen posisi yang Anda berikan saat memanggil perintah build.
-> Pada contoh berikut, context-nya adalah `.`, artinya direktori kerja saat ini.
 
-Referensi terkait: [Dockerfile reference - FROM](https://docs.docker.com/reference/dockerfile/#from)
+[Dockerfile reference - FROM](https://docs.docker.com/reference/dockerfile/#from)
 
 > The `FROM` instruction initializes a new build stage and sets the
 > base image for subsequent instructions. As such, a valid Dockerfile must
 > start with a `FROM` instruction. The image can be any valid image.
 >
-> `ARG` is the only instruction that may precede `FROM` in the Dockerfile.
->
-> **Translated:**
-> Instruksi `FROM` menginisialisasi tahap build baru dan menetapkan base image untuk instruksi-instruksi berikutnya.
-> Karena itu, Dockerfile yang valid harus diawali dengan instruksi `FROM`.
-> Image dasarnya bisa berupa image apa pun yang valid.
->
-> `ARG` adalah satu-satunya instruksi yang boleh muncul sebelum `FROM` di Dockerfile.
+> `ARG` is the only instruction that may precede `FROM` in the Dockerfile..
 
-Referensi terkait: [Dockerfile reference - RUN](https://docs.docker.com/reference/dockerfile/#run)
+[Dockerfile reference - RUN](https://docs.docker.com/reference/dockerfile/#run)
 
 > The `RUN` instruction will execute any commands to create a new layer on top of
 > the current image. The added layer is used in the next step in the Dockerfile.
@@ -729,87 +318,21 @@ Referensi terkait: [Dockerfile reference - RUN](https://docs.docker.com/referenc
 >
 > `RUN [OPTIONS] <command> ...`
 > `RUN [OPTIONS] [ "<command>", ... ]`
->
-> **Translated:**
-> Instruksi `RUN` akan mengeksekusi perintah apa pun untuk membuat layer baru di atas image saat ini.
-> Layer yang ditambahkan itu lalu dipakai pada langkah berikutnya di Dockerfile.
-> `RUN` memiliki dua bentuk:
->
-> `RUN [OPTIONS] <command> ...`
-> `RUN [OPTIONS] [ "<command>", ... ]`
-
-Referensi terkait: [Dockerfile reference - shell and exec form](https://docs.docker.com/reference/dockerfile/#shell-and-exec-form)
-
-> The `RUN`, `CMD`, and `ENTRYPOINT` instructions all have two possible forms:
-> - `INSTRUCTION command param1 param2` (shell form)
-> - `INSTRUCTION ["executable","param1","param2"]` (exec form)
->
-> **Translated:**
-> Instruksi `RUN`, `CMD`, dan `ENTRYPOINT` masing-masing punya dua bentuk:
-> - `INSTRUCTION command param1 param2` (bentuk shell)
-> - `INSTRUCTION ["executable","param1","param2"]` (bentuk exec)
-
-Referensi terkait: [Dockerfile reference - ENTRYPOINT](https://docs.docker.com/reference/dockerfile/#entrypoint)
-
-> The exec form is best used to specify an `ENTRYPOINT` instruction, combined
-> with `CMD` for setting default arguments that can be overridden at runtime.
->
-> Using the exec form doesn't automatically invoke a command shell. This means
-> that normal shell processing, such as variable substitution, doesn't happen.
->
-> **Translated:**
-> Bentuk exec paling tepat dipakai untuk menetapkan instruksi `ENTRYPOINT`, lalu dikombinasikan dengan `CMD` untuk memberi argumen default yang masih bisa dioverride saat runtime.
->
-> Pemakaian bentuk exec tidak otomatis memanggil command shell. Artinya, pemrosesan shell normal seperti substitusi variabel tidak terjadi secara otomatis.
-
-Bagian overview halaman yang sama juga dipakai untuk memetakan fungsi instruksi yang memang muncul di Dockerfile proyek ini:
-
-Referensi terkait: [Dockerfile reference - instruction overview](https://docs.docker.com/reference/dockerfile/)
-
-> `COPY` | Copy files and directories.
-> `ENV` | Set environment variables.
-> `EXPOSE` | Describe which ports your application is listening on.
-> `ENTRYPOINT` | Specify default executable.
-> `CMD` | Specify default commands.
-> `VOLUME` | Create volume mounts.
->
-> **Translated:**
-> `COPY` | Menyalin file dan direktori.
-> `ENV` | Menetapkan environment variable.
-> `EXPOSE` | Menjelaskan port yang didengarkan aplikasi.
-> `ENTRYPOINT` | Menentukan executable default.
-> `CMD` | Menentukan perintah default.
-> `VOLUME` | Membuat mount volume.
-
-Setelah format image, arti `FROM` dan `RUN`, serta peran `COPY`, `ENV`, `EXPOSE`, `VOLUME`, `ENTRYPOINT`, dan `CMD` jelas, barulah isi container ditulis.
 
 #### Implementasi
 
 **Langkah 1:**
 
-- Mulai dari tahap build frontend yang hanya menghasilkan CSS.
-- Lanjut ke base image runtime yang stabil untuk paket sistem.
-- Pakai Bun untuk proses build CSS.
-- Pastikan image akhir tetap memuat komponen runtime untuk HTTP/HTTPS, PHP, MySQL, dan ACL jaringan.
+- Tulis kerangka awal Dockerfile untuk runtime aplikasi.
+- Mulai dari image sistem yang stabil.
+- Pasang komponen minimum agar web server, PHP, database, dan TLS tersedia.
+- Batasi tahap ini pada runtime dasar.
 
-**Sumber:** [Dockerfile:1](/home/fxrdhan/au7h/Dockerfile:1)
+**Sumber:** [Dockerfile:12](/home/fxrdhan/au7h/Dockerfile:12)
 
-**Alur kode:** stage `frontend-builder` menginstall dependency frontend dan membangun CSS. Setelah itu stage runtime dimulai dari Ubuntu, mode instalasi non-interaktif diaktifkan, paket inti web, database, TLS, dan ACL dipasang, modul Apache yang dibutuhkan dinyalakan, dan sisa cache apt dibersihkan agar layer runtime tetap ringkas.
+**Catatan pembacaan:** sumber mengarah ke stage runtime yang dipakai repo. Cuplikan di bawah adalah bentuk awal runtime pada akhir Tahap 1 saja.
 
-```dockerfile
-FROM oven/bun:1.3.6 AS frontend-builder
-
-WORKDIR /app
-
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-
-COPY resources ./resources
-COPY public ./public
-RUN bun run build:css
-```
-
-Blok ini adalah stage khusus build frontend. Dependency dipasang dengan Bun, lalu CSS dibangun dari resource frontend sebelum hasilnya nanti dibawa ke image runtime.
+Pada tahap paling awal, Dockerfile cukup memuat runtime dasar:
 
 ```dockerfile
 FROM ubuntu:25.10
@@ -819,81 +342,26 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     apache2 \
-    gettext-base \
-    iptables \
     libapache2-mod-php8.4 \
     mysql-server \
     openssl \
     php8.4 \
     php8.4-mysql \
-  && a2enmod headers rewrite ssl \
-  && (a2dissite 000-default default-ssl >/dev/null 2>&1 || true) \
   && rm -rf /var/lib/apt/lists/*
 ```
 
-Blok ini memulai image runtime dari Ubuntu, memasang paket web/database/TLS/ACL, mengaktifkan modul Apache yang diperlukan, lalu membersihkan cache apt agar image tidak membawa sisa instalasi yang tidak perlu.
+Blok awal ini baru menjawab kebutuhan dasar satu container: Apache menerima request browser, PHP menjalankan aplikasi, MySQL menyimpan akun, dan OpenSSL tersedia untuk operasi kriptografi server.
 
-**Langkah 2:**
+Paket dasar pada tahap awal:
 
-- Salin semua file yang dibutuhkan image.
-- Pasang script ACL.
-- Bawa hasil build CSS dari stage frontend.
-- Aktifkan konfigurasi global Apache.
-- Siapkan direktori data persisten.
-- Tetapkan proses startup utama container.
-
-**Sumber:** [Dockerfile:44](/home/fxrdhan/au7h/Dockerfile:44)
-
-**Alur kode:** semua file runtime proyek disalin lebih dulu ke image, script ACL ikut dipasang sebagai executable, hasil CSS dari stage frontend disalin ke image final, lalu direktori persisten dan izin file disiapkan. Setelah itu port, volume, entrypoint, dan proses utama container dideklarasikan sebagai urutan startup final.
-
-```dockerfile
-COPY docker/php.ini /etc/php/8.4/apache2/conf.d/90-au7h-security.ini
-COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
-COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
-COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
-COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
-```
-
-Blok ini menyalin konfigurasi runtime dan script ACL ke lokasi sistem di dalam image agar Apache, PHP, dan firewall container punya file konfigurasi yang siap dipakai.
-
-```dockerfile
-COPY config /var/www/html/config
-COPY public /var/www/html/public
-COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
-COPY src /var/www/html/src
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
-```
-
-Blok ini menyalin source aplikasi dan hasil build CSS ke document tree runtime. Entrypoint juga dipasang sebagai script startup utama container.
-
-```dockerfile
-RUN mkdir -p /var/www/data /var/www/certs /var/run/mysqld /var/lib/mysql \
-  && a2enconf zzz-au7h-global \
-  && chmod +x /usr/local/bin/docker-entrypoint-custom.sh \
-  && chmod +x /usr/local/bin/au7h-apply-acl.sh \
-  && chown -R www-data:www-data /var/www \
-  && chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
-```
-
-Blok ini menyiapkan direktori data, sertifikat, socket MySQL, dan izin file. Apache global config juga diaktifkan sebelum container dijalankan.
-
-```dockerfile
-EXPOSE 8080 8443
-VOLUME ["/var/www/data", "/var/www/certs", "/var/lib/mysql"]
-
-ENTRYPOINT ["docker-entrypoint-custom.sh"]
-CMD ["apache2ctl", "-D", "FOREGROUND"]
-```
-
-Blok ini mendeklarasikan port web, volume persisten, entrypoint bootstrap, dan proses utama Apache yang menjaga container tetap berjalan.
-
-#### Keputusan penting
-
-1. `frontend-builder` dipakai hanya untuk membangun CSS; image runtime akhir tetap menjalankan aplikasi dalam satu container.
-2. `openssl` dipasang karena sertifikat perlu dibuat otomatis jika belum ada.
-3. `gettext-base` dipasang untuk `envsubst` saat merender template Apache.
-4. `iptables` dipasang karena ACL container diterapkan dari dalam container aplikasi.
-5. `libapache2-mod-php8.4` dipakai agar PHP langsung dilayani Apache tanpa FPM tambahan.
+| Paket | Tujuan | Keterangan |
+| --- | --- | --- |
+| `apache2` | Menjalankan web server HTTP/HTTPS. | Aplikasi harus bisa dibuka dari browser. Pada tahap ini Apache baru dipasang sebagai komponen runtime. |
+| `libapache2-mod-php8.4` | Menghubungkan Apache dengan runtime PHP melalui `mod_php`. | Karena aplikasi ditulis dalam PHP native, Apache perlu modul agar file `.php` bisa dieksekusi langsung. Ini juga menjaga arsitektur tetap sederhana dalam satu container tanpa menambah PHP-FPM sebagai proses terpisah. |
+| `mysql-server` | Menjalankan database MySQL di container yang sama. | Aplikasi membutuhkan penyimpanan akun, hash password, username terenkripsi, data session/rate limit, dan lookup login. Paket ini memenuhi kebutuhan satu container yang berisi web server sekaligus database. |
+| `openssl` | Menyediakan tool kriptografi. | Komponen ini dipakai oleh runtime server untuk kebutuhan keamanan transport dan secret. |
+| `php8.4` | Menyediakan runtime utama PHP. | File endpoint di `public/` dan helper di `src/` dijalankan oleh PHP. Paket ini adalah interpreter dasar untuk logika register, login, session, CSRF, validasi input, dan rendering halaman. |
+| `php8.4-mysql` | Menyediakan ekstensi PHP untuk koneksi MySQL/PDO. | Kode aplikasi memakai database MySQL melalui PHP. Ekstensi ini memungkinkan prepared statement PDO berjalan, sehingga query login/register dapat dibuat aman dari SQL injection. |
 
 ### Tahap 2 - Menetapkan environment inti container
 
@@ -905,59 +373,11 @@ Mendefinisikan port, path data, nama database, dan user aplikasi sejak awal.
 
 Environment variable yang eksplisit membuat startup container deterministik dan memudahkan perpindahan antara mode development dan mode demo/presentasi.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
-Tahap ini masih memakai referensi Dockerfile yang sama, tetapi fokusnya pindah ke perilaku `ENV` dan penggantian variabel pada instruksi berikutnya.
+Tahap ini masih memakai referensi Dockerfile yang sama, tetapi fokusnya pindah ke perilaku `ENV`.
 
-Referensi terkait: [Dockerfile reference - ENV](https://docs.docker.com/reference/dockerfile/#env)
-
-> Environment variables are supported by the following list of instructions in
-> the Dockerfile:
-> - `ADD`
-> - `COPY`
-> - `ENV`
-> - `EXPOSE`
-> - `FROM`
-> - `LABEL`
-> - `STOPSIGNAL`
-> - `USER`
-> - `VOLUME`
-> - `WORKDIR`
-> - `ONBUILD` (when combined with one of the supported instructions above)
->
-> **Translated:**
-> Environment variable didukung oleh daftar instruksi berikut di Dockerfile:
-> - `ADD`
-> - `COPY`
-> - `ENV`
-> - `EXPOSE`
-> - `FROM`
-> - `LABEL`
-> - `STOPSIGNAL`
-> - `USER`
-> - `VOLUME`
-> - `WORKDIR`
-> - `ONBUILD` (saat dikombinasikan dengan salah satu instruksi yang didukung di atas)
-
-Referensi terkait: [Dockerfile reference - ENV](https://docs.docker.com/reference/dockerfile/#env)
-
-> You can also use environment variables with `RUN`, `CMD`, and `ENTRYPOINT`
-> instructions, but in those cases the variable substitution is handled by the
-> command shell, not the builder.
->
-> Environment variable substitution use the same value for each variable
-> throughout the entire instruction. Changing the value of a variable only takes
-> effect in subsequent instructions.
->
-> **Translated:**
-> Environment variable juga bisa dipakai pada instruksi `RUN`, `CMD`, dan `ENTRYPOINT`,
-> tetapi pada kasus itu substitusi variabel ditangani oleh command shell, bukan oleh builder.
->
-> Substitusi environment variable memakai nilai yang sama untuk setiap variabel
-> sepanjang satu instruksi. Perubahan nilai sebuah variabel baru berlaku pada
-> instruksi-instruksi setelahnya.
-
-Referensi terkait: [Dockerfile reference - ENV](https://docs.docker.com/reference/dockerfile/#env)
+[Dockerfile reference - ENV](https://docs.docker.com/reference/dockerfile/#env)
 
 > The environment variables set using `ENV` will persist when a container is run
 > from the resulting image. You can view the values using `docker inspect`, and
@@ -965,15 +385,6 @@ Referensi terkait: [Dockerfile reference - ENV](https://docs.docker.com/referenc
 >
 > Unlike an `ARG` instruction, `ENV` values are always persisted in the built
 > image.
->
-> **Translated:**
-> Environment variable yang ditetapkan dengan `ENV` akan tetap ada saat container
-> dijalankan dari image hasil build. Nilainya bisa dilihat dengan `docker inspect`
-> dan diubah dengan `docker run --env <key>=<value>`.
->
-> Berbeda dari instruksi `ARG`, nilai `ENV` selalu dipersist ke dalam image yang dibangun.
-
-Setelah makna `ENV`, efek perubahan nilainya, dan persistensinya jelas, semua port, path, dan identitas database baru dinyatakan eksplisit agar entrypoint, Apache, PHP, dan MySQL membaca nilai yang sama.
 
 #### Implementasi
 
@@ -984,7 +395,7 @@ Setelah makna `ENV`, efek perubahan nilainya, dan persistensinya jelas, semua po
 
 **Sumber:** [Dockerfile:30](/home/fxrdhan/au7h/Dockerfile:30)
 
-**Alur kode:** blok ini menetapkan satu set environment variable bersama yang nanti dibaca ulang oleh entrypoint, Apache, PHP, dan MySQL agar seluruh komponen bootstrap memakai nilai yang sama.
+**Alur kode:** blok ini menetapkan satu set environment variable bersama yang dibaca ulang oleh entrypoint, Apache, PHP, dan MySQL agar seluruh komponen bootstrap memakai nilai yang sama.
 
 ```dockerfile
 ENV APP_PORT_HTTP=8080 \
@@ -1014,73 +425,47 @@ Membuat container bisa menyala dari nol tanpa setup manual tambahan.
 
 #### Analisis alur
 
-Tanpa entrypoint, container satu-image akan sulit menghidupkan MySQL lebih dulu, menyiapkan secret runtime, merender template Apache, lalu menyalakan Apache. Entry point menjadi pusat orkestrasi internal container.
+Tanpa entrypoint, container satu-image akan sulit menghidupkan MySQL lebih dulu, menyiapkan secret runtime, membuat sertifikat lokal, lalu menyalakan Apache. Entry point menjadi pusat orkestrasi internal container.
 
 Sertifikat self-signed dibuat di tahap ini karena target deploy laporan adalah demo lokal. Tujuannya bukan mengklaim trust publik seperti sertifikat CA, tetapi membuktikan bahwa HTTPS aktif, Apache memakai key/certificate, dan redirect HTTP ke HTTPS benar-benar berjalan. Jika aplikasi dipindahkan ke host publik, sertifikat tepercaya tetap menjadi pilihan yang benar.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi bootstrap MySQL, pembuatan user database, grant privilege, readiness check, dan TLS server dasar.
 
-Referensi terkait: [MySQL - Data Directory Initialization](https://dev.mysql.com/doc/refman/8.4/en/data-directory-initialization.html)
+[MySQL - Data Directory Initialization](https://dev.mysql.com/doc/refman/8.4/en/data-directory-initialization.html)
 
 > After MySQL is installed, the data directory must be initialized, including the tables in the `mysql` system schema.
 > To initialize the data directory, invoke [mysqld](https://dev.mysql.com/doc/refman/8.4/en/mysqld.html) with the [--initialize](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize) or [--initialize-insecure](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize-insecure) option.
 > Use `--initialize` for “secure by default” installation, including generation of a random initial `root` password.
 > Typically, data directory initialization need be done only after MySQL first has been installed.
 >
-> **Translated:**
-> Setelah MySQL di-install, data directory harus diinisialisasi, termasuk tabel dalam system schema `mysql`.
-> Untuk menginisialisasi data directory, jalankan [mysqld](https://dev.mysql.com/doc/refman/8.4/en/mysqld.html) dengan opsi [--initialize](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize) atau [--initialize-insecure](https://dev.mysql.com/doc/refman/8.4/en/server-options.html#option_mysqld_initialize-insecure).
-> Gunakan `--initialize` untuk instalasi yang “secure by default”, termasuk pembuatan password awal `root` yang acak.
-> Biasanya, inisialisasi data directory hanya perlu dilakukan setelah MySQL pertama kali di-install.
 
-Referensi terkait: [MySQL - CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html)
+[MySQL - CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html)
 
 > The [CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html) statement creates new MySQL accounts.
 > It enables authentication, role, SSL/TLS, resource-limit, password-management, comment, and attribute properties to be established for new accounts.
 > `CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';`
 > An account when first created has no privileges and the default role `NONE`.
 > To assign privileges or roles to this account, use one or more [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statements.
->
-> **Translated:**
-> Statement [CREATE USER](https://dev.mysql.com/doc/refman/8.4/en/create-user.html) membuat akun MySQL baru.
-> Statement ini memungkinkan authentication, role, SSL/TLS, resource limit, password management, comment, dan attribute ditetapkan untuk akun baru.
-> `CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';`
-> Saat akun pertama kali dibuat, akun tersebut tidak memiliki privilege dan role default-nya adalah `NONE`.
-> Untuk memberikan privilege atau role ke akun ini, gunakan satu atau beberapa statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html).
 
-Referensi terkait: [MySQL - GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html)
+[MySQL - GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html)
 
 > The [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statement assigns privileges and roles to MySQL user accounts and roles.
 > The [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) statement enables system administrators to grant privileges and roles, which can be granted to user accounts and roles.
 > With `ON`, the statement grants privileges.
 > Database privileges apply to all objects in a given database. To assign database-level privileges, use `ON db_name.*` syntax.
 > `GRANT ALL ON mydb.* TO 'someuser'@'somehost';`
->
-> **Translated:**
-> Statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) memberikan privilege dan role kepada akun user dan role MySQL.
-> Statement [GRANT](https://dev.mysql.com/doc/refman/8.4/en/grant.html) memungkinkan administrator sistem memberikan privilege dan role, yang dapat diberikan kepada akun user dan role.
-> Dengan `ON`, statement tersebut memberikan privilege.
-> Privilege tingkat database berlaku untuk semua object dalam database tertentu. Untuk memberikan privilege tingkat database, gunakan sintaks `ON db_name.*`.
-> `GRANT ALL ON mydb.* TO 'someuser'@'somehost';`
 
-Referensi terkait: [MySQL - mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html)
+[MySQL - mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html)
 
 > [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) is a client for performing administrative operations.
 > Invoke [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) like this:
 > `mysqladmin [options] command [command-arg] [command [command-arg]] ...`
 > `ping`: Check whether the server is available. The return status from [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) is 0 if the server is running, 1 if it is not.
 > `shutdown`: Stop the server.
->
-> **Translated:**
-> [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) adalah client untuk melakukan operasi administratif.
-> Panggil [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) dengan format:
-> `mysqladmin [options] command [command-arg] [command [command-arg]] ...`
-> `ping`: memeriksa apakah server tersedia. Status return dari [mysqladmin](https://dev.mysql.com/doc/refman/8.4/en/mysqladmin.html) adalah 0 jika server berjalan, 1 jika tidak.
-> `shutdown`: menghentikan server.
 
-Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/3.5/man1/openssl-req/)
+[OpenSSL - openssl req](https://docs.openssl.org/3.5/man1/openssl-req/)
 
 > This command primarily creates and processes certificate requests (CSRs) in
 > PKCS#10 format. It can additionally create self-signed certificates for use
@@ -1118,51 +503,49 @@ Referensi terkait: [OpenSSL - openssl req](https://docs.openssl.org/3.5/man1/ope
 > `-addext ext`
 > Add a specific extension to the certificate (if `-x509` is in use) or
 > certificate request.
->
-> **Translated:**
-> Perintah ini terutama membuat dan memproses certificate request (CSR) dalam
-> format PKCS#10. Perintah ini juga dapat membuat self-signed certificate,
-> misalnya untuk dipakai sebagai root CA.
->
-> `-x509`
-> Opsi ini mengeluarkan sertifikat alih-alih certificate request. Opsi ini
-> biasanya dipakai untuk membuat test certificate.
->
-> `-newkey arg`
-> Opsi ini dipakai untuk membuat private key baru kecuali jika `-key` sudah
-> diberikan. Opsi ini juga menyiratkan flag `-new` untuk membuat certificate
-> request baru atau sertifikat baru ketika `-x509` dipakai.
->
-> `[rsa:] nbits` membuat RSA key berukuran `nbits`. Jika `nbits` dihilangkan,
-> yaitu ketika `-newkey rsa` dipakai, maka ukuran key default yang ditentukan
-> di configuration file dengan opsi `default_bits` akan dipakai bila ada,
-> dan jika tidak ada maka default-nya 2048.
->
-> `-keyout filename`
-> Opsi ini menentukan nama file untuk menulis private key yang baru dibuat
-> atau dibaca dari `-key`.
->
-> `-out filename`
-> Opsi ini menentukan nama file output yang akan ditulis, atau ke standard
-> output secara default.
->
-> `-subj arg`
-> Opsi ini menetapkan subject name untuk request baru atau menimpa subject name
-> saat memproses certificate request.
->
-> `-days n`
-> Saat `-x509` dipakai, opsi ini menentukan jumlah hari sejak hari ini selama
-> mana sertifikat dinyatakan berlaku.
->
-> `-addext ext`
-> Opsi ini menambahkan extension tertentu ke sertifikat (jika `-x509` dipakai)
-> atau ke certificate request.
 
-Setelah alur bootstrap, privilege, readiness, dan TLS startup terbaca jelas, entrypoint baru ditulis.
+[Dockerfile reference - ENTRYPOINT](https://docs.docker.com/reference/dockerfile/#entrypoint)
+
+> The exec form is best used to specify an `ENTRYPOINT` instruction, combined
+> with `CMD` for setting default arguments that can be overridden at runtime.
+>
+> Using the exec form doesn't automatically invoke a command shell. This means
+> that normal shell processing, such as variable substitution, doesn't happen.
+
+Setelah alur bootstrap, privilege, readiness, dan sertifikat lokal terbaca jelas, tahap ini mengubah dua file sekaligus: Dockerfile untuk memasukkan entrypoint ke image, lalu `docker-entrypoint.sh` untuk isi bootstrap-nya. Tanpa perubahan Dockerfile, script entrypoint memang hanya menjadi file repo biasa dan tidak akan dipakai oleh container.
 
 #### Implementasi
 
 **Langkah 1:**
+
+- Salin `docker-entrypoint.sh` ke image.
+- Beri izin eksekusi.
+- Jadikan script itu sebagai `ENTRYPOINT` container.
+
+**Sumber:** [Dockerfile:53](/home/fxrdhan/au7h/Dockerfile:53), [Dockerfile:57](/home/fxrdhan/au7h/Dockerfile:57), dan [Dockerfile:65](/home/fxrdhan/au7h/Dockerfile:65)
+
+**Alur kode:** Dockerfile yang sudah dibuat pada Tahap 1 ditambah sedikit agar entrypoint tidak hanya ditulis di repo, tetapi benar-benar dibawa ke image dan dipanggil sebagai proses bootstrap sebelum Apache berjalan.
+
+```dockerfile
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint-custom.sh
+```
+
+Baris ini memasukkan script entrypoint dari repo ke lokasi executable di dalam image.
+
+```dockerfile
+RUN chmod +x /usr/local/bin/docker-entrypoint-custom.sh
+```
+
+Baris ini memastikan script bisa dieksekusi ketika container start.
+
+```dockerfile
+ENTRYPOINT ["docker-entrypoint-custom.sh"]
+CMD ["apache2ctl", "-D", "FOREGROUND"]
+```
+
+Bagian ini mengatur urutan startup: Docker menjalankan `docker-entrypoint-custom.sh` lebih dulu, lalu argumen default `CMD` dipakai entrypoint untuk menyalakan Apache di foreground setelah bootstrap runtime selesai.
+
+**Langkah 2:**
 
 - Buat secret runtime sekali saja pada startup pertama.
 - Simpan secret dalam file dengan hak akses ketat.
@@ -1172,7 +555,7 @@ Shell dibuka dalam mode ketat, lalu secret runtime hanya dibuat saat file belum 
 
 **Sumber:** [docker-entrypoint.sh:50](/home/fxrdhan/au7h/docker-entrypoint.sh:50)
 
-**Alur kode:** saat container pertama kali start, skrip mengecek apakah file secret sudah ada; jika belum, skrip membuat semua secret runtime sekaligus lalu menyimpannya ke satu file yang nantinya di-load oleh proses bootstrap berikutnya.
+**Alur kode:** saat container pertama kali start, skrip mengecek apakah file secret sudah ada; jika belum, skrip membuat semua secret runtime sekaligus lalu menyimpannya ke satu file yang dimuat kembali oleh proses bootstrap.
 
 ```sh
 if [ ! -f "${SECRET_FILE}" ]; then
@@ -1185,7 +568,7 @@ if [ ! -f "${SECRET_FILE}" ]; then
 fi
 ```
 
-**Langkah 2:**
+**Langkah 3:**
 
 - Bangun sertifikat self-signed setelah secret siap.
 - Pastikan kanal HTTPS langsung tersedia untuk demo lokal tanpa provisioning eksternal.
@@ -1212,7 +595,7 @@ if [ ! -f "${TLS_CERT_PATH}" ] || [ ! -f "${TLS_KEY_PATH}" ]; then
 fi
 ```
 
-**Langkah 3:**
+**Langkah 4:**
 
 - Nyalakan MySQL sebagai proses background internal container.
 - Simpan PID MySQL agar shutdown dapat dikendalikan dengan rapi saat container berhenti.
@@ -1233,7 +616,7 @@ mysqld \
 MYSQLD_PID=$!
 ```
 
-**Langkah 4:**
+**Langkah 5:**
 
 - Periksa apakah data directory masih kosong.
 - Bootstrap akun root, database aplikasi, dan akun aplikasi dalam urutan yang konsisten.
@@ -1275,11 +658,11 @@ Memastikan seluruh akses browser diarahkan ke kanal terenkripsi.
 
 Requirement tugas menyebut server harus dilindungi HTTPS. Karena browser mungkin masih membuka `http://`, perlu redirect permanen ke `https://`.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah modul Apache yang menangani rewrite dan TLS.
 
-Referensi terkait: [Apache mod_rewrite](https://httpd.apache.org/docs/current/mod/mod_rewrite.html)
+[Apache mod_rewrite](https://httpd.apache.org/docs/current/mod/mod_rewrite.html)
 
 > `mod_rewrite` operates on the full URL path, including the
 > path-info section. A rewrite rule can be invoked in
@@ -1301,26 +684,8 @@ Referensi terkait: [Apache mod_rewrite](https://httpd.apache.org/docs/current/mo
 > inherited by virtual hosts. This means that you need to have a
 > `RewriteEngine on` directive for each virtual host
 > in which you wish to use rewrite rules.
->
-> **Translated:**
-> `mod_rewrite` bekerja pada path URL penuh, termasuk bagian
-> path-info. Sebuah rewrite rule bisa dipanggil di
-> `httpd.conf` atau di `.htaccess`. Path yang dihasilkan
-> oleh rewrite rule dapat memuat query string, atau mengarah ke
-> sub-processing internal, redirect request eksternal, atau proxy internal.
->
-> Directive `RewriteCond` mendefinisikan kondisi aturan.
-> Satu atau lebih `RewriteCond` dapat mendahului
-> sebuah directive `RewriteRule`. Rule berikutnya hanya akan dipakai jika
-> status URI saat ini cocok dengan polanya dan kondisi-kondisi itu juga terpenuhi.
->
-> Directive `RewriteEngine` mengaktifkan atau menonaktifkan
-> mesin rewrite saat runtime.
-> Konfigurasi rewrite tidak diwariskan oleh virtual host.
-> Artinya, setiap virtual host yang ingin memakai rewrite rule
-> harus punya directive `RewriteEngine on` sendiri.
 
-Referensi terkait: [Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html)
+[Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html)
 
 > This module relies on [OpenSSL](https://www.openssl.org/) to provide the cryptography engine.
 >
@@ -1331,23 +696,43 @@ Referensi terkait: [Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mo
 > This directive points to the PEM-encoded private key file for the server, or the key ID through a configured cryptographic token.
 >
 > This directive can be used to control which versions of the SSL/TLS protocol will be accepted in new connections.
+
+[GNU gettext manual - Invoking the envsubst program](https://www.gnu.org/software/gettext/manual/html_node/envsubst-Invocation.html)
+
+> The envsubst program substitutes the values of environment variables.
 >
-> **Translated:**
-> Modul ini mengandalkan [OpenSSL](https://www.openssl.org/) untuk menyediakan mesin kriptografi.
->
-> Directive ini menyalakan atau mematikan mesin protokol SSL/TLS.
->
-> Directive ini menunjuk ke file berisi data sertifikat dalam format PEM, atau identifier sertifikat melalui token kriptografi yang sudah dikonfigurasi. Jika memakai file PEM, minimal file itu harus memuat sertifikat end-entity atau leaf certificate.
->
-> Directive ini menunjuk ke file private key server dalam format PEM, atau key ID melalui token kriptografi yang sudah dikonfigurasi.
->
-> Directive ini dapat dipakai untuk mengatur versi protokol SSL/TLS mana saja yang diterima pada koneksi baru.
+> In normal operation mode, standard input is copied to standard output, with
+> references to environment variables of the form `$VARIABLE` or `${VARIABLE}`
+> being replaced with the corresponding values.
 
 Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virtual host HTTPS baru diimplementasikan.
 
 #### Implementasi
 
 **Langkah 1:**
+
+- Tambahkan dependency renderer template.
+- Aktifkan modul Apache untuk redirect dan TLS.
+- Salin template virtual host ke image.
+
+**Sumber:** [Dockerfile:19](/home/fxrdhan/au7h/Dockerfile:19), [Dockerfile:26](/home/fxrdhan/au7h/Dockerfile:26), [Dockerfile:46](/home/fxrdhan/au7h/Dockerfile:46), dan [Dockerfile:47](/home/fxrdhan/au7h/Dockerfile:47)
+
+**Alur kode:** tahap ini membuat image membawa template Apache dan tool `envsubst`, sehingga nilai port dan lokasi sertifikat dapat diisi ketika container start.
+
+```dockerfile
+    gettext-base \
+```
+
+```dockerfile
+  && a2enmod rewrite ssl \
+```
+
+```dockerfile
+COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
+COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
+```
+
+**Langkah 2:**
 
 - Sediakan virtual host HTTP yang tugasnya hanya meredirect.
 - Pisahkan virtual host HTTPS sebagai tempat seluruh aplikasi dijalankan.
@@ -1370,15 +755,15 @@ Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virt
 </VirtualHost>
 ```
 
-**Langkah 2:**
+**Langkah 3:**
 
 - Aktifkan TLS.
 - Tentukan document root aplikasi.
 - Pastikan direktori `public/` menjadi satu-satunya area yang boleh diakses langsung oleh browser.
 
-**Sumber:** [docker/apache-ssl.conf.template:1-30](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1)
+**Sumber:** [docker/apache-ssl.conf.template:1](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:1)
 
-**Alur kode:** virtual host HTTPS ini memasang sertifikat, membatasi protokol TLS, menaruh semua security header browser, lalu mengarahkan Apache agar hanya direktori `public/` yang menjadi entry point request web.
+**Alur kode:** virtual host HTTPS ini memasang sertifikat, membatasi protokol TLS, lalu mengarahkan Apache agar hanya direktori `public/` yang menjadi entry point request web.
 
 ```apacheconf
 <VirtualHost *:${APP_PORT_HTTPS}>
@@ -1394,20 +779,6 @@ Setelah fungsi rewrite dan modul TLS-nya terbaca jelas, aturan redirect dan virt
 ```
 
 Blok ini membuka virtual host HTTPS, menetapkan `public/` sebagai document root, mengaktifkan TLS, memakai sertifikat dari entrypoint, dan membatasi protokol ke TLS 1.2/1.3.
-
-```apacheconf
-    Header always set Cache-Control "no-store"
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; upgrade-insecure-requests"
-    Header always set Permissions-Policy "camera=(), geolocation=(), microphone=()"
-    Header always set Referrer-Policy "no-referrer"
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{req:Host} !~ m#^(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?$#"
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "SAMEORIGIN"
-    Header always set X-Permitted-Cross-Domain-Policies "none"
-    Header always set X-XSS-Protection "0"
-```
-
-Blok ini memasang header keamanan browser. Fokusnya adalah mencegah cache halaman sensitif, membatasi sumber resource, menolak framing, mematikan MIME sniffing, dan mengatur kebijakan referrer.
 
 ```apacheconf
     <Directory /var/www/html/public>
@@ -1427,6 +798,42 @@ Blok ini memastikan hanya direktori `public/` yang bisa dilayani Apache, mematik
 
 Blok ini mengarahkan error log dan access log ke stdout/stderr container agar mudah dibaca lewat `docker logs`.
 
+**Langkah 4:**
+
+- Tulis port Apache dari environment.
+- Render template virtual host.
+- Aktifkan site HTTP redirect dan HTTPS.
+
+**Sumber:** [docker-entrypoint.sh:106](/home/fxrdhan/au7h/docker-entrypoint.sh:106), [docker-entrypoint.sh:116](/home/fxrdhan/au7h/docker-entrypoint.sh:116), dan [docker-entrypoint.sh:124](/home/fxrdhan/au7h/docker-entrypoint.sh:124)
+
+**Alur kode:** entrypoint yang sudah dibuat pada Tahap 3 sekarang diberi tugas tambahan khusus server web: menulis `ports.conf`, mengganti variabel pada template Apache, lalu mengaktifkan virtual host hasil render.
+
+```sh
+cat > /etc/apache2/ports.conf <<EOF
+Listen ${APP_PORT_HTTP}
+<IfModule ssl_module>
+    Listen ${APP_PORT_HTTPS}
+</IfModule>
+<IfModule mod_gnutls.c>
+    Listen ${APP_PORT_HTTPS}
+</IfModule>
+EOF
+```
+
+```sh
+envsubst '${APP_PORT_HTTP} ${PUBLIC_HTTPS_SUFFIX}' \
+  < /etc/apache2/sites-available/http-redirect.conf.template \
+  > /etc/apache2/sites-available/http-redirect.conf
+
+envsubst '${APP_PORT_HTTPS} ${TLS_CERT_PATH} ${TLS_KEY_PATH}' \
+  < /etc/apache2/sites-available/app-ssl.conf.template \
+  > /etc/apache2/sites-available/app-ssl.conf
+```
+
+```sh
+a2ensite http-redirect app-ssl >/dev/null
+```
+
 #### Keputusan penting
 
 1. TLS 1.2 dan 1.3 dibiarkan aktif,
@@ -1441,28 +848,23 @@ Memberi perlindungan baseline terhadap XSS, sniffing, clickjacking, dan downgrad
 
 #### Analisis alur
 
-OWASP menekankan bahwa CSP bukan pertahanan utama XSS, tetapi tetap sangat bernilai sebagai defense in depth. Karena itu, encoding output tetap wajib di level PHP, lalu dilengkapi header di Apache.
+OWASP menekankan bahwa CSP bukan pertahanan utama XSS, tetapi tetap sangat bernilai sebagai defense in depth. Pada tahap ini fokusnya hanya memasang pagar HTTP-level di Apache.
 
 CSP tidak diperlakukan sebagai pengganti escaping. Pertahanan utama XSS tetap output encoding konsisten pada setiap data dinamis yang masuk ke HTML, sedangkan CSP dipakai sebagai pagar tambahan jika suatu saat ada celah rendering yang lolos dari layer aplikasi.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi identitas server Apache, konfigurasi header Apache, dan deskripsi fungsi setiap response header keamanan yang akan dipasang.
 
-Referensi terkait: [Apache HTTP Server - Server-Wide Configuration](https://httpd.apache.org/docs/current/server-wide.html)
+[Apache HTTP Server - Server-Wide Configuration](https://httpd.apache.org/docs/current/server-wide.html)
 
 > This document explains some of the directives provided by the `core` server which are used to configure the basic operations of the server.
 >
 > The `ServerAdmin` and `ServerTokens` directives control what information about the server will be presented in server-generated documents such as error messages. The `ServerTokens` directive sets the value of the Server HTTP response header field.
->
-> **Translated:**
-> Dokumen ini menjelaskan sebagian directive yang disediakan server `core` dan dipakai untuk mengonfigurasi operasi dasar server.
->
-> Directive `ServerAdmin` dan `ServerTokens` mengatur informasi apa tentang server yang akan ditampilkan pada dokumen buatan server seperti error message. Directive `ServerTokens` menetapkan nilai header respons HTTP `Server`.
 
 Rujukan ini dipakai langsung untuk membenarkan `ServerTokens Prod` pada `docker/apache-global.conf`, karena Apache sendiri menjelaskan bahwa directive tersebut mengatur informasi server yang dipresentasikan ke klien melalui dokumen buatan server dan header HTTP `Server`. Pada halaman yang sama, `ServerSignature` juga muncul sebagai directive terkait, sehingga `ServerSignature Off` tetap konsisten sebagai pasangan hardening agar banner server tidak diumbar berlebihan.
 
-Referensi terkait: [Apache mod_headers](https://httpd.apache.org/docs/current/mod/mod_headers.html)
+[Apache mod_headers](https://httpd.apache.org/docs/current/mod/mod_headers.html)
 
 > This module provides directives to control and modify HTTP request and response headers. Headers can be merged, replaced or removed.
 >
@@ -1471,17 +873,8 @@ Referensi terkait: [Apache mod_headers](https://httpd.apache.org/docs/current/mo
 > The optional condition argument determines which internal table of responses headers this directive will operate against: `onsuccess` (default, can be omitted) or `always`. The difference between the two lists is that the headers contained in the latter are added to the response even on error, and persisted across internal redirects (for example, ErrorDocument handlers).
 >
 > You're adding a header to a locally generated non-success (non-2xx) response, such as a redirect, in which case only the table corresponding to `always` is used in the ultimate response.
->
-> **Translated:**
-> Modul ini menyediakan directive untuk mengontrol dan memodifikasi header request dan response HTTP. Header dapat digabung, diganti, atau dihapus.
->
-> Directive ini dapat mengganti, menggabungkan, atau menghapus header response HTTP. Header dimodifikasi tepat setelah content handler dan output filter dijalankan, sehingga header keluaran masih bisa diubah.
->
-> Argumen kondisi opsional menentukan tabel internal header response mana yang akan dipakai directive ini: `onsuccess` sebagai default atau `always`. Perbedaannya, header pada tabel kedua tetap ditambahkan ke response bahkan ketika terjadi error, dan tetap bertahan melewati internal redirect seperti handler `ErrorDocument`.
->
-> Jika kita menambahkan header ke response non-sukses yang dibuat lokal, seperti redirect, maka hanya tabel yang sesuai dengan `always` yang dipakai pada response akhirnya.
 
-Referensi terkait: [OWASP - HTTP Security Response Headers Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html)
+[OWASP - HTTP Security Response Headers Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html)
 
 > HTTP Headers are a great booster for web security with easy implementation. Proper HTTP response headers can help prevent security vulnerabilities like Cross-Site Scripting, Clickjacking, Information disclosure and more.
 >
@@ -1500,42 +893,16 @@ Referensi terkait: [OWASP - HTTP Security Response Headers Cheat Sheet](https://
 > Do not set this header or explicitly turn it off.
 >
 > `X-XSS-Protection: 0`
->
-> **Translated:**
-> HTTP header adalah penguat keamanan web yang sangat berguna dan mudah diimplementasikan. Header respons HTTP yang tepat dapat membantu mencegah kerentanan seperti Cross-Site Scripting, Clickjacking, kebocoran informasi, dan lainnya.
->
-> Header respons HTTP `X-Content-Type-Options` dipakai server untuk memberi tahu browser bahwa MIME type pada header `Content-Type` harus diikuti apa adanya dan tidak ditebak-tebak.
->
-> Header ini dipakai untuk memblokir MIME sniffing di browser, yang bisa mengubah MIME type non-eksekusi menjadi MIME type yang bisa dieksekusi.
->
-> Header `Cache-Control` mendefinisikan bagaimana respons di-cache oleh browser dan cache perantara.
->
-> Gunakan `no-store` untuk data sensitif agar benar-benar tidak disimpan dalam bentuk cache apa pun.
->
-> Header respons HTTP `Strict-Transport-Security` atau HSTS menginstruksikan browser agar hanya mengakses situs lewat HTTPS, bahkan ketika pengguna mencoba masuk lewat HTTP.
->
-> `Permissions-Policy` memungkinkan kita mengontrol origin mana yang boleh memakai fitur-fitur browser, baik di halaman utama maupun frame tertanam.
->
-> Header ini sebaiknya tidak diaktifkan dan secara eksplisit dimatikan.
->
-> `X-XSS-Protection: 0`
 
-Referensi terkait: [MDN - Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)
+[MDN - Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)
 
 > The HTTP **`Content-Security-Policy`** response header allows website administrators to control resources the user agent is allowed to load for a given page.
 > With a few exceptions, policies mostly involve specifying server origins and script endpoints.
 > This helps guard against [cross-site scripting](https://developer.mozilla.org/en-US/docs/Glossary/Cross-site_scripting) attacks.
 >
 > - `default-src` is a fallback for all other fetch directives.
->
-> **Translated:**
-> Header response HTTP **`Content-Security-Policy`** memungkinkan administrator situs mengontrol resource apa saja yang boleh dimuat user agent untuk suatu halaman.
-> Dengan beberapa pengecualian, kebijakan ini pada umumnya dilakukan dengan menentukan origin server dan endpoint script yang diizinkan.
-> Ini membantu melindungi aplikasi dari serangan [cross-site scripting](https://developer.mozilla.org/en-US/docs/Glossary/Cross-site_scripting).
->
-> - `default-src` menjadi fallback untuk seluruh fetch directive lainnya.
 
-Referensi terkait: [MDN - Permissions-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy)
+[MDN - Permissions-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy)
 
 > The HTTP **`Permissions-Policy`** response header provides a mechanism to allow and deny the use of browser features in a document or within any [`<iframe>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) elements in the document.
 >
@@ -1544,47 +911,24 @@ Referensi terkait: [MDN - Permissions-Policy](https://developer.mozilla.org/en-U
 > `()` (empty allowlist)
 >
 > The feature is disabled in top-level and nested browsing contexts. The equivalent for `<iframe>``allow` attributes is `'none'`.
->
-> **Translated:**
-> Header response HTTP **`Permissions-Policy`** menyediakan mekanisme untuk mengizinkan atau melarang penggunaan fitur browser di dalam sebuah dokumen atau di dalam elemen [`<iframe>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) apa pun pada dokumen tersebut.
->
-> `Permissions-Policy: <directive>=<allowlist>`
->
-> `()` (allowlist kosong)
->
-> Fitur tersebut dinonaktifkan pada konteks browsing tingkat atas maupun yang bersarang. Padanan untuk atribut `<iframe>``allow` adalah `'none'`.
 
-Referensi terkait: [MDN - Referrer-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy)
+[MDN - Referrer-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy)
 
 > The HTTP **`Referrer-Policy`** response header controls how much [referrer information](https://developer.mozilla.org/en-US/docs/Web/Privacy/Guides/Referer_header:_privacy_and_security_concerns) (sent with the [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer) header) should be included with requests.
 >
 > [`no-referrer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#no-referrer_2)
 >
 > The [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer) header will be omitted: sent requests do not include any referrer information.
->
-> **Translated:**
-> Header response HTTP **`Referrer-Policy`** mengatur seberapa banyak [informasi referrer](https://developer.mozilla.org/en-US/docs/Web/Privacy/Guides/Referer_header:_privacy_and_security_concerns) yang dikirim bersama header [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer) harus ikut dibawa pada request.
->
-> [`no-referrer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#no-referrer_2)
->
-> Header [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referer) akan dihilangkan, sehingga request yang dikirim tidak menyertakan informasi referrer apa pun.
 
-Referensi terkait: [MDN - X-Frame-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options)
+[MDN - X-Frame-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options)
 
 > The HTTP **`X-Frame-Options`** response header can be used to indicate whether a browser should be allowed to render the document in a [`<frame>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/frame), [`<iframe>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe), [`<embed>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/embed) or [`<object>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/object). Sites can use this to avoid [clickjacking](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/Clickjacking) attacks and some [cross-site leaks](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XS-Leaks), by ensuring that their content is not embedded into other sites.
 >
 > [`SAMEORIGIN`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options#sameorigin)
 >
 > The document can only be embedded if all ancestor frames have the same [origin](https://developer.mozilla.org/en-US/docs/Glossary/Origin) as the page itself.
->
-> **Translated:**
-> Header response HTTP **`X-Frame-Options`** dapat dipakai untuk menyatakan apakah browser boleh merender dokumen di dalam [`<frame>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/frame), [`<iframe>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe), [`<embed>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/embed), atau [`<object>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/object). Situs dapat memakai header ini untuk menghindari serangan [clickjacking](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/Clickjacking) dan sebagian [cross-site leaks](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XS-Leaks), dengan memastikan kontennya tidak ditanamkan ke situs lain.
->
-> [`SAMEORIGIN`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options#sameorigin)
->
-> Dokumen hanya boleh di-embed jika seluruh frame leluhurnya memiliki [origin](https://developer.mozilla.org/en-US/docs/Glossary/Origin) yang sama dengan halaman itu sendiri.
 
-Referensi terkait: [MDN - X-Content-Type-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options)
+[MDN - X-Content-Type-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options)
 
 > The HTTP **`X-Content-Type-Options`** response header indicates that the [MIME types](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types) advertised in the [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) headers should be respected and not changed.
 > The header allows you to avoid [MIME type sniffing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types#mime_sniffing) by specifying that the MIME types are deliberately configured.
@@ -1593,32 +937,16 @@ Referensi terkait: [MDN - X-Content-Type-Options](https://developer.mozilla.org/
 >
 > - **Request blocking**: For requests with a [destination](https://developer.mozilla.org/en-US/docs/Web/API/Request/destination) of `"script"` or `"style"`, the browser blocks the response if the MIME type doesn't match an expected type.
 > - **MIME type sniffing disabled**: For other response types, including navigations to a new HTML document, the browser uses the supplied [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) as-is instead of examining the content to infer the type.
->
-> **Translated:**
-> Header response HTTP **`X-Content-Type-Options`** menyatakan bahwa [MIME type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types) yang diumumkan lewat header [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) harus dihormati dan tidak boleh diubah.
-> Header ini membantu menghindari [MIME type sniffing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types#mime_sniffing) dengan menegaskan bahwa MIME type tersebut memang sengaja dikonfigurasi.
->
-> Directive `nosniff` memiliki dua efek tergantung konteks:
->
-> - **Pemblokiran request**: Untuk request dengan [destination](https://developer.mozilla.org/en-US/docs/Web/API/Request/destination) berupa `"script"` atau `"style"`, browser memblokir respons jika MIME type-nya tidak cocok dengan tipe yang diharapkan.
-> - **MIME type sniffing dinonaktifkan**: Untuk tipe respons lain, termasuk navigasi ke dokumen HTML baru, browser memakai nilai [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) apa adanya tanpa memeriksa isi respons untuk menebak tipenya.
 
-Referensi terkait: [OWASP - Clickjacking](https://owasp.org/www-community/attacks/Clickjacking)
+[OWASP - Clickjacking](https://owasp.org/www-community/attacks/Clickjacking)
 
 > Clickjacking, also known as a “UI redress attack”, is when an attacker uses multiple transparent or opaque layers to trick a user into clicking on a button or link on another page when they were intending to click on the top level page. Thus, the attacker is “hijacking” clicks meant for their page and routing them to another page, most likely owned by another application, domain, or both.
 >
 > There are three main ways to prevent clickjacking:
 >
 > 1. Sending the proper Content Security Policy (CSP) frame-ancestors directive response headers that instruct the browser to not allow framing from other domains. The older `X-Frame-Options` HTTP headers is used for graceful degradation and older browser compatibility.
->
-> **Translated:**
-> Clickjacking, yang juga dikenal sebagai “UI redress attack”, adalah kondisi ketika penyerang memakai beberapa lapisan transparan atau buram untuk menipu pengguna agar mengklik tombol atau tautan di halaman lain, padahal pengguna bermaksud mengklik halaman tingkat atas yang terlihat. Dengan begitu, penyerang “membajak” klik yang seharusnya ditujukan ke halamannya lalu mengarahkannya ke halaman lain, yang kemungkinan dimiliki aplikasi, domain, atau keduanya.
->
-> Ada tiga cara utama untuk mencegah clickjacking:
->
-> 1. Mengirim header respons Content Security Policy (CSP) `frame-ancestors` yang tepat untuk menginstruksikan browser agar tidak mengizinkan framing dari domain lain. Header HTTP `X-Frame-Options` yang lebih lama dipakai untuk graceful degradation dan kompatibilitas browser yang lebih lama.
 
-Referensi terkait: [OWASP - Content Security Policy Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
+[OWASP - Content Security Policy Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
 
 > This article brings forth a way to integrate the **defense in depth** concept to the client-side of web applications. By injecting the Content-Security-Policy (CSP) headers from the server, the browser is aware and capable of protecting the user from dynamic calls that will load content into the page currently being visited.
 >
@@ -1627,17 +955,8 @@ Referensi terkait: [OWASP - Content Security Policy Cheat Sheet](https://cheatsh
 > CSP defends against XSS attacks in the following ways:
 >
 > #### 1\. Restricting Inline Scripts
->
-> **Translated:**
-> Artikel ini menawarkan cara untuk mengintegrasikan konsep **defense in depth** ke sisi klien aplikasi web. Dengan menyisipkan header Content-Security-Policy (CSP) dari server, browser menjadi sadar dan mampu melindungi pengguna dari pemanggilan dinamis yang memuat konten ke halaman yang sedang dikunjungi.
->
-> Peningkatan kerentanan XSS (Cross-Site Scripting), clickjacking, dan cross-site leak menuntut pendekatan keamanan **defense in depth** yang lebih kuat.
->
-> CSP melindungi dari serangan XSS dengan cara berikut:
->
-> #### 1\. Membatasi inline script
 
-Referensi terkait: [MDN - Strict-Transport-Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)
+[MDN - Strict-Transport-Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)
 
 > The HTTP **`Strict-Transport-Security`** response header (often abbreviated as HSTS) informs browsers that the host should only be accessed using HTTPS, and that any future attempts to access it using HTTP should automatically be upgraded to HTTPS.
 >
@@ -1648,17 +967,6 @@ Referensi terkait: [MDN - Strict-Transport-Security](https://developer.mozilla.o
 > [`includeSubDomains`Optional](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security#includesubdomains)
 >
 > If this directive is specified, the HSTS policy applies to all subdomains of the host's domain as well.
->
-> **Translated:**
-> Header response HTTP **`Strict-Transport-Security`** atau HSTS memberi tahu browser bahwa host hanya boleh diakses menggunakan HTTPS, dan setiap percobaan berikutnya untuk mengaksesnya lewat HTTP harus otomatis di-upgrade ke HTTPS.
->
-> [`max-age=<expire-time>`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security#max-ageexpire-time)
->
-> Ini adalah lama waktu dalam detik yang harus diingat browser bahwa suatu host hanya boleh diakses menggunakan HTTPS.
->
-> [`includeSubDomains`Optional](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security#includesubdomains)
->
-> Jika directive ini ditentukan, kebijakan HSTS berlaku juga untuk seluruh subdomain dari domain host tersebut.
 
 Setelah fungsi masing-masing header dibaca, kombinasi header yang benar-benar relevan dengan tugas baru dipasang di virtual host HTTPS.
 
@@ -1666,12 +974,25 @@ Setelah fungsi masing-masing header dibaca, kombinasi header yang benar-benar re
 
 **Langkah 1:**
 
+- Aktifkan modul Apache untuk response header.
 - Rapikan fingerprint server di konfigurasi global Apache.
-- Tambahkan security headers pada virtual host HTTPS sebagai lapisan pertahanan browser.
+- Salin dan aktifkan konfigurasi global Apache di image.
 
-**Sumber:** [docker/apache-global.conf:1-4](/home/fxrdhan/au7h/docker/apache-global.conf:1)
+**Sumber:** [Dockerfile:26](/home/fxrdhan/au7h/Dockerfile:26), [Dockerfile:45](/home/fxrdhan/au7h/Dockerfile:45), [Dockerfile:56](/home/fxrdhan/au7h/Dockerfile:56), dan [docker/apache-global.conf:1](/home/fxrdhan/au7h/docker/apache-global.conf:1)
 
-**Alur kode:** konfigurasi global ini merapikan fingerprint server di level Apache paling awal dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
+**Alur kode:** Dockerfile mengaktifkan modul header, membawa konfigurasi global Apache ke image, lalu mengaktifkan konfigurasi itu. Isi konfigurasi globalnya merapikan fingerprint server dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
+
+```dockerfile
+  && a2enmod headers \
+```
+
+```dockerfile
+COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
+```
+
+```dockerfile
+  && a2enconf zzz-au7h-global \
+```
 
 ```apacheconf
 ServerName localhost
@@ -1682,6 +1003,7 @@ TraceEnable Off
 
 **Langkah 2:**
 
+- Tambahkan security headers pada virtual host HTTPS sebagai lapisan pertahanan browser.
 - Pasang header yang relevan dengan requirement tugas.
 - Tambahkan CSP untuk defense in depth XSS.
 - Tambahkan `nosniff`, `SAMEORIGIN`, `Referrer-Policy`, dan HSTS conditional.
@@ -1722,11 +1044,11 @@ Inilah bagian yang paling dekat dengan requirement “buffer overflow” pada le
 
 Requirement buffer overflow tidak dibesar-besarkan menjadi klaim bahwa Apache, PHP, atau MySQL kebal terhadap bug native. Interpretasi yang lebih jujur adalah memilih runtime high-level untuk kode aplikasi, membatasi ukuran input/request, mematikan upload, dan mengurangi permukaan parsing yang tidak dibutuhkan oleh form login-register.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah directive `php.ini` yang mengatur disclosure, batas input, upload, dan cookie/session hardening yang memang dipakai oleh runtime aplikasi.
 
-Referensi terkait: [PHP Manual - Runtime Configuration](https://www.php.net/manual/en/ini.core.php)
+[PHP Manual - Runtime Configuration](https://www.php.net/manual/en/ini.core.php)
 
 > `expose_php`
 >
@@ -1751,21 +1073,8 @@ Referensi terkait: [PHP Manual - Runtime Configuration](https://www.php.net/manu
 > `upload_max_filesize`
 >
 > The maximum size of an uploaded file.
->
-> **Translated:**
-> `expose_php` berarti server akan memberitahu dunia bahwa PHP terpasang, termasuk versinya di header HTTP seperti `X-Powered-By`.
->
-> `memory_limit` menetapkan batas maksimum memori yang boleh dialokasikan sebuah script, sehingga membantu mencegah script yang buruk menghabiskan seluruh memori server.
->
-> `post_max_size` menetapkan ukuran maksimum data POST yang diizinkan. Pengaturan ini juga memengaruhi upload file, dan untuk upload besar nilainya harus lebih besar daripada `upload_max_filesize`.
->
-> `default_charset` bernilai default `"UTF-8"` dan dipakai sebagai encoding karakter bawaan untuk fungsi seperti `htmlentities()`, `html_entity_decode()`, dan `htmlspecialchars()` ketika parameter `encoding` tidak diberikan.
->
-> `file_uploads` menentukan apakah upload file HTTP diizinkan atau tidak.
->
-> `upload_max_filesize` menetapkan ukuran maksimum sebuah file yang diunggah.
 
-Referensi terkait: [PHP Manual - Session Configuration](https://www.php.net/manual/en/session.configuration.php)
+[PHP Manual - Session Configuration](https://www.php.net/manual/en/session.configuration.php)
 
 > `session.use_strict_mode` specifies whether the module will use strict session id mode. If this mode is enabled, the module does not accept uninitialized session IDs. If an uninitialized session ID is sent from the browser, a new session ID is sent to the browser. Applications are protected from session fixation via session adoption with strict mode.
 >
@@ -1782,19 +1091,6 @@ Referensi terkait: [PHP Manual - Session Configuration](https://www.php.net/manu
 > `session.cookie_samesite`
 >
 > Allows servers to assert that a cookie ought not to be sent along with cross-site requests. This assertion allows user agents to mitigate the risk of cross-origin information leakage, and provides some protection against cross-site request forgery attacks.
->
-> **Translated:**
-> `session.use_strict_mode` menentukan apakah modul session memakai mode session ID ketat. Jika diaktifkan, modul tidak menerima session ID yang belum pernah diinisialisasi. Jika browser mengirim session ID yang belum diinisialisasi, browser akan diberi session ID baru. Dengan strict mode, aplikasi dilindungi dari session fixation melalui adopsi session.
->
-> Mengaktifkan `session.use_strict_mode` bersifat wajib untuk keamanan session secara umum, dan semua situs disarankan mengaktifkannya.
->
-> `session.use_only_cookies` menentukan apakah modul hanya memakai cookie untuk menyimpan session ID di sisi client. Mengaktifkan pengaturan ini mencegah serangan yang memanfaatkan session ID yang dikirim lewat URL.
->
-> `session.cookie_secure` menentukan apakah cookie hanya boleh dikirim lewat koneksi aman. Jika opsi ini `on`, session hanya akan bekerja lewat koneksi HTTPS.
->
-> `session.cookie_httponly` menandai cookie agar hanya bisa diakses melalui protokol HTTP. Artinya cookie tidak bisa diakses oleh bahasa scripting seperti JavaScript, dan ini membantu mengurangi pencurian identitas lewat serangan XSS.
->
-> `session.cookie_samesite` memungkinkan server menyatakan bahwa cookie tidak seharusnya dikirim bersama request lintas situs. Ini membantu user agent mengurangi risiko kebocoran informasi lintas origin dan memberi perlindungan terhadap serangan CSRF.
 
 Setelah arti directive disclosure, batas input, upload, dan session cookie hardening jelas, barulah file `php.ini` dipersempit untuk kebutuhan form auth yang sederhana.
 
@@ -1832,6 +1128,18 @@ session.use_strict_mode = 1
 upload_max_filesize = 1K
 ```
 
+**Langkah 2:**
+
+- Salin konfigurasi hardening PHP ke direktori `conf.d` milik Apache PHP.
+
+**Sumber:** [Dockerfile:44](/home/fxrdhan/au7h/Dockerfile:44)
+
+**Alur kode:** file `docker/php.ini` yang sudah dibuat pada langkah sebelumnya dimasukkan ke image sebagai konfigurasi tambahan PHP untuk Apache.
+
+```dockerfile
+COPY docker/php.ini /etc/php/8.4/apache2/conf.d/90-au7h-security.ini
+```
+
 #### Keputusan penting
 
 1. `file_uploads = Off` karena tugas auth tidak butuh upload file,
@@ -1848,54 +1156,33 @@ Menyediakan satu titik pusat pembacaan konfigurasi, session, header dasar, dan i
 
 Bootstrap terpusat membuat setiap endpoint memakai aturan keamanan yang sama. Jika bootstrap tersebar, route yang lupa diproteksi akan mudah muncul.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah dokumentasi session PHP yang mengatur nama session, parameter cookie, dan urutan start session.
 
-Referensi terkait: [PHP Manual - session_name()](https://www.php.net/manual/en/function.session-name.php)
+[PHP Manual - session_name()](https://www.php.net/manual/en/function.session-name.php)
 
 > `session_name()` returns the name of the current session. If `name` is given, `session_name()` will update the session name and return the old session name.
 >
 > The session name is reset to the default value stored in `session.name` at request startup time. Thus, you need to call `session_name()` for every request (and before `session_start()` is called).
 >
 > The session name references the name of the session, which is used in cookies and URLs (e.g. `PHPSESSID`).
->
-> **Translated:**
-> `session_name()` mengembalikan nama session saat ini. Jika `name` diberikan, `session_name()` akan memperbarui nama session dan mengembalikan nama sebelumnya.
->
-> Nama session di-reset ke nilai bawaan yang tersimpan di `session.name` setiap kali request dimulai. Karena itu, Anda perlu memanggil `session_name()` pada setiap request, dan sebelum `session_start()` dipanggil.
->
-> Nama session merujuk pada nama session yang dipakai di cookie dan URL, misalnya `PHPSESSID`.
 
-Referensi terkait: [PHP Manual - session_set_cookie_params()](https://www.php.net/manual/en/function.session-set-cookie-params.php)
+[PHP Manual - session_set_cookie_params()](https://www.php.net/manual/en/function.session-set-cookie-params.php)
 
 > Set cookie parameters defined in the php.ini file. The effect of this function only lasts for the duration of the script. Thus, you need to call `session_set_cookie_params()` for every request and before `session_start()` is called.
 >
 > When using the second signature, an associative array which may have any of the keys `lifetime`, `path`, `domain`, `secure`, `httponly` and `samesite`.
 >
 > The value of the `samesite` element should be either `Lax` or `Strict`.
->
-> **Translated:**
-> Menetapkan parameter cookie yang didefinisikan di file php.ini. Efek fungsi ini hanya berlaku selama durasi script berjalan. Karena itu, Anda perlu memanggil `session_set_cookie_params()` pada setiap request dan sebelum `session_start()` dipanggil.
->
-> Saat memakai signature kedua, kita dapat mengirim associative array yang boleh berisi key `lifetime`, `path`, `domain`, `secure`, `httponly`, dan `samesite`.
->
-> Nilai elemen `samesite` harus berupa `Lax` atau `Strict`.
 
-Referensi terkait: [PHP Manual - session_start()](https://www.php.net/manual/en/function.session-start.php)
+[PHP Manual - session_start()](https://www.php.net/manual/en/function.session-start.php)
 
 > `session_start()` creates a session or resumes the current one based on a session identifier passed via a GET or POST request, or passed via a cookie.
 >
 > To use a named session, call `session_name()` before calling `session_start()`.
 >
 > When `session_start()` is called or when a session auto starts, PHP will call the open and read session save handlers.
->
-> **Translated:**
-> `session_start()` membuat session baru atau melanjutkan session yang sedang ada berdasarkan session identifier yang dikirim lewat request GET, POST, atau cookie.
->
-> Untuk memakai named session, panggil `session_name()` sebelum memanggil `session_start()`.
->
-> Ketika `session_start()` dipanggil atau ketika session dimulai otomatis, PHP akan memanggil handler open dan read milik session save handler.
 
 Setelah urutan nama session -> cookie params -> start session jelas, bootstrap aplikasi baru dipusatkan ke satu jalur.
 
@@ -2101,7 +1388,7 @@ Schema harus mendukung tiga hal sekaligus:
 2. penyimpanan aman jika database bocor,
 3. pelacakan percobaan login/register berulang.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Tahap ini tidak menambah URL baru. Skema tabel langsung diturunkan dari hasil riset sebelumnya: username harus bisa dicari tanpa plaintext, password harus disimpan dalam bentuk hash, dan rate limit harus punya penyimpanan terpisah agar penguncian percobaan bisa konsisten antar request.
 
@@ -2165,7 +1452,7 @@ Bagian ini adalah jantung keamanan aplikasi. Jika helper ini rapi, endpoint publ
 
 Validasi input, output encoding, CSRF, hashing, dan enkripsi username sengaja dipisah sebagai helper karena masing-masing menutup risiko yang berbeda. Prepared statement tidak membuat validasi input menjadi tidak perlu, dan CSP tidak membuat output encoding boleh dilewati. Kombinasi kontrol ini membuat jalur input dan output tetap kecil, eksplisit, dan mudah diuji.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Tahap ini adalah titik paling jelas untuk pola: requirement keamanan -> cari referensi -> baca bagian yang relevan -> tempel kutipan -> implementasi helper. Karena tiap helper menutup ancaman yang berbeda, bukti referensi ditempel per subbagian agar alurnya tidak putus.
 
@@ -2179,22 +1466,15 @@ Output encoding ditempatkan sebagai pertahanan utama XSS di level aplikasi. CSP 
 
 Referensi yang dicari: `OWASP XSS Prevention Cheat Sheet` dan PHP `htmlspecialchars()`.
 
-Referensi terkait: [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+[OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 
 > **This cheatsheet contains techniques to prevent or limit the impact of XSS. Since no single technique will solve XSS, using the right combination of defensive techniques will be necessary to prevent XSS.**
 >
 > When you need to safely display data exactly as a user types it in, output encoding is recommended. Variables should not be interpreted as code instead of text.
 >
 > Each variable used in the user interface should be passed through an output encoding function.
->
-> **Translated:**
-> **Cheat sheet ini berisi teknik untuk mencegah atau membatasi dampak XSS. Karena tidak ada satu teknik pun yang bisa menyelesaikan XSS sendirian, kombinasi teknik pertahanan yang tepat tetap diperlukan untuk mencegah XSS.**
->
-> Ketika kita perlu menampilkan data persis seperti yang diketik pengguna secara aman, output encoding direkomendasikan. Variabel tidak boleh ditafsirkan sebagai kode, tetapi sebagai teks.
->
-> Setiap variabel yang dipakai di antarmuka pengguna harus dilewatkan ke fungsi output encoding.
 
-Referensi terkait: [PHP Manual - htmlspecialchars()](https://www.php.net/manual/en/function.htmlspecialchars.php)
+[PHP Manual - htmlspecialchars()](https://www.php.net/manual/en/function.htmlspecialchars.php)
 
 > Certain characters have special significance in HTML, and should be represented by HTML entities if they are to preserve their meanings. This function returns a string with these conversions made.
 >
@@ -2205,19 +1485,6 @@ Referensi terkait: [PHP Manual - htmlspecialchars()](https://www.php.net/manual/
 > | `&` (ampersand) | `&amp;` |
 > | `"` (double quote) | `&quot;`, unless **`ENT_NOQUOTES`** is set |
 > | `'` (single quote) | `&#039;` (for **`ENT_HTML401`**) or `&apos;` (for<br> **`ENT_XML1`**, **`ENT_XHTML`** or<br> **`ENT_HTML5`**), but only when<br> **`ENT_QUOTES`** is set |
-> | `<` (less than) | `&lt;` |
-> | `>` (greater than) | `&gt;` |
->
-> **Translated:**
-> Karakter tertentu punya makna khusus di HTML, sehingga harus direpresentasikan sebagai entitas HTML jika maknanya ingin tetap dipertahankan. Fungsi ini mengembalikan string yang sudah diberi konversi tersebut.
->
-> Nilai default-nya adalah `ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401`.
->
-> | Karakter | Pengganti |
-> | --- | --- |
-> | `&` (ampersand) | `&amp;` |
-> | `"` (double quote) | `&quot;`, kecuali jika **`ENT_NOQUOTES`** diaktifkan |
-> | `'` (single quote) | `&#039;` (untuk **`ENT_HTML401`**) atau `&apos;` (untuk<br> **`ENT_XML1`**, **`ENT_XHTML`** atau<br> **`ENT_HTML5`**), tetapi hanya ketika<br> **`ENT_QUOTES`** diaktifkan |
 > | `<` (less than) | `&lt;` |
 > | `>` (greater than) | `&gt;` |
 
@@ -2240,7 +1507,7 @@ function escape_html(string $value): string
 
 Referensi yang dicari: `OWASP CSRF Prevention Cheat Sheet` dan PHP `random_bytes()`.
 
-Referensi terkait: [OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+[OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 
 > Since browser requests automatically include all cookies including session cookies, this attack works unless proper authorization is used, which means that the target site's challenge-response mechanism does not verify the identity and authority of the requester.
 >
@@ -2257,38 +1524,14 @@ Referensi terkait: [OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.
 > - Unique per user session.
 > - Secret
 > - Unpredictable (large random value generated by a secure method).
->
-> **Translated:**
-> Karena request dari browser otomatis menyertakan semua cookie, termasuk cookie session, serangan ini akan berhasil kecuali ada mekanisme otorisasi yang tepat, artinya mekanisme challenge-response milik situs target tidak memverifikasi identitas dan otoritas pihak yang meminta.
->
-> - **Jika framework tidak punya perlindungan CSRF bawaan, tambahkan [CSRF token](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#token-based-mitigation) ke semua request yang mengubah state situs dan validasi token itu di backend.**
-> - **Perangkat lunak yang stateful sebaiknya memakai [synchronizer token pattern](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#synchronizer-token-pattern)**
-> - **Jangan gunakan request GET untuk operasi yang mengubah state.**
->
-> CSRF token harus dibuat di server-side dan hanya dibuat sekali per session pengguna atau per request.
->
-> Ketika klien mengirim request, komponen server-side harus memverifikasi keberadaan dan validitas token di request tersebut lalu membandingkannya dengan token yang ditemukan di session pengguna. Request harus ditolak jika token itu tidak ditemukan dalam request atau nilainya tidak cocok dengan nilai di session pengguna.
->
-> CSRF token harus:
->
-> - Unik per session pengguna.
-> - Rahasia
-> - Tidak dapat diprediksi, yaitu berupa nilai acak besar yang dihasilkan dengan metode yang aman.
 
-Referensi terkait: [PHP Manual - random_bytes()](https://www.php.net/manual/en/function.random-bytes.php)
+[PHP Manual - random_bytes()](https://www.php.net/manual/en/function.random-bytes.php)
 
 > `random_bytes()` generates a string containing uniformly selected random bytes with the requested `length`.
 >
 > As the returned bytes are selected completely randomly, the resulting string is likely to contain unprintable characters or invalid UTF-8 sequences. It may be necessary to encode it before transmission or display.
 >
 > The randomness generated by this function is suitable for all applications, including the generation of long-term secrets, such as encryption keys.
->
-> **Translated:**
-> `random_bytes()` menghasilkan string yang berisi byte acak yang dipilih secara merata sesuai `length` yang diminta.
->
-> Karena byte yang dikembalikan dipilih sepenuhnya secara acak, string hasilnya kemungkinan berisi karakter yang tidak dapat dicetak atau urutan UTF-8 yang tidak valid. Karena itu, hasilnya mungkin perlu di-encode sebelum dikirim atau ditampilkan.
->
-> Keacakan yang dihasilkan fungsi ini cocok untuk semua aplikasi, termasuk pembuatan secret jangka panjang seperti kunci enkripsi.
 
 **Implementasi:** hasilkan token acak yang hidup di session, lalu pakai token yang sama untuk semua form sampai token diganti atau session berakhir.
 
@@ -2334,7 +1577,7 @@ Validasi tetap diperlukan walaupun query database sudah memakai prepared stateme
 
 Referensi yang dicari: `OWASP Input Validation Cheat Sheet`.
 
-Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
+[OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
 
 > Input validation is performed to ensure only properly formed data is entering the workflow in an information system, preventing malformed data from persisting in the database and triggering malfunction of various downstream components.
 > Input validation should happen as early as possible in the data flow, preferably as soon as the data is received from the external party.
@@ -2342,14 +1585,6 @@ Referensi terkait: [OWASP Input Validation Cheat Sheet](https://cheatsheetseries
 > Minimum and maximum value range check for numerical parameters and dates, minimum and maximum length check for strings.
 > Allowlist validation is appropriate for all input fields provided by the user.
 > Input validation **must** be implemented on the server-side before any data is processed by an application’s functions, as any JavaScript-based input validation performed on the client-side can be circumvented by an attacker who disables JavaScript or uses a web proxy.
->
-> **Translated:**
-> Validasi input dilakukan untuk memastikan hanya data yang formatnya benar yang masuk ke alur kerja sistem informasi, mencegah data yang rusak tersimpan di database dan memicu gangguan pada komponen berikutnya.
-> Validasi input sebaiknya dilakukan sedini mungkin dalam alur data, idealnya segera setelah data diterima dari pihak eksternal.
-> Validasi input dapat diterapkan dengan teknik apa pun yang menegakkan kebenaran sintaksis dan semantik secara efektif.
-> Untuk string, lakukan pemeriksaan panjang minimum dan maksimum.
-> Validasi allowlist cocok untuk semua field input dari user.
-> Validasi input harus diterapkan di sisi server sebelum data diproses oleh fungsi aplikasi.
 
 **Implementasi:** validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
 
@@ -2405,18 +1640,13 @@ function validate_password(string $password): array
 
 Referensi yang dicari: OWASP Cryptographic Storage, PHP `hash_hmac()`, `openssl_encrypt()`, dan `openssl_decrypt()`.
 
-Referensi terkait: [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
+[OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
 
 > For symmetric encryption **AES** with a key that's at least **128 bits** (ideally **256 bits**) and a secure mode should be used as the preferred algorithm.
 >
 > Where available, authenticated modes should always be used. These provide guarantees of the integrity and authenticity of the data, as well as confidentiality. The most commonly used authenticated modes are **GCM** and **CCM**, which should be used as a first preference.
->
-> **Translated:**
-> Untuk enkripsi simetris, **AES** dengan key minimal **128 bit** dan idealnya **256 bit** serta mode yang aman sebaiknya dipakai sebagai algoritma pilihan.
->
-> Jika tersedia, mode terautentikasi sebaiknya selalu dipakai. Mode ini memberi jaminan integritas dan autentisitas data, selain kerahasiaan. Mode terautentikasi yang umum dipakai adalah **GCM** dan **CCM**, dan sebaiknya menjadi pilihan pertama.
 
-Referensi terkait: [PHP Manual - hash_hmac()](https://www.php.net/manual/en/function.hash-hmac.php)
+[PHP Manual - hash_hmac()](https://www.php.net/manual/en/function.hash-hmac.php)
 
 > `hash_hmac()` — Generate a keyed hash value using the HMAC method
 >
@@ -2433,25 +1663,8 @@ Referensi terkait: [PHP Manual - hash_hmac()](https://www.php.net/manual/en/func
 > When set to `true`, outputs raw binary data. `false` outputs lowercase hexits.
 >
 > Returns a string containing the calculated message digest as lowercase hexits unless `binary` is set to true in which case the raw binary representation of the message digest is returned.
->
-> **Translated:**
-> `hash_hmac()` — menghasilkan nilai hash ber-key dengan metode HMAC.
->
-> `algo`
->
-> Nama algoritma hash yang dipilih, misalnya `"sha256"`.
->
-> `key`
->
-> Secret key bersama yang dipakai untuk menghasilkan varian HMAC dari message digest.
->
-> `binary`
->
-> Jika diatur ke `true`, fungsi akan mengeluarkan data biner mentah. Jika `false`, fungsi akan mengeluarkan hexits huruf kecil.
->
-> Fungsi ini mengembalikan string yang berisi message digest terhitung dalam bentuk hexits huruf kecil, kecuali jika `binary` diatur ke `true`, maka representasi biner mentah dari message digest yang dikembalikan.
 
-Referensi terkait: [PHP Manual - openssl_encrypt()](https://www.php.net/manual/en/function.openssl-encrypt.php)
+[PHP Manual - openssl_encrypt()](https://www.php.net/manual/en/function.openssl-encrypt.php)
 
 > `openssl_encrypt()` — Encrypts data
 >
@@ -2462,19 +1675,8 @@ Referensi terkait: [PHP Manual - openssl_encrypt()](https://www.php.net/manual/e
 > `tag`
 >
 > The authentication tag passed by reference when using AEAD cipher mode (GCM or CCM).
->
-> **Translated:**
-> `openssl_encrypt()` — mengenkripsi data.
->
-> Fungsi ini mengenkripsi data yang diberikan dengan metode dan passphrase tertentu, lalu mengembalikan string raw atau string yang sudah di-encode base64.
->
-> `options` adalah gabungan bitwise dari flag `OPENSSL_RAW_DATA`, serta `OPENSSL_ZERO_PADDING` atau `OPENSSL_DONT_ZERO_PAD_KEY`.
->
-> `tag`
->
-> Ini adalah authentication tag yang dikirim lewat reference ketika memakai mode cipher AEAD seperti GCM atau CCM.
 
-Referensi terkait: [PHP Manual - openssl_decrypt()](https://www.php.net/manual/en/function.openssl-decrypt.php)
+[PHP Manual - openssl_decrypt()](https://www.php.net/manual/en/function.openssl-decrypt.php)
 
 > `openssl_decrypt()` — Decrypts data
 >
@@ -2483,15 +1685,6 @@ Referensi terkait: [PHP Manual - openssl_decrypt()](https://www.php.net/manual/e
 > `tag`
 >
 > The authentication tag in AEAD cipher mode. If it is incorrect, the authentication fails and the function returns `false`.
->
-> **Translated:**
-> `openssl_decrypt()` — mendekripsi data.
->
-> Fungsi ini menerima string raw atau string yang sudah di-encode base64 lalu mendekripsinya dengan metode dan passphrase tertentu.
->
-> `tag`
->
-> Ini adalah authentication tag pada mode cipher AEAD. Jika tag tersebut salah, autentikasi gagal dan fungsi mengembalikan `false`.
 
 **Implementasi:** normalisasi username lebih dulu supaya variasi huruf besar-kecil dan spasi tidak memecah identitas yang sebenarnya sama.
 
@@ -2607,16 +1800,12 @@ Password diperlakukan sebagai secret yang tidak boleh bisa dipulihkan kembali da
 
 Referensi yang dicari: `OWASP Password Storage Cheat Sheet`, PHP `password_hash()`, PHP `password_verify()`, dan `PHP Password Hashing FAQ`.
 
-Referensi terkait: [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+[OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 
 > When passwords are stored, they must be protected from an attacker even if the application or database is compromised.
 > Use Argon2id with a minimum configuration of 19 MiB of memory, an iteration count of 2, and 1 degree of parallelism.
->
-> **Translated:**
-> Saat password disimpan, password itu harus tetap terlindungi dari penyerang bahkan jika aplikasi atau database sudah dikompromikan.
-> Gunakan Argon2id dengan konfigurasi minimum 19 MiB memori, jumlah iterasi 2, dan derajat paralelisme 1.
 
-Referensi terkait: [PHP Manual - password_hash()](https://www.php.net/manual/en/function.password-hash.php)
+[PHP Manual - password_hash()](https://www.php.net/manual/en/function.password-hash.php)
 
 > `password_hash()` creates a new password hash using a strong one-way hashing algorithm.
 >
@@ -2627,34 +1816,16 @@ Referensi terkait: [PHP Manual - password_hash()](https://www.php.net/manual/en/
 > Returns the hashed password.
 >
 > The used algorithm, cost and salt are returned as part of the hash. Therefore, all information that's needed to verify the hash is included in it.
->
-> **Translated:**
-> `password_hash()` membuat hash password baru dengan algoritma hashing satu arah yang kuat.
->
-> Algoritma berikut saat ini didukung:
->
-> - `PASSWORD_ARGON2ID` - memakai algoritma hashing Argon2id untuk membuat hash.
->
-> Fungsi ini mengembalikan password yang sudah di-hash.
->
-> Algoritma, cost, dan salt yang dipakai dikembalikan sebagai bagian dari hash. Karena itu, semua informasi yang dibutuhkan untuk memverifikasi hash sudah tercakup di dalamnya.
 
-Referensi terkait: [PHP Manual - password_verify()](https://www.php.net/manual/en/function.password-verify.php)
+[PHP Manual - password_verify()](https://www.php.net/manual/en/function.password-verify.php)
 
 > Verifies that the given hash matches the given password.
 >
 > Note that `password_hash()` returns the algorithm, cost and salt as part of the returned hash. Therefore, all information that's needed to verify the hash is included in it.
 >
 > This function is safe against timing attacks.
->
-> **Translated:**
-> Fungsi ini memverifikasi bahwa hash yang diberikan memang cocok dengan password yang diberikan.
->
-> Perlu diperhatikan bahwa `password_hash()` mengembalikan algoritma, cost, dan salt sebagai bagian dari hash yang dikembalikan. Karena itu, semua informasi yang dibutuhkan untuk memverifikasi hash sudah tercakup di dalamnya.
->
-> Fungsi ini aman terhadap timing attack.
 
-Referensi terkait: [PHP Manual - Password Hashing FAQ](https://www.php.net/manual/en/faq.passwords.php)
+[PHP Manual - Password Hashing FAQ](https://www.php.net/manual/en/faq.passwords.php)
 
 > Password hashing is one of the most basic security considerations that must be made when designing any application or service that accepts passwords from users.
 >
@@ -2663,15 +1834,6 @@ Referensi terkait: [PHP Manual - Password Hashing FAQ](https://www.php.net/manua
 > PHP provides a native password hashing API that safely handles both hashing and verifying passwords in a secure manner.
 >
 > `password_verify()` should always be used instead of re-hashing and comparing the result to a stored hash in order to avoid timing attacks.
->
-> **Translated:**
-> Password hashing adalah salah satu pertimbangan keamanan paling dasar yang harus dibuat ketika merancang aplikasi atau layanan apa pun yang menerima password dari pengguna.
->
-> Dengan menerapkan algoritma hashing ke password pengguna sebelum menyimpannya, menjadi sangat tidak masuk akal bagi penyerang untuk menentukan password asli, sambil tetap memungkinkan sistem membandingkan hash yang dihasilkan dengan password asli di masa depan.
->
-> PHP menyediakan native password hashing API yang secara aman menangani proses hashing maupun verifikasi password.
->
-> `password_verify()` harus selalu dipakai alih-alih melakukan hash ulang lalu membandingkannya dengan hash tersimpan, agar terhindar dari timing attack.
 
 **Implementasi:** password dipadukan dengan pepper aplikasi lalu di-hash memakai Argon2id, sehingga kebocoran database tidak langsung membuka password asli.
 
@@ -2718,18 +1880,15 @@ OWASP menempatkan parameterized query sebagai pertahanan utama. Karena itu, selu
 
 Prepared statement adalah kontrol utama terhadap SQL injection, tetapi bukan pengganti validasi input. Di dokumen ini keduanya sengaja dipasang berlapis: validasi membatasi bentuk data sejak awal, sedangkan prepared statement memastikan data yang lolos tetap masuk SQL sebagai parameter, bukan sebagai bagian dari struktur query.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah `OWASP SQL Injection Prevention Cheat Sheet`, PHP `PDO::prepare()`, dan overview PDO.
 
-Referensi terkait: [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
+[OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
 
 > Attackers can use SQL injection on an application if it has dynamic database queries that use string concatenation and user-supplied input.
->
-> **Translated:**
-> Penyerang bisa memanfaatkan SQL injection pada aplikasi jika aplikasi memiliki query database dinamis yang dibangun dengan penggabungan string dan input dari pengguna.
 
-Referensi terkait: [PHP Manual - PDO::prepare()](https://www.php.net/manual/en/pdo.prepare.php)
+[PHP Manual - PDO::prepare()](https://www.php.net/manual/en/pdo.prepare.php)
 
 > `PDO::prepare()` — Prepares a statement for execution and returns a statement object.
 >
@@ -2738,22 +1897,10 @@ Referensi terkait: [PHP Manual - PDO::prepare()](https://www.php.net/manual/en/p
 > Use these parameters to bind any user-input, do not include the user-input directly in the query.
 >
 > Calling `PDO::prepare()` and `PDOStatement::execute()` helps to prevent SQL injection attacks by eliminating the need to manually quote and escape the parameters.
->
-> **Translated:**
-> `PDO::prepare()` — menyiapkan statement untuk dieksekusi dan mengembalikan objek statement.
->
-> Fungsi ini menyiapkan statement SQL untuk dieksekusi oleh metode `PDOStatement::execute()`. Template statement dapat berisi nol atau lebih penanda parameter bernama (`:name`) atau tanda tanya (`?`) yang akan diganti dengan nilai sebenarnya saat statement dijalankan.
->
-> Gunakan parameter-parameter ini untuk melakukan binding terhadap input pengguna; jangan memasukkan input pengguna secara langsung ke dalam query.
->
-> Pemanggilan `PDO::prepare()` dan `PDOStatement::execute()` membantu mencegah serangan SQL injection karena menghilangkan kebutuhan untuk mengutip dan meng-escape parameter secara manual.
 
-Referensi terkait: [PHP Manual - PDO](https://www.php.net/manual/en/book.pdo.php)
+[PHP Manual - PDO](https://www.php.net/manual/en/book.pdo.php)
 
 > PDO provides a data-access abstraction layer, which means that, regardless of which database you're using, you use the same functions to issue queries and fetch data.
->
-> **Translated:**
-> PDO menyediakan lapisan abstraksi akses data, yang berarti terlepas dari database apa yang dipakai, Anda memakai fungsi yang sama untuk menjalankan query dan mengambil data.
 
 #### Implementasi
 
@@ -2907,9 +2054,46 @@ Memenuhi requirement browser-facing: user harus melihat form register/login dari
 
 Halaman awal harus menjadi titik masuk tunggal. Flow tugas akan jauh lebih mudah diuji jika register dan login langsung tersedia di halaman pertama.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Tahap ini tidak menambah referensi internet baru. Setelah helper CSRF, escaping, dan session siap pada tahap sebelumnya, tahap ini langsung menerjemahkan requirement browser-facing menjadi form yang benar-benar bisa diuji.
+
+#### Tambahan Dockerfile Untuk File Aplikasi dan UI
+
+Pada tahap ini halaman browser-facing sudah mulai terbentuk, jadi Dockerfile menyalin direktori aplikasi ke image runtime. Ini membuat file PHP, konfigurasi, dan aset publik tersedia di `DocumentRoot` yang sudah disiapkan pada tahap web server.
+
+**Sumber:** [Dockerfile:49](/home/fxrdhan/au7h/Dockerfile:49), [Dockerfile:50](/home/fxrdhan/au7h/Dockerfile:50), dan [Dockerfile:52](/home/fxrdhan/au7h/Dockerfile:52)
+
+```dockerfile
+COPY config /var/www/html/config
+COPY public /var/www/html/public
+COPY src /var/www/html/src
+```
+
+UI juga mulai memakai CSS hasil build, jadi Dockerfile ditambah stage kecil untuk membangun `public/styles.css`. Blok ini ditulis di Dockerfile, bukan command terminal manual, dan Docker menjalankannya saat image dibuild.
+
+```dockerfile
+FROM oven/bun:1.3.6 AS frontend-builder
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY resources ./resources
+COPY public ./public
+RUN bun run build:css
+```
+
+Stage ini hanya tempat sementara untuk build asset frontend. Dependency Bun dan package frontend tidak menjadi proses runtime aplikasi; image runtime tetap menjalankan Apache, PHP, dan MySQL.
+
+Setelah CSS selesai dibangun, hasilnya dibawa ke image runtime:
+
+```dockerfile
+COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
+```
+
+Baris ini memastikan browser melayani CSS hasil build dari `public/styles.css`, sementara source styling tetap berada di `resources/tailwind.css`.
 
 #### Implementasi
 
@@ -3069,7 +2253,7 @@ Membuat akun baru secara aman dan siap dipakai login.
 
 Endpoint register harus memverifikasi method, CSRF, rate limit, validasi input, duplikasi username, lalu baru menyimpan data terenkripsi/terhash.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Tahap ini tidak mencari sumber baru. Implementasinya langsung memakai hasil bacaan dari tahap session, CSRF, validasi input, enkripsi username, hashing password, dan prepared statement.
 
@@ -3176,24 +2360,17 @@ Inilah titik yang dinilai langsung pada tugas. Login harus:
 6. mengaktifkan session,
 7. mengarahkan sesuai hasil.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah PHP `session_regenerate_id()` untuk memastikan session tidak diteruskan mentah setelah autentikasi sukses.
 
-Referensi terkait: [PHP Manual - session_regenerate_id()](https://www.php.net/manual/en/function.session-regenerate-id.php)
+[PHP Manual - session_regenerate_id()](https://www.php.net/manual/en/function.session-regenerate-id.php)
 
 > `session_regenerate_id()` will replace the current session id with a new one, and keep the current session information.
 >
 > `delete_old_session`
 >
 > Whether to delete the old associated session file or not.
->
-> **Translated:**
-> `session_regenerate_id()` akan mengganti session id saat ini dengan yang baru, sambil tetap mempertahankan informasi session yang ada.
->
-> `delete_old_session`
->
-> Menentukan apakah file session lama yang terkait akan dihapus atau tidak.
 
 #### Implementasi
 
@@ -3269,7 +2446,7 @@ Menutup acceptance criteria utama yang diminta pada tugas.
 
 Tanpa dua landing page ini, requirement tugas belum lengkap walaupun autentikasi sebenarnya sudah bekerja.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Tahap ini tidak menambah referensi internet baru. Implementasinya hanya menyambungkan hasil login, guard session, dan kemampuan dekripsi username yang sudah dibangun pada tahap keamanan sebelumnya.
 
@@ -3408,26 +2585,19 @@ Menutup sesi tanpa menyisakan token lama.
 
 Logout sering dianggap sepele, padahal tetap state-changing action. Karena itu, logout juga perlu `POST` dan CSRF.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dicari pada tahap ini adalah PHP `session_destroy()` dan `session_get_cookie_params()`.
 
-Referensi terkait: [PHP Manual - session_destroy()](https://www.php.net/manual/en/function.session-destroy.php)
+[PHP Manual - session_destroy()](https://www.php.net/manual/en/function.session-destroy.php)
 
 > `session_destroy()` destroys all of the data associated with the current session. It does not unset any of the global variables associated with the session, or unset the session cookie.
 >
 > In order to kill the session altogether, the session ID must also be unset. If a cookie is used to propagate the session ID (default behavior), then the session cookie must be deleted.
 >
 > `setcookie()` may be used for that.
->
-> **Translated:**
-> `session_destroy()` menghancurkan semua data yang terkait dengan session saat ini. Fungsi ini tidak menghapus global variable yang terkait dengan session, dan juga tidak otomatis menghapus cookie session.
->
-> Agar session benar-benar dimatikan, session ID juga harus dihapus. Jika cookie dipakai untuk membawa session ID yang merupakan perilaku bawaan, maka cookie session tersebut juga harus dihapus.
->
-> `setcookie()` dapat dipakai untuk melakukan itu.
 
-Referensi terkait: [PHP Manual - session_get_cookie_params()](https://www.php.net/manual/en/function.session-get-cookie-params.php)
+[PHP Manual - session_get_cookie_params()](https://www.php.net/manual/en/function.session-get-cookie-params.php)
 
 > Gets the session cookie parameters.
 >
@@ -3439,18 +2609,6 @@ Referensi terkait: [PHP Manual - session_get_cookie_params()](https://www.php.ne
 > - `"secure"` - The cookie should only be sent over secure connections.
 > - `"httponly"` - The cookie can only be accessed through the HTTP protocol.
 > - `"samesite"` - Controls the cross-domain sending of the cookie.
->
-> **Translated:**
-> Mengambil parameter cookie milik session.
->
-> Fungsi ini mengembalikan array berisi informasi cookie session saat ini, dengan item-item berikut:
->
-> - `"lifetime"` - lama hidup cookie dalam detik.
-> - `"path"` - path tempat informasi cookie berlaku.
-> - `"domain"` - domain cookie.
-> - `"secure"` - cookie hanya boleh dikirim melalui koneksi aman.
-> - `"httponly"` - cookie hanya boleh diakses lewat protokol HTTP.
-> - `"samesite"` - mengontrol pengiriman cookie lintas domain.
 
 #### Implementasi
 
@@ -3489,11 +2647,11 @@ Memperlambat brute-force dan pembuatan akun massal.
 
 Password kuat tetap butuh throttling. Tanpa rate limit, endpoint login bisa dipukul terus dari IP atau kombinasi username tertentu.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
 Referensi yang dipakai pada tahap ini adalah OWASP Authentication Cheat Sheet bagian **Login Throttling** dan OWASP Blocking Brute Force Attacks. Intinya, password kuat tetap perlu dibantu throttling karena endpoint login bisa diserang dengan percobaan berulang.
 
-Referensi terkait: [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+[OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 
 > Login Throttling is a protocol used to prevent an attacker from making too many attempts at guessing a password through normal interactive means.
 >
@@ -3502,26 +2660,12 @@ Referensi terkait: [OWASP Authentication Cheat Sheet](https://cheatsheetseries.o
 > - The number of failed attempts before the account is locked out (lockout threshold).
 > - The time period that these attempts must occur within (observation window).
 > - How long the account is locked out for (lockout duration).
->
-> **Translated:**
-> Login throttling adalah protokol untuk mencegah penyerang melakukan terlalu banyak percobaan menebak password melalui cara interaktif normal.
->
-> Saat menerapkan policy lockout, ada beberapa faktor yang perlu dipertimbangkan agar seimbang antara keamanan dan usability:
->
-> - jumlah kegagalan sebelum akun dibatasi,
-> - periode waktu tempat percobaan itu dihitung,
-> - durasi pembatasan.
 
-Referensi terkait: [OWASP Blocking Brute Force Attacks](https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks)
+[OWASP Blocking Brute Force Attacks](https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks)
 
 > Account lockout is not always the best solution, because someone could easily abuse the security measure and lock out hundreds of user accounts.
 >
 > An attacker can cause a denial of service (DoS) by locking out large numbers of accounts.
->
-> **Translated:**
-> Account lockout tidak selalu menjadi solusi terbaik karena mekanisme ini bisa disalahgunakan untuk mengunci banyak akun pengguna.
->
-> Penyerang bisa menyebabkan denial of service (DoS) dengan mengunci banyak akun.
 
 Karena itu, implementasi proyek ini memilih throttling ringan berbasis database dan window waktu, bukan lockout permanen. Percobaan dicatat, dievaluasi dalam window, lalu request yang melewati batas dihentikan dengan status `429`.
 
@@ -3732,61 +2876,67 @@ Membuat proyek cepat dijalankan saat demo.
 
 Port harus jelas sejak awal agar browser langsung bisa mengakses web server. Development juga lebih nyaman jika source code bisa di-mount.
 
-#### Jejak referensi sebelum implementasi
+#### Referensi
 
-Referensi yang dicari pada tahap ini adalah dokumentasi `docker compose build`, `docker compose up`, bind mount, dan volume persisten.
+Referensi yang dicari pada tahap ini adalah dokumentasi `docker compose build`, `docker compose up`, bind mount, volume persisten, dan pembuatan sertifikat lokal trusted untuk demo browser.
 
-Referensi terkait: [Docker CLI - docker compose build](https://docs.docker.com/reference/cli/docker/compose/build/)
+[Docker CLI - docker compose build](https://docs.docker.com/reference/cli/docker/compose/build/)
 
 > Description: Build or rebuild services
 > Usage: `docker compose build [OPTIONS] [SERVICE...]`
 > Services are built once and then tagged, by default as `project-service`.
 > If you change a service's `Dockerfile` or the contents of its build directory, run `docker compose build` to rebuild it.
->
-> **Translated:**
-> Deskripsi: membangun atau membangun ulang service.
-> Pemakaian: `docker compose build [OPTIONS] [SERVICE...]`
-> Service dibuild sekali lalu diberi tag, secara default sebagai `project-service`.
-> Jika `Dockerfile` milik service atau isi direktori build berubah, jalankan `docker compose build` untuk membangunnya ulang.
 
-Referensi terkait: [Docker CLI - docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/)
+[Docker CLI - docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/)
 
 > Description: Create and start containers
 > Usage: `docker compose up [OPTIONS] [SERVICE...]`
 > Builds, (re)creates, starts, and attaches to containers for a service.
 > Running `docker compose up --detach` starts the containers in the background and leaves them running.
 > If there are existing containers for a service, and the service’s configuration or image was changed after the container’s creation, `docker compose up` picks up the changes by stopping and recreating the containers (preserving mounted volumes).
->
-> **Translated:**
-> Deskripsi: membuat dan menjalankan container.
-> Pemakaian: `docker compose up [OPTIONS] [SERVICE...]`
-> Perintah ini membangun, membuat ulang, menjalankan, dan menghubungkan diri ke container milik suatu service.
-> Menjalankan `docker compose up --detach` akan menjalankan container di background dan membiarkannya tetap berjalan.
-> Jika container untuk sebuah service sudah ada, lalu konfigurasi service atau image berubah setelah container dibuat, `docker compose up` mengambil perubahan tersebut dengan menghentikan dan membuat ulang container sambil mempertahankan mounted volume.
 
-Referensi terkait: [Docker Docs - Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
+[Docker Docs - Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 
 > When you use a bind mount, a file or directory on the host machine is mounted from the host into a container. By contrast, when you use a volume, a new directory is created within Docker's storage directory on the host machine. Docker creates and maintains this storage location, but containers access it directly using standard filesystem operations.
 > Bind mounts are appropriate for the following types of use case:
 > - Sharing source code or build artifacts between a development environment on the Docker host and a container.
 > - Sharing configuration files from the host machine to containers.
->
-> **Translated:**
-> Saat Anda memakai bind mount, file atau direktori pada mesin host akan di-mount dari host ke dalam container. Sebaliknya, saat memakai volume, direktori baru dibuat di dalam direktori storage Docker pada mesin host. Docker membuat dan memelihara lokasi storage ini, tetapi container mengaksesnya langsung memakai operasi filesystem standar.
-> Bind mount cocok untuk beberapa use case berikut:
-> - Berbagi source code atau build artifact antara environment development pada host Docker dan container.
-> - Berbagi file konfigurasi dari mesin host ke container.
 
-Referensi terkait: [Docker Docs - Volumes](https://docs.docker.com/engine/storage/volumes/)
+[Docker Docs - Volumes](https://docs.docker.com/engine/storage/volumes/)
 
 > Volumes are persistent data stores for containers, created and managed by Docker.
 > When you create a volume, it's stored within a directory on the Docker host. When you mount the volume into a container, this directory is what's mounted into the container. This is similar to the way that bind mounts work, except that volumes are managed by Docker and are isolated from the core functionality of the host machine.
 > A volume's contents exist outside the lifecycle of a given container. When a container is destroyed, the writable layer is destroyed with it. Using a volume ensures that the data is persisted even if the container using it is removed.
+
+[mkcert - Official README](https://github.com/FiloSottile/mkcert/blob/master/README.md)
+
+> mkcert is a simple tool for making locally-trusted development certificates. It requires no configuration.
 >
-> **Translated:**
-> Volume adalah media penyimpanan data persisten untuk container yang dibuat dan dikelola oleh Docker.
-> Saat volume dibuat, volume disimpan di dalam direktori pada host Docker. Saat volume di-mount ke container, direktori itulah yang di-mount ke dalam container. Ini mirip dengan bind mount, tetapi volume dikelola oleh Docker dan terisolasi dari fungsi inti mesin host.
-> Isi volume berada di luar lifecycle container tertentu. Saat container dihancurkan, writable layer ikut dihancurkan. Dengan volume, data tetap persisten walaupun container yang memakainya dihapus.
+> On Linux, first install `certutil`.
+>
+> `sudo apt install libnss3-tools`
+>
+> or use [the pre-built binaries](https://github.com/FiloSottile/mkcert/releases).
+>
+> `curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"`
+>
+> `$ mkcert -install`
+>
+> The local CA is now installed in the system trust store!
+>
+> The local CA is now installed in the Firefox trust store (requires browser restart)!
+>
+> `$ mkcert example.com "*.example.com" example.test localhost 127.0.0.1 ::1`
+>
+> mkcert automatically creates and installs a local CA in the system root store, and generates locally-trusted certificates. mkcert does not automatically configure servers to use the certificates, though, that's up to you.
+>
+> `-cert-file FILE, -key-file FILE, -p12-file FILE`
+>
+> Customize the output paths.
+>
+> **Note:** You must place these options before the domain names list.
+>
+> `mkcert -key-file key.pem -cert-file cert.pem example.com *.example.com`
 
 Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose baru ditulis sebagai jalur demo lokal.
 
@@ -3794,13 +2944,71 @@ Setelah alur build, start, bind mount, dan volume persisten jelas, file Compose 
 
 **Langkah 1:**
 
-- Tampilkan satu file Compose yang cukup untuk demo lokal.
+- Siapkan sertifikat `localhost` yang dipercaya browser untuk demo lokal.
+- Pasang local root CA ke trust store host/browser.
+- Letakkan sertifikat dan private key ke folder `certs/` agar nanti terbaca oleh bind mount Compose.
+
+**Sumber:** [compose.dev.yaml:22](/home/fxrdhan/au7h/compose.dev.yaml:22), [docker/apache-ssl.conf.template:8](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:8), dan [docker-entrypoint.sh:77](/home/fxrdhan/au7h/docker-entrypoint.sh:77)
+
+**Alur kode:** `mkcert` dijalankan di host, bukan di dalam container. Perintah `mkcert -install` memasang local root CA ke trust store. Setelah itu sertifikat `localhost`, `127.0.0.1`, dan `::1` dibuat langsung ke `certs/server.crt` dan `certs/server.key`. Folder `certs/` ini nanti di-mount oleh Compose ke `/var/www/certs`, sehingga Apache bisa memakai file tersebut lewat `SSLCertificateFile` dan `SSLCertificateKeyFile`.
+
+Pada Linux Debian/Ubuntu, `certutil` disiapkan lebih dulu lewat paket `libnss3-tools`, lalu binary `mkcert` dipasang ke `/usr/local/bin`:
+
+```bash
+sudo apt update
+sudo apt install -y libnss3-tools
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+mkcert --version
+```
+
+```bash
+mkdir -p certs
+mkcert -install
+mkcert -cert-file certs/server.crt -key-file certs/server.key localhost 127.0.0.1 ::1
+```
+
+Opsi `-cert-file` dan `-key-file` dipakai karena dokumentasi mkcert memperbolehkan output path sertifikat dan key diatur manual. Opsi ini diletakkan sebelum daftar nama host sesuai catatan resmi mkcert.
+
+Bukti sertifikat yang dipakai dapat dicek dari file lokal:
+
+```bash
+openssl x509 -in certs/server.crt -noout -subject -issuer -fingerprint -sha256
+```
+
+Root CA lokal mkcert dapat dicek dari lokasi CA root:
+
+```bash
+mkcert -CAROOT
+openssl x509 -in "$(mkcert -CAROOT)/rootCA.pem" -noout -subject -issuer -ext basicConstraints
+```
+
+**Langkah 2:**
+
+- Deklarasikan port aplikasi pada image.
+- Tandai direktori data yang perlu diperlakukan sebagai data persisten.
+
+**Sumber:** [Dockerfile:62](/home/fxrdhan/au7h/Dockerfile:62) dan [Dockerfile:63](/home/fxrdhan/au7h/Dockerfile:63)
+
+**Alur kode:** image runtime menyatakan port HTTP/HTTPS yang dilayani aplikasi dan tiga path data yang tidak boleh dianggap sekadar writable layer container.
+
+```dockerfile
+EXPOSE 8080 8443
+VOLUME ["/var/www/data", "/var/www/certs", "/var/lib/mysql"]
+```
+
+**Langkah 3:**
+
+- Tulis service Compose awal yang cukup untuk menjalankan aplikasi.
 - Tetapkan mapping port yang eksplisit.
-- Pasang volume mount agar perubahan source langsung tercermin saat pengujian.
+- Pasang volume mount agar perubahan source dan sertifikat lokal langsung terbaca saat pengujian.
 
 **Sumber cuplikan relevan:** [compose.dev.yaml:1](/home/fxrdhan/au7h/compose.dev.yaml:1)
 
-**Alur kode:** file Compose ini mendefinisikan service aplikasi yang sekaligus di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan ACL, memasang bind mount source code, lalu menambahkan service Snort sidecar untuk monitoring traffic jaringan.
+**Catatan pembacaan:** sumber mengarah ke file Compose yang dipakai repo. Cuplikan Tahap 17 hanya menampilkan bagian yang dibutuhkan untuk menjalankan service `app`, port, environment dasar, bind mount, dan volume data.
+
+**Alur kode:** bagian awal Compose mendefinisikan service aplikasi yang di-build lokal, memetakan port demo HTTP/HTTPS, mengaktifkan environment jaringan aplikasi, dan memasang bind mount source code serta folder sertifikat.
 
 ```yaml
 name: au7h
@@ -3810,11 +3018,9 @@ services:
     image: au7h
     build:
       context: .
-    cap_add:
-      - NET_ADMIN
 ```
 
-Blok ini mendefinisikan service utama `app`, membangun image dari source lokal, dan memberi capability `NET_ADMIN` agar ACL berbasis iptables bisa diterapkan dari dalam container.
+Blok ini mendefinisikan service utama `app` dan membangun image dari source lokal.
 
 ```yaml
     ports:
@@ -3824,13 +3030,9 @@ Blok ini mendefinisikan service utama `app`, membangun image dari source lokal, 
       PUBLIC_HTTPS_PORT: ${HOST_HTTPS_PORT:-10443}
       MYSQL_BIND_ADDRESS: 127.0.0.1
       MYSQL_ALLOW_REMOTE: "0"
-      ACL_ENABLED: "1"
-      ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
-      ACL_DB_CIDR: ${ACL_DB_CIDR:-}
-      ACL_ALLOW_ICMP: ${ACL_ALLOW_ICMP:-0}
 ```
 
-Blok ini memetakan port demo dan mengatur environment jaringan. HTTP/HTTPS dibuka ke host, MySQL dibatasi ke localhost, dan ACL dikendalikan lewat variabel environment.
+Blok ini memetakan port demo dan mengatur environment jaringan dasar. HTTP/HTTPS dibuka ke host, sedangkan MySQL tetap dibatasi ke localhost.
 
 ```yaml
     volumes:
@@ -3842,7 +3044,114 @@ Blok ini memetakan port demo dan mengatur environment jaringan. HTTP/HTTPS dibuk
       - au7h-mysql:/var/lib/mysql
 ```
 
-Blok ini memasang bind mount untuk source code agar perubahan lokal langsung tercermin, lalu memakai named volume untuk data aplikasi dan data MySQL yang perlu persisten.
+Blok ini memasang bind mount untuk source code agar perubahan lokal langsung tercermin. Mount `./certs:/var/www/certs` menjadi jalur masuk sertifikat dari host ke container. Sertifikat `localhost` yang sudah dibuat pada langkah awal disimpan di folder `certs/`, lalu Apache membacanya dari `/var/www/certs`. Jika file `server.crt` atau `server.key` belum tersedia, entrypoint membuat fallback self-signed.
+
+```yaml
+volumes:
+  au7h-data:
+  au7h-mysql:
+```
+
+Blok ini mendeklarasikan named volume untuk data aplikasi dan data MySQL agar tidak hilang ketika container dibuat ulang.
+
+Jika container sudah berjalan sebelum sertifikat dibuat atau diganti, service aplikasi di-restart agar Apache membaca file sertifikat yang baru:
+
+```bash
+docker compose restart app
+```
+
+#### Hasil tahap
+
+**Catatan pembacaan:** alamat ini menjadi target akses minimal saat demo, sehingga penguji bisa langsung memeriksa redirect HTTP dan akses HTTPS tanpa menebak port.
+
+Browser bisa mengakses:
+
+```text
+http://localhost:10080
+https://localhost:10443
+```
+
+### Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan
+
+#### Tujuan
+
+Menjawab tambahan requirement jaringan: traffic aplikasi dipantau oleh Snort, rule lokal tersedia, rule komunitas dapat diperbarui, dan akses port dibatasi dengan ACL.
+
+#### Analisis alur
+
+Snort diposisikan sebagai IDS sidecar, bukan menggantikan Apache atau MySQL. ACL dipasang di container aplikasi agar browser tetap bisa mengakses HTTP/HTTPS, sementara port sensitif seperti MySQL dan SSH tidak terbuka langsung ke user.
+
+Bagian ini tidak mengubah keputusan satu container untuk aplikasi utama. Container `app` tetap menjadi tempat Apache, PHP, dan MySQL berjalan bersama. Snort dibuat sebagai sidecar karena IDS jaringan perlu proses dan image khusus, tetapi ia hanya menempel pada network namespace `app` untuk memantau traffic yang sama, bukan menjadi container database atau web server terpisah.
+
+#### Referensi
+
+Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokumentasi resmi konfigurasi Snort 3, pemuatan rule `.rules`, sidecar network namespace di Compose, dan dokumentasi Docker terkait `iptables`.
+
+[Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
+
+> image: ciscotalos/snort3:latest
+> cap_add:
+>   - NET_ADMIN
+>   - NET_RAW
+> command: -i eth0 -c /usr/local/etc/snort/snort.lua
+
+[Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3)
+
+> docker pull ciscotalos/snort3
+
+[Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
+
+> Snort 3 configuration is now all done in Lua.
+>
+> Snort doesn't look for a specific configuration file by default, but you can pass one to it very easily with the `-c` argument.
+
+[Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
+
+> Snort rules can be placed directly in one's Lua configuration file(s) via the `ips` module, but for the most part they will live in distinct `.rules` files that get "included".
+>
+> `alert_fast (logger): output event with brief text format`
+
+[Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode)
+
+> `network_mode` sets a service container's network mode.
+>
+> `service:{name}`: Gives the container access to the specified container by referring to its service name.
+
+[Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
+
+> Docker creates iptables rules in the host's network namespace for bridge networks.
+>
+> The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
+
+[iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html)
+
+> A firewall rule specifies criteria for a packet and a target.
+>
+> `ACCEPT` means to let the packet through. `DROP` means to drop the packet on the floor.
+
+[iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html)
+
+> `conntrack`
+>
+> `--ctstate`
+>
+> `multiport`
+>
+> This module matches a set of source or destination ports.
+>
+> `--destination-ports`, `--dports`
+>
+
+#### Implementasi
+
+**Langkah 1:**
+
+- Tambahkan service Snort ke Compose setelah service aplikasi sudah bisa berjalan.
+- Pasang Snort sebagai sidecar yang memakai network namespace `app`.
+
+**Sumber cuplikan relevan:** [compose.dev.yaml:26](/home/fxrdhan/au7h/compose.dev.yaml:26)
+
+**Alur kode:** service `snort` ditambahkan belakangan pada file Compose final. Ia bergantung pada `app`, memakai image Snort resmi, berbagi network namespace aplikasi, dan mendapat capability jaringan yang diperlukan untuk membaca traffic.
 
 ```yaml
   snort:
@@ -3897,93 +3206,9 @@ volumes:
   snort-logs:
 ```
 
-Blok ini mendeklarasikan named volume untuk data aplikasi, data MySQL, dan log Snort agar tidak hilang ketika container dibuat ulang.
+Blok final ini menambahkan `snort-logs` di samping volume aplikasi dan MySQL, karena log IDS baru muncul setelah Snort ditambahkan.
 
-#### Hasil tahap
-
-**Catatan pembacaan:** alamat ini menjadi target akses minimal saat demo, sehingga penguji bisa langsung memeriksa redirect HTTP dan akses HTTPS tanpa menebak port.
-
-Browser bisa mengakses:
-
-```text
-http://localhost:10080
-https://localhost:10443
-```
-
-### Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan
-
-#### Tujuan
-
-Menjawab tambahan requirement jaringan: traffic aplikasi dipantau oleh Snort, rule lokal tersedia, rule komunitas dapat diperbarui, dan akses port dibatasi dengan ACL.
-
-#### Analisis alur
-
-Snort diposisikan sebagai IDS sidecar, bukan menggantikan Apache atau MySQL. ACL dipasang di container aplikasi agar browser tetap bisa mengakses HTTP/HTTPS, sementara port sensitif seperti MySQL dan SSH tidak terbuka langsung ke user.
-
-Bagian ini tidak mengubah keputusan satu container untuk aplikasi utama. Container `app` tetap menjadi tempat Apache, PHP, dan MySQL berjalan bersama. Snort dibuat sebagai sidecar karena IDS jaringan perlu proses dan image khusus, tetapi ia hanya menempel pada network namespace `app` untuk memantau traffic yang sama, bukan menjadi container database atau web server terpisah.
-
-#### Jejak referensi sebelum implementasi
-
-Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokumentasi resmi konfigurasi Snort 3, pemuatan rule `.rules`, sidecar network namespace di Compose, dan dokumentasi Docker terkait `iptables`.
-
-Referensi terkait: [Docker Recipes - Snort 3 Docker Compose](https://docker.recipes/security/snort3)
-
-> image: ciscotalos/snort3:latest
-> cap_add:
->   - NET_ADMIN
->   - NET_RAW
-> command: -i eth0 -c /usr/local/etc/snort/snort.lua
-
-Referensi terkait: [Docker Hub - ciscotalos/snort3](https://hub.docker.com/r/ciscotalos/snort3)
-
-> docker pull ciscotalos/snort3
-
-Referensi terkait: [Snort 3 Configuration Guide](https://docs.snort.org/start/configuration)
-
-> Snort 3 configuration is now all done in Lua.
->
-> Snort doesn't look for a specific configuration file by default, but you can pass one to it very easily with the `-c` argument.
-
-Referensi terkait: [Snort 3 Rule Writing Guide](https://docs.snort.org/start/rules)
-
-> Snort rules can be placed directly in one's Lua configuration file(s) via the `ips` module, but for the most part they will live in distinct `.rules` files that get "included".
->
-> `alert_fast (logger): output event with brief text format`
-
-Referensi terkait: [Docker Compose services - network_mode](https://docs.docker.com/reference/compose-file/services/#network_mode)
-
-> `network_mode` sets a service container's network mode.
->
-> `service:{name}`: Gives the container access to the specified container by referring to its service name.
-
-Referensi terkait: [Docker Docs - Docker with iptables](https://docs.docker.com/engine/network/firewall-iptables/)
-
-> Docker creates iptables rules in the host's network namespace for bridge networks.
->
-> The following rule accepts any incoming or outgoing packet belonging to a flow that has already been accepted by other rules.
-
-Referensi terkait: [iptables(8)](https://man7.org/linux/man-pages/man8/iptables.8.html)
-
-> A firewall rule specifies criteria for a packet and a target.
->
-> `ACCEPT` means to let the packet through. `DROP` means to drop the packet on the floor.
-
-Referensi terkait: [iptables-extensions(8)](https://man7.org/linux/man-pages/man8/iptables-extensions.8.html)
-
-> `conntrack`
->
-> `--ctstate`
->
-> `multiport`
->
-> This module matches a set of source or destination ports.
->
-> `--destination-ports`, `--dports`
->
-
-#### Implementasi
-
-**Langkah 1:**
+**Langkah 2:**
 
 - Konfigurasikan Snort sidecar.
 - Baca rule proyek.
@@ -4032,7 +3257,7 @@ alert_fast =
 
 Blok ini memilih output alert ringkas ke file log, tanpa menyimpan isi paket penuh, agar hasil demo mudah dibaca.
 
-**Langkah 2:**
+**Langkah 3:**
 
 - Susun file rule Snort proyek.
 - Pastikan rule lokal dan rule komunitas bisa dimuat dari satu aggregator.
@@ -4053,10 +3278,21 @@ alert tcp any any -> $HOME_NET 3306 (msg:"AU7H direct MySQL port access attempt"
 alert tcp any any -> $HOME_NET 22 (msg:"AU7H SSH port access attempt"; sid:1000004; rev:3; classtype:attempted-recon;)
 ```
 
-**Langkah 3:**
+**Langkah 4:**
 
-- Terapkan ACL jaringan di container aplikasi.
-- Batasi port yang boleh diakses.
+- Tambahkan tool ACL ke image aplikasi.
+
+**Sumber:** [Dockerfile:20](/home/fxrdhan/au7h/Dockerfile:20)
+
+**Alur kode:** `iptables` baru ditambahkan pada tahap jaringan ini agar container aplikasi punya tool untuk memasang aturan ACL.
+
+```dockerfile
+    iptables \
+```
+
+**Langkah 5:**
+
+- Isi script ACL dengan aturan allow dan deny.
 
 **Sumber cuplikan relevan:** [docker/acl.sh:22](/home/fxrdhan/au7h/docker/acl.sh:22)
 
@@ -4102,6 +3338,40 @@ iptables -w -A "${ACL_CHAIN}" -j DROP
 
 Blok ini menutup port sensitif dan traffic lain yang tidak masuk daftar allow. MySQL dan SSH ditolak eksplisit, ICMP ping dibuang, lalu aturan terakhir menjadi fallback drop.
 
+**Langkah 6:**
+
+- Salin script ACL ke image dan beri izin eksekusi.
+- Beri container aplikasi capability untuk mengelola `iptables`.
+- Jalankan ACL dari entrypoint ketika fitur diaktifkan.
+
+**Sumber:** [Dockerfile:48](/home/fxrdhan/au7h/Dockerfile:48), [Dockerfile:58](/home/fxrdhan/au7h/Dockerfile:58), [compose.dev.yaml:8](/home/fxrdhan/au7h/compose.dev.yaml:8), [compose.dev.yaml:17](/home/fxrdhan/au7h/compose.dev.yaml:17), dan [docker-entrypoint.sh:183](/home/fxrdhan/au7h/docker-entrypoint.sh:183)
+
+**Alur kode:** script ACL yang sudah dibuat dipasang ke image, service `app` mendapat capability `NET_ADMIN`, lalu entrypoint menjalankan script hanya ketika `ACL_ENABLED=1`.
+
+```dockerfile
+COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
+```
+
+```dockerfile
+  && chmod +x /usr/local/bin/au7h-apply-acl.sh \
+```
+
+```yaml
+    cap_add:
+      - NET_ADMIN
+    environment:
+      ACL_ENABLED: "1"
+      ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
+      ACL_DB_CIDR: ${ACL_DB_CIDR:-}
+      ACL_ALLOW_ICMP: ${ACL_ALLOW_ICMP:-0}
+```
+
+```sh
+if [ "${ACL_ENABLED}" = "1" ]; then
+  au7h-apply-acl.sh
+fi
+```
+
 #### Hasil tahap
 
 Hasil yang dapat ditunjukkan saat demo:
@@ -4113,11 +3383,11 @@ Hasil yang dapat ditunjukkan saat demo:
 5. request HTTP/HTTPS tetap berhasil,
 6. akses langsung ke MySQL `3306` dan SSH `22` ditolak.
 
-## 8. Alur Demo Singkat Saat Presentasi
+## 6. Alur Demo Singkat Saat Presentasi
 
 Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat sesi evaluasi meminta bukti langsung.
 
-### 8.1. Start container dan pastikan service aktif
+### 6.1. Start container dan pastikan service aktif
 
 ```bash
 docker compose -f compose.dev.yaml up -d --build
@@ -4130,7 +3400,15 @@ Yang ditunjukkan:
 2. service `snort` aktif sebagai IDS sidecar,
 3. port HTTP `10080` dan HTTPS `10443` terpublish.
 
-### 8.2. Buka aplikasi lewat browser
+### 6.2. Buka aplikasi lewat browser
+
+Pada demo lokal, browser dapat menampilkan status **Connection is secure** dan **Certificate is valid** jika file `certs/server.crt` yang dipakai adalah sertifikat `localhost` dari local CA, misalnya `mkcert`. Di setup ini `compose.dev.yaml` me-mount `./certs` ke `/var/www/certs`, lalu Apache memakai path tersebut lewat `SSLCertificateFile`. Entry point hanya membuat sertifikat self-signed fallback ketika `server.crt` atau `server.key` belum tersedia.
+
+Browser mengenali sertifikat itu karena local root CA dari `mkcert` sudah dipasang ke trust store OS/browser. Setelah root CA atau sertifikat lokal dipasang, browser sebaiknya ditutup total lalu dibuka lewat sesi/profile baru. Refresh halaman hanya memuat ulang page, sedangkan proses browser masih bisa menyimpan security state, koneksi TLS lama, atau cache validasi sertifikat. Sesi baru memastikan trust store dibaca ulang dan TLS handshake dilakukan dari kondisi bersih.
+
+![Browser menampilkan sertifikat localhost valid dari mkcert](assets/cert-browser-valid-mkcert.png)
+
+Gambar ini menunjukkan certificate viewer browser untuk `localhost:10443`. Sertifikat diterbitkan untuk `mkcert development certificate`, diterbitkan oleh `mkcert development CA`, dan fingerprint SHA-256-nya cocok dengan sertifikat yang dipakai Apache. Ini menjadi bukti bahwa browser mempercayai koneksi karena chain sertifikat lokalnya dikenali oleh trust store.
 
 Buka:
 
@@ -4144,7 +3422,7 @@ Yang ditunjukkan:
 2. form memakai metode `POST`,
 3. form membawa `csrf_token`.
 
-### 8.3. Buktikan HTTP diarahkan ke HTTPS
+### 6.3. Buktikan HTTP diarahkan ke HTTPS
 
 ```bash
 curl -k -I http://localhost:10080
@@ -4155,7 +3433,7 @@ Yang ditunjukkan:
 1. status `301 Moved Permanently`,
 2. header `Location: https://localhost:10443/`.
 
-### 8.4. Demo flow utama login-register
+### 6.4. Demo flow utama login-register
 
 Urutan demo:
 
@@ -4166,7 +3444,7 @@ Urutan demo:
 5. logout,
 6. coba login dengan akun salah dan tunjukkan redirect ke `/not-registered.php`.
 
-### 8.5. Buktikan database tidak menyimpan kredensial plaintext
+### 6.5. Buktikan database tidak menyimpan kredensial plaintext
 
 Jalankan query inspeksi tabel `users` dari MySQL container:
 
@@ -4181,7 +3459,7 @@ Yang ditunjukkan:
 3. `password_hash` berformat `$argon2id$...`,
 4. tidak ada username/password plaintext di database.
 
-### 8.6. Demo uji negatif keamanan
+### 6.6. Demo uji negatif keamanan
 
 Urutan paling cepat:
 
@@ -4193,7 +3471,7 @@ Urutan paling cepat:
 
 Catatan saat menjelaskan SQL injection: payload memang ditolak oleh validasi username sebelum query dijalankan, dan layer database tetap memakai PDO prepared statement sebagai pertahanan utama bila input valid sampai ke query.
 
-### 8.7. Demo Snort IDS dan ACL jaringan
+### 6.7. Demo Snort IDS dan ACL jaringan
 
 ```bash
 bun run snort:test-rules
@@ -4208,7 +3486,7 @@ Yang ditunjukkan:
 4. HTTP/HTTPS diizinkan,
 5. MySQL `3306`, SSH `22`, dan ICMP dibatasi sesuai ACL.
 
-## 9. Urutan Verifikasi Setelah Implementasi
+## 7. Urutan Verifikasi Setelah Implementasi
 
 ### Uji 1 - Container hidup
 
@@ -4532,7 +3810,7 @@ Gambar ini menunjukkan username panjang berlebih ditolak dengan pesan `Username 
 
 Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, lalu percobaan keenam menerima `HTTP 429` dengan pesan `Terlalu banyak percobaan`.
 
-## 10. Pemetaan Requirement Tugas Ke Tahap Implementasi
+## 8. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
 | Requirement tugas | Tahap implementasi yang menutup requirement |
 | --- | --- |
@@ -4552,7 +3830,7 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 | Snort IDS + rule lokal | Tahap 18 |
 | ACL ICMP dan port | Tahap 18 |
 
-## 11. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
+## 9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
 1. Satu container dipilih karena requirement tugas, bukan karena itu pola terbaik produksi.
 2. “Buffer overflow protection” di sini diterapkan secara realistis pada level aplikasi: bahasa high-level, limit ukuran, nonaktif upload, hardening runtime. Ini bukan klaim bahwa seluruh dependency native bebas bug.
@@ -4560,9 +3838,9 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 4. Password tidak dienkripsi karena referensi keamanan modern merekomendasikan hashing satu arah.
 5. Username tidak cukup di-hash karena landing page perlu menampilkan nilai asli setelah login.
 6. Snort berjalan sebagai sidecar IDS untuk kebutuhan monitoring jaringan; ini tidak mengubah fakta bahwa web server, aplikasi PHP, dan database MySQL tetap berada dalam satu container aplikasi.
-7. Sertifikat self-signed cukup untuk demo lokal dan pembuktian HTTPS, tetapi browser bisa tetap menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
+7. HTTPS lokal memakai file sertifikat dari `./certs`. Jika file itu berasal dari local CA seperti `mkcert` dan root CA-nya sudah dipercaya browser, browser dapat menampilkan `Certificate is valid`. Jika file tidak tersedia, entrypoint membuat self-signed fallback untuk pembuktian HTTPS, tetapi browser bisa menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
 
-## 12. Checklist Final Sebelum Presentasi
+## 10. Checklist Final Sebelum Presentasi
 
 Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebelum demo, supaya tidak ada requirement yang tertinggal saat presentasi berlangsung.
 
@@ -4603,7 +3881,7 @@ Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebe
 [x] MySQL 3306 dan SSH 22 ditolak ACL
 ```
 
-## 13. Ringkasan Strategi Dari Nol
+## 11. Ringkasan Strategi Dari Nol
 
 Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan untuk tugas ini adalah:
 

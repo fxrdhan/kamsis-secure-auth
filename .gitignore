@@ -6,3 +6,4 @@ output/playwright/
 .DS_Store
 npm-debug.log*
 *.bak
+docs/DOSEN_QA_PRIVATE.md
