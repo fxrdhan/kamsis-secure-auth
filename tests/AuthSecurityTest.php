@@ -83,6 +83,10 @@ assert_false(verify_stored_password('WrongPass123', $passwordHash), 'stored pass
 $_SESSION = [];
 $csrfToken = csrf_token();
 assert_same($csrfToken, csrf_token(), 'csrf_token should reuse the session token');
+assert_true(csrf_token_is_well_formed($csrfToken), 'csrf_token should be a 64-character lowercase hex token');
+assert_false(csrf_token_is_well_formed(''), 'empty csrf token should be rejected');
+assert_false(csrf_token_is_well_formed(str_repeat('a', 63)), 'short csrf token should be rejected');
+assert_false(csrf_token_is_well_formed(str_repeat('g', 64)), 'non-hex csrf token should be rejected');
 $regeneratedToken = regenerate_csrf_token();
 assert_not_same($csrfToken, $regeneratedToken, 'regenerate_csrf_token should rotate the token');
 verify_csrf_or_fail($regeneratedToken);

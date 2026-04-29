@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 function csrf_token(): string
 {
-    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+    if (
+        !isset($_SESSION['csrf_token'])
+        || !is_string($_SESSION['csrf_token'])
+        || !csrf_token_is_well_formed($_SESSION['csrf_token'])
+    ) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
 
@@ -17,10 +21,21 @@ function regenerate_csrf_token(): string
     return $_SESSION['csrf_token'];
 }
 
+function csrf_token_is_well_formed(string $token): bool
+{
+    return preg_match('/\A[a-f0-9]{64}\z/', $token) === 1;
+}
+
 function verify_csrf_or_fail(?string $submittedToken): void
 {
-    $storedToken = $_SESSION['csrf_token'] ?? '';
-    if (!is_string($submittedToken) || !is_string($storedToken) || !hash_equals($storedToken, $submittedToken)) {
+    $storedToken = $_SESSION['csrf_token'] ?? null;
+    $tokenIsValid = is_string($submittedToken)
+        && is_string($storedToken)
+        && csrf_token_is_well_formed($submittedToken)
+        && csrf_token_is_well_formed($storedToken)
+        && hash_equals($storedToken, $submittedToken);
+
+    if (!$tokenIsValid) {
         render_page_response(
             403,
             render_error_page('Form ditolak', 'Token integritas form tidak valid atau sudah kedaluwarsa.')

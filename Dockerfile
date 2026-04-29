@@ -46,6 +46,7 @@ COPY docker/apache-global.conf /etc/apache2/conf-available/zzz-au7h-global.conf
 COPY docker/apache-http.conf.template /etc/apache2/sites-available/http-redirect.conf.template
 COPY docker/apache-ssl.conf.template /etc/apache2/sites-available/app-ssl.conf.template
 COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
+COPY docker/healthcheck.php /usr/local/bin/au7h-healthcheck.php
 COPY config /var/www/html/config
 COPY public /var/www/html/public
 COPY --from=frontend-builder /app/public/styles.css /var/www/html/public/styles.css
@@ -61,6 +62,7 @@ RUN mkdir -p /var/www/data /var/www/certs /var/run/mysqld /var/lib/mysql \
 
 EXPOSE 8080 8443
 VOLUME ["/var/www/data", "/var/www/certs", "/var/lib/mysql"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD php /usr/local/bin/au7h-healthcheck.php
 
 ENTRYPOINT ["docker-entrypoint-custom.sh"]
 CMD ["apache2ctl", "-D", "FOREGROUND"]

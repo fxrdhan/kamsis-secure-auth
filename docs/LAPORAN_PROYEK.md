@@ -31,7 +31,8 @@
   - [Tahap 20 - Mengamankan hygiene repo dan build context](#tahap-20---mengamankan-hygiene-repo-dan-build-context)
   - [Tahap 21 - Menjelaskan privilege runtime dan capability container](#tahap-21---menjelaskan-privilege-runtime-dan-capability-container)
   - [Tahap 22 - Memeriksa supply-chain image dan dependency container](#tahap-22---memeriksa-supply-chain-image-dan-dependency-container)
-  - [Tahap 23 - Menutup lifecycle secret dan least privilege database](#tahap-23---menutup-lifecycle-secret-dan-least-privilege-database)
+  - [Tahap 23 - Menutup lifecycle secret dan batas privilege database](#tahap-23---menutup-lifecycle-secret-dan-batas-privilege-database)
+  - [Tahap 24 - Menambahkan healthcheck container](#tahap-24---menambahkan-healthcheck-container)
 - [6. Alur Demo Singkat Saat Presentasi](#6-alur-demo-singkat-saat-presentasi)
 - [7. Urutan Verifikasi Setelah Implementasi](#7-urutan-verifikasi-setelah-implementasi)
   - [Uji 1 - Container hidup](#uji-1---container-hidup)
@@ -53,8 +54,8 @@
   - [Uji 17 - Runtime privilege dan capability](#uji-17---runtime-privilege-dan-capability)
   - [Uji 18 - Supply-chain image dan dependency](#uji-18---supply-chain-image-dan-dependency)
   - [Uji 19 - Lifecycle secret dan privilege database](#uji-19---lifecycle-secret-dan-privilege-database)
+  - [Uji 20 - Healthcheck container](#uji-20---healthcheck-container)
   - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
-  - [Bukti Screenshot Verifikasi](#bukti-screenshot-verifikasi)
 - [8. Pemetaan Requirement Tugas Ke Tahap Implementasi](#8-pemetaan-requirement-tugas-ke-tahap-implementasi)
 - [9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan](#9-catatan-transparansi-tentang-bagian-yang-sengaja-tidak-dibesar-besarkan)
 - [10. Checklist Final Sebelum Presentasi](#10-checklist-final-sebelum-presentasi)
@@ -162,6 +163,7 @@ au7h/
 │   ├── apache-http.conf.template
 │   ├── apache-ssl.conf.template
 │   ├── acl.sh
+│   ├── healthcheck.php
 │   └── php.ini
 ├── config/
 │   └── bootstrap.php
@@ -215,6 +217,7 @@ Detail referensi isi file di folder `docker/`:
 2. [docker/apache-global.conf](/home/fxrdhan/au7h/docker/apache-global.conf:1) dan security headers pada [docker/apache-ssl.conf.template](/home/fxrdhan/au7h/docker/apache-ssl.conf.template:12)  fokus pada hardening HTTP-level di web server.
 3. [docker/php.ini](/home/fxrdhan/au7h/docker/php.ini:1) isinya adalah hardening runtime PHP dan penguatan session cookie.
 4. [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) isinya adalah ACL jaringan container dengan `iptables`.
+5. [docker/healthcheck.php](/home/fxrdhan/au7h/docker/healthcheck.php:1) isinya adalah healthcheck HTTPS lokal untuk memastikan Apache, PHP, dan bootstrap database merespons dari dalam container.
 
 ### File pendukung UI, tooling, dan test
 
@@ -272,7 +275,7 @@ Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint
 mkdir -p au7h/{docker,config,src/Infrastructure,src/Security,src/Support,src/Presentation,public,certs}
 cd au7h
 touch Dockerfile docker-entrypoint.sh compose.dev.yaml
-touch docker/apache-global.conf docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini docker/acl.sh
+touch docker/apache-global.conf docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini docker/acl.sh docker/healthcheck.php
 touch config/bootstrap.php
 touch src/Infrastructure/Database.php src/Security/Auth.php src/Security/RateLimiter.php src/Support/Config.php src/Support/Http.php src/Presentation/Views.php src/Presentation/Components.php
 touch public/index.php public/register.php public/login.php public/welcome.php public/not-registered.php public/logout.php
@@ -314,8 +317,9 @@ Fokus threat model sengaja dibatasi pada containering dan security. UI hanya dia
 | Port sensitif terbuka | MySQL/SSH/ICMP bisa diakses langsung | MySQL bind localhost, ACL `iptables`, port publish hanya HTTP/HTTPS | Tahap 3, 17, 18 |
 | Traffic serangan tidak terlihat | Serangan jaringan sulit dibuktikan saat demo | Snort IDS sidecar, local rules, alert log | Tahap 18 |
 | Secret masuk Git atau image | Pepper, key, database, atau private key bocor | Runtime secret file, `.gitignore`, `.dockerignore`, build context dibatasi | Tahap 3, 20, 23 |
-| Container terlalu privileged | Dampak compromise melebar ke namespace jaringan | Capability dicatat eksplisit, `privileged` tidak dipakai, alasan `NET_ADMIN/NET_RAW` dijelaskan | Tahap 21 |
+| Container terlalu privileged | Dampak compromise melebar ke namespace jaringan | Capability default di-drop, hanya capability bootstrap/ACL/IDS yang ditambahkan ulang, `no-new-privileges` aktif, `privileged` tidak dipakai | Tahap 21 |
 | Image/dependency rentan | Vulnerability dari base image atau dependency ikut terbawa | Version tag, lockfile frozen, CI build, status pinning/scan dicatat transparan | Tahap 22 |
+| Container hidup tetapi aplikasi belum sehat | Demo terlihat `Up`, tetapi web app atau bootstrap DB belum siap | Docker `HEALTHCHECK` ke endpoint HTTPS lokal | Tahap 24 |
 
 **Langkah 2:**
 
@@ -332,7 +336,8 @@ Acceptance criteria security dan containering:
 7. rate limit aktif untuk login/register,
 8. Snort dan ACL punya bukti konfigurasi serta uji,
 9. secret lokal tidak masuk Git atau Docker build context,
-10. privilege container, supply-chain image, dan lifecycle secret dijelaskan secara jujur.
+10. privilege container, supply-chain image, dan lifecycle secret dijelaskan secara jujur,
+11. container punya healthcheck agar status runtime tidak hanya bergantung pada proses yang masih hidup.
 
 #### Hasil tahap
 
@@ -593,7 +598,7 @@ Setelah alur bootstrap, privilege, readiness, dan sertifikat lokal terbaca jelas
 - Beri izin eksekusi.
 - Jadikan script itu sebagai `ENTRYPOINT` container.
 
-**Sumber:** [Dockerfile:53](/home/fxrdhan/au7h/Dockerfile:53), [Dockerfile:57](/home/fxrdhan/au7h/Dockerfile:57), dan [Dockerfile:65](/home/fxrdhan/au7h/Dockerfile:65)
+**Sumber:** [Dockerfile:54](/home/fxrdhan/au7h/Dockerfile:54), [Dockerfile:58](/home/fxrdhan/au7h/Dockerfile:58), dan [Dockerfile:67](/home/fxrdhan/au7h/Dockerfile:67)
 
 **Alur kode:** Dockerfile yang sudah dibuat pada Tahap 1 ditambah sedikit agar entrypoint tidak hanya ditulis di repo, tetapi benar-benar dibawa ke image dan dipanggil sebagai proses bootstrap sebelum Apache berjalan.
 
@@ -1049,7 +1054,7 @@ Setelah fungsi masing-masing header dibaca, kombinasi header yang benar-benar re
 - Rapikan fingerprint server di konfigurasi global Apache.
 - Salin dan aktifkan konfigurasi global Apache di image.
 
-**Sumber:** [Dockerfile:26](/home/fxrdhan/au7h/Dockerfile:26), [Dockerfile:45](/home/fxrdhan/au7h/Dockerfile:45), [Dockerfile:56](/home/fxrdhan/au7h/Dockerfile:56), dan [docker/apache-global.conf:1](/home/fxrdhan/au7h/docker/apache-global.conf:1)
+**Sumber:** [Dockerfile:26](/home/fxrdhan/au7h/Dockerfile:26), [Dockerfile:45](/home/fxrdhan/au7h/Dockerfile:45), [Dockerfile:57](/home/fxrdhan/au7h/Dockerfile:57), dan [docker/apache-global.conf:1](/home/fxrdhan/au7h/docker/apache-global.conf:1)
 
 **Alur kode:** Dockerfile mengaktifkan modul header, membawa konfigurasi global Apache ke image, lalu mengaktifkan konfigurasi itu. Isi konfigurasi globalnya merapikan fingerprint server dengan menetapkan nama host lokal, menurunkan detail banner, mematikan signature, dan menonaktifkan TRACE.
 
@@ -1613,7 +1618,11 @@ Referensi yang dicari: `OWASP CSRF Prevention Cheat Sheet` dan PHP `random_bytes
 ```php
 function csrf_token(): string
 {
-    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+    if (
+        !isset($_SESSION['csrf_token'])
+        || !is_string($_SESSION['csrf_token'])
+        || !csrf_token_is_well_formed($_SESSION['csrf_token'])
+    ) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
 
@@ -1621,17 +1630,28 @@ function csrf_token(): string
 }
 ```
 
-**Lanjutan:** memverifikasi token dengan `hash_equals()` dan langsung memutus request jika integritas form gagal.
+**Lanjutan:** memverifikasi format token sebelum `hash_equals()` agar token kosong atau token rusak tidak pernah dianggap valid, lalu langsung memutus request jika integritas form gagal.
 
-**Sumber:** [src/Security/Auth.php:20](/home/fxrdhan/au7h/src/Security/Auth.php:20)
+**Sumber:** [src/Security/Auth.php:24](/home/fxrdhan/au7h/src/Security/Auth.php:24), [src/Security/Auth.php:29](/home/fxrdhan/au7h/src/Security/Auth.php:29)
 
-**Alur kode:** helper verifikasi ini mengambil token tersimpan dari session, membandingkannya dengan input form memakai `hash_equals()`, lalu langsung mengembalikan halaman 403 bila integritas form gagal.
+**Alur kode:** helper verifikasi ini mengambil token tersimpan dari session, memastikan token yang dikirim dan token session sama-sama berbentuk 64 karakter hex, membandingkannya dengan `hash_equals()`, lalu langsung mengembalikan halaman 403 bila integritas form gagal.
 
 ```php
+function csrf_token_is_well_formed(string $token): bool
+{
+    return preg_match('/\A[a-f0-9]{64}\z/', $token) === 1;
+}
+
 function verify_csrf_or_fail(?string $submittedToken): void
 {
-    $storedToken = $_SESSION['csrf_token'] ?? '';
-    if (!is_string($submittedToken) || !is_string($storedToken) || !hash_equals($storedToken, $submittedToken)) {
+    $storedToken = $_SESSION['csrf_token'] ?? null;
+    $tokenIsValid = is_string($submittedToken)
+        && is_string($storedToken)
+        && csrf_token_is_well_formed($submittedToken)
+        && csrf_token_is_well_formed($storedToken)
+        && hash_equals($storedToken, $submittedToken);
+
+    if (!$tokenIsValid) {
         render_page_response(
             403,
             render_error_page('Form ditolak', 'Token integritas form tidak valid atau sudah kedaluwarsa.')
@@ -1659,7 +1679,7 @@ Referensi yang dicari: `OWASP Input Validation Cheat Sheet`.
 
 **Implementasi:** validasi username dipasang lebih dulu dengan pendekatan allowlist dan batas panjang tetap agar input berbahaya berhenti sebelum menyentuh query atau penyimpanan.
 
-**Sumber:** [src/Security/Auth.php:31](/home/fxrdhan/au7h/src/Security/Auth.php:31)
+**Sumber:** [src/Security/Auth.php:46](/home/fxrdhan/au7h/src/Security/Auth.php:46)
 
 **Alur kode:** username lebih dulu di-trim, kemudian diperiksa panjang minimumnya, lalu diuji dengan regex allowlist; hanya input yang lolos semua gerbang ini yang diteruskan sebagai nilai valid.
 
@@ -1682,7 +1702,7 @@ function validate_username(string $username): array
 
 **Lanjutan:** memaksa kompleksitas minimum password dan menetapkan batas atas panjang agar hashing tetap terkontrol.
 
-**Sumber:** [src/Security/Auth.php:46](/home/fxrdhan/au7h/src/Security/Auth.php:46)
+**Sumber:** [src/Security/Auth.php:61](/home/fxrdhan/au7h/src/Security/Auth.php:61)
 
 **Alur kode:** password diperiksa dari dua sisi, yaitu batas panjang untuk keamanan operasional dan kombinasi karakter untuk kompleksitas dasar, baru kemudian dikembalikan sebagai nilai yang boleh diproses lebih jauh.
 
@@ -1759,7 +1779,7 @@ Referensi yang dicari: OWASP Cryptographic Storage, PHP `hash_hmac()`, `openssl_
 
 **Implementasi:** normalisasi username lebih dulu supaya variasi huruf besar-kecil dan spasi tidak memecah identitas yang sebenarnya sama.
 
-**Sumber:** [src/Security/Auth.php:63](/home/fxrdhan/au7h/src/Security/Auth.php:63)
+**Sumber:** [src/Security/Auth.php:78](/home/fxrdhan/au7h/src/Security/Auth.php:78)
 
 **Alur kode:** username lebih dulu dinormalisasi menjadi bentuk stabil, lalu bentuk stabil itu di-hash dengan HMAC dan pepper aplikasi sehingga login bisa mencari akun tanpa menyimpan plaintext.
 
@@ -1777,7 +1797,7 @@ function username_lookup(string $username): string
 
 **Lanjutan:** menyiapkan utilitas `base64url` karena ciphertext AES-GCM perlu dibawa dalam format string yang aman disimpan dan dibaca ulang.
 
-**Sumber:** [src/Security/Auth.php:73](/home/fxrdhan/au7h/src/Security/Auth.php:73)
+**Sumber:** [src/Security/Auth.php:88](/home/fxrdhan/au7h/src/Security/Auth.php:88)
 
 **Alur kode:** dua helper ini mengubah data biner menjadi format base64url yang aman dipakai di payload string, lalu menyediakan jalur baliknya saat payload perlu didekode.
 
@@ -1800,7 +1820,7 @@ function base64url_decode(string $value): string
 
 **Lanjutan:** mengenkripsi username untuk penyimpanan dan menyediakan pasangan fungsi dekripsi agar landing page sukses masih bisa menampilkan nama asli.
 
-**Sumber:** [src/Security/Auth.php:88](/home/fxrdhan/au7h/src/Security/Auth.php:88)
+**Sumber:** [src/Security/Auth.php:103](/home/fxrdhan/au7h/src/Security/Auth.php:103)
 
 **Alur kode:** username dienkripsi dengan AES-256-GCM memakai IV acak, lalu IV, tag, dan ciphertext digabung menjadi satu payload; fungsi kebalikannya memecah payload itu lagi dan mendekripsinya hanya jika strukturnya valid.
 
@@ -1908,7 +1928,7 @@ Referensi yang dicari: `OWASP Password Storage Cheat Sheet`, PHP `password_hash(
 
 **Implementasi:** password dipadukan dengan pepper aplikasi lalu di-hash memakai Argon2id, sehingga kebocoran database tidak langsung membuka password asli.
 
-**Sumber:** [src/Security/Auth.php:130](/home/fxrdhan/au7h/src/Security/Auth.php:130)
+**Sumber:** [src/Security/Auth.php:145](/home/fxrdhan/au7h/src/Security/Auth.php:145)
 
 **Alur kode:** sebelum disimpan, password digabung dulu dengan pepper aplikasi, lalu hasil gabungannya di-hash menggunakan Argon2id sehingga kebocoran hash tidak langsung membuka password asli.
 
@@ -1922,7 +1942,7 @@ function hash_password_for_storage(string $password): string
 
 **Lanjutan:** memverifikasi input login terhadap hash tersimpan tanpa pernah mengubah data hash menjadi plaintext.
 
-**Sumber:** [src/Security/Auth.php:136](/home/fxrdhan/au7h/src/Security/Auth.php:136)
+**Sumber:** [src/Security/Auth.php:151](/home/fxrdhan/au7h/src/Security/Auth.php:151)
 
 **Alur kode:** saat login, input password dibentuk kembali dengan pepper yang sama, lalu diverifikasi terhadap hash tersimpan tanpa pernah mengubah hash itu menjadi plaintext.
 
@@ -2133,7 +2153,7 @@ Tahap ini tidak menambah referensi internet baru. Setelah helper CSRF, escaping,
 
 Pada tahap ini halaman browser-facing sudah mulai terbentuk, jadi Dockerfile menyalin direktori aplikasi ke image runtime. Ini membuat file PHP, konfigurasi, dan aset publik tersedia di `DocumentRoot` yang sudah disiapkan pada tahap web server.
 
-**Sumber:** [Dockerfile:49](/home/fxrdhan/au7h/Dockerfile:49), [Dockerfile:50](/home/fxrdhan/au7h/Dockerfile:50), dan [Dockerfile:52](/home/fxrdhan/au7h/Dockerfile:52)
+**Sumber:** [Dockerfile:50](/home/fxrdhan/au7h/Dockerfile:50), [Dockerfile:51](/home/fxrdhan/au7h/Dockerfile:51), dan [Dockerfile:53](/home/fxrdhan/au7h/Dockerfile:53)
 
 ```dockerfile
 COPY config /var/www/html/config
@@ -2921,7 +2941,7 @@ function clear_auth_rate_limit(string $bucket, ?string $subject = null): void
 - Jalankan helper enforcement sebelum endpoint melanjutkan logika bisnis.
 - Ubah status blokir menjadi respons HTTP 429 yang jelas.
 
-**Sumber:** [src/Security/Auth.php:141-149](/home/fxrdhan/au7h/src/Security/Auth.php:141)
+**Sumber:** [src/Security/Auth.php:156](/home/fxrdhan/au7h/src/Security/Auth.php:156)
 
 **Alur kode:** helper enforcement ini berada di tepi endpoint; ia memanggil pengecekan rate limit dan langsung menghentikan request dengan halaman 429 bila bucket tersebut sedang diblokir.
 
@@ -3060,7 +3080,7 @@ openssl x509 -in "$(mkcert -CAROOT)/rootCA.pem" -noout -subject -issuer -ext bas
 - Deklarasikan port aplikasi pada image.
 - Tandai direktori data yang perlu diperlakukan sebagai data persisten.
 
-**Sumber:** [Dockerfile:62](/home/fxrdhan/au7h/Dockerfile:62) dan [Dockerfile:63](/home/fxrdhan/au7h/Dockerfile:63)
+**Sumber:** [Dockerfile:63](/home/fxrdhan/au7h/Dockerfile:63) dan [Dockerfile:64](/home/fxrdhan/au7h/Dockerfile:64)
 
 **Alur kode:** image runtime menyatakan port HTTP/HTTPS yang dilayani aplikasi dan tiga path data yang tidak boleh dianggap sekadar writable layer container.
 
@@ -3222,7 +3242,7 @@ Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokument
 
 **Sumber cuplikan relevan:** [compose.dev.yaml:26](/home/fxrdhan/au7h/compose.dev.yaml:26)
 
-**Alur kode:** service `snort` ditambahkan belakangan pada file Compose final. Ia bergantung pada `app`, memakai image Snort resmi, berbagi network namespace aplikasi, dan mendapat capability jaringan yang diperlukan untuk membaca traffic.
+**Alur kode:** service `snort` ditambahkan belakangan pada file Compose final. Ia bergantung pada `app`, memakai image Snort resmi, berbagi network namespace aplikasi, menjatuhkan capability default, lalu menambahkan ulang capability jaringan yang diperlukan untuk membaca traffic.
 
 ```yaml
   snort:
@@ -3233,9 +3253,17 @@ Referensi yang dicari pada tahap ini adalah tutorial Snort 3 di Docker, dokument
     entrypoint:
       - /home/snorty/snort3/bin/snort
     user: root
+    cap_drop:
+      - ALL
     cap_add:
+      - DAC_OVERRIDE
       - NET_ADMIN
       - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
 ```
 
 Blok ini mendefinisikan Snort sebagai sidecar. `network_mode: service:app` membuat Snort memantau network namespace yang sama dengan aplikasi.
@@ -3412,12 +3440,14 @@ Blok ini menutup port sensitif dan traffic lain yang tidak masuk daftar allow. M
 **Langkah 6:**
 
 - Salin script ACL ke image dan beri izin eksekusi.
-- Beri container aplikasi capability untuk mengelola `iptables`.
+- Drop capability default container aplikasi.
+- Tambahkan ulang hanya capability yang dibutuhkan untuk bootstrap internal dan ACL.
+- Aktifkan `no-new-privileges`.
 - Jalankan ACL dari entrypoint ketika fitur diaktifkan.
 
-**Sumber:** [Dockerfile:48](/home/fxrdhan/au7h/Dockerfile:48), [Dockerfile:58](/home/fxrdhan/au7h/Dockerfile:58), [compose.dev.yaml:8](/home/fxrdhan/au7h/compose.dev.yaml:8), [compose.dev.yaml:17](/home/fxrdhan/au7h/compose.dev.yaml:17), dan [docker-entrypoint.sh:183](/home/fxrdhan/au7h/docker-entrypoint.sh:183)
+**Sumber:** [Dockerfile:48](/home/fxrdhan/au7h/Dockerfile:48), [Dockerfile:59](/home/fxrdhan/au7h/Dockerfile:59), [compose.dev.yaml:8](/home/fxrdhan/au7h/compose.dev.yaml:8), [compose.dev.yaml:17](/home/fxrdhan/au7h/compose.dev.yaml:17), dan [docker-entrypoint.sh:183](/home/fxrdhan/au7h/docker-entrypoint.sh:183)
 
-**Alur kode:** script ACL yang sudah dibuat dipasang ke image, service `app` mendapat capability `NET_ADMIN`, lalu entrypoint menjalankan script hanya ketika `ACL_ENABLED=1`.
+**Alur kode:** script ACL yang sudah dibuat dipasang ke image. Service `app` tidak lagi menerima capability default Docker secara utuh; Compose melakukan `cap_drop: ALL`, menambahkan ulang capability yang diperlukan untuk `chown`, pembacaan private key bind mount, penurunan user proses, dan `iptables`, lalu entrypoint menjalankan script hanya ketika `ACL_ENABLED=1`.
 
 ```dockerfile
 COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
@@ -3428,8 +3458,16 @@ COPY docker/acl.sh /usr/local/bin/au7h-apply-acl.sh
 ```
 
 ```yaml
+    cap_drop:
+      - ALL
     cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
       - NET_ADMIN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
     environment:
       ACL_ENABLED: "1"
       ACL_WEB_CIDR: ${ACL_WEB_CIDR:-0.0.0.0/0}
@@ -3599,6 +3637,7 @@ Test ini memastikan password tetap one-way hash dan jalur login memakai `passwor
 
 - Uji lifecycle token CSRF.
 - Pastikan token session dipakai ulang sampai dirotasi.
+- Pastikan token kosong, terlalu pendek, atau non-hex ditolak oleh pemeriksaan format.
 - Pastikan token hasil rotasi diterima oleh verifier.
 
 **Sumber:** [tests/AuthSecurityTest.php:83](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:83)
@@ -3607,6 +3646,10 @@ Test ini memastikan password tetap one-way hash dan jalur login memakai `passwor
 $_SESSION = [];
 $csrfToken = csrf_token();
 assert_same($csrfToken, csrf_token(), 'csrf_token should reuse the session token');
+assert_true(csrf_token_is_well_formed($csrfToken), 'csrf_token should be a 64-character lowercase hex token');
+assert_false(csrf_token_is_well_formed(''), 'empty csrf token should be rejected');
+assert_false(csrf_token_is_well_formed(str_repeat('a', 63)), 'short csrf token should be rejected');
+assert_false(csrf_token_is_well_formed(str_repeat('g', 64)), 'non-hex csrf token should be rejected');
 $regeneratedToken = regenerate_csrf_token();
 assert_not_same($csrfToken, $regeneratedToken, 'regenerate_csrf_token should rotate the token');
 verify_csrf_or_fail($regeneratedToken);
@@ -3621,7 +3664,7 @@ Blok ini menjaga integritas form register, login, dan logout karena token benar-
 - Pastikan alamat klien ikut membedakan bucket throttling.
 - Pastikan policy register lebih ketat daripada default.
 
-**Sumber:** [tests/AuthSecurityTest.php:90](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:90)
+**Sumber:** [tests/AuthSecurityTest.php:94](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:94)
 
 ```php
 $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
@@ -3759,48 +3802,73 @@ Repository lebih aman untuk dibagikan dan dibuild ulang: secret lokal tidak masu
 
 #### Tujuan
 
-Menutup celah dokumentasi tentang privilege container, capability jaringan, dan proses mana yang benar-benar berjalan dengan user khusus.
+Menutup celah dokumentasi tentang privilege container, capability jaringan, pembatasan capability default, dan proses mana yang benar-benar berjalan dengan user khusus.
 
 #### Analisis alur
 
-ACL container membutuhkan `iptables`, sedangkan `iptables` membutuhkan capability jaringan. Snort juga membutuhkan akses packet capture. Karena itu, bagian ini tidak boleh dibiarkan hanya sebagai baris YAML; evaluator perlu melihat bahwa privilege tinggi ini disadari, dibatasi sesuai kebutuhan demo, dan tidak diklaim sebagai hardening produksi penuh.
+ACL container membutuhkan `iptables`, sedangkan `iptables` membutuhkan capability jaringan. Snort juga membutuhkan akses packet capture. Karena itu, bagian ini tidak boleh dibiarkan hanya sebagai baris YAML; evaluator perlu melihat bahwa privilege tinggi ini disadari, capability default Docker tidak diterima utuh, dan privilege yang masih tersisa dibatasi sesuai kebutuhan demo.
 
-Ada tiga keputusan privilege yang penting:
+Ada empat keputusan privilege yang penting:
 
-1. container `app` mendapat `NET_ADMIN` hanya agar script ACL bisa memasang aturan `iptables`,
-2. service `snort` mendapat `NET_ADMIN` dan `NET_RAW` agar bisa membaca traffic network namespace aplikasi,
-3. MySQL tetap dijalankan sebagai user `mysql`, sedangkan file web dimiliki `www-data`.
+1. container `app` melakukan `cap_drop: ALL`, lalu menambahkan ulang `CHOWN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SETGID`, dan `SETUID`,
+2. service `snort` melakukan `cap_drop: ALL`, lalu menambahkan ulang `DAC_OVERRIDE`, `NET_ADMIN`, dan `NET_RAW` agar binary Snort resmi tetap bisa dieksekusi dan traffic network namespace aplikasi bisa dibaca,
+3. `no-new-privileges:true` aktif pada `app` dan `snort`,
+4. root filesystem Snort dibuat read-only, dengan `/tmp` sebagai tmpfs dan `/var/log/snort` tetap writable lewat volume log,
+5. MySQL tetap dijalankan sebagai user `mysql`, sedangkan file web dimiliki `www-data`.
 
 #### Implementasi
 
 **Langkah 1:**
 
 - Pastikan capability container terlihat eksplisit di Compose.
+- Drop capability default sebelum menambahkan capability yang benar-benar diperlukan.
+- Aktifkan `no-new-privileges`.
+- Buat root filesystem Snort read-only karena sidecar hanya perlu membaca config/rules dan menulis log ke volume.
 - Pastikan tidak ada `privileged: true`.
 
 **Sumber:** [compose.dev.yaml:8](/home/fxrdhan/au7h/compose.dev.yaml:8), [compose.dev.yaml:37](/home/fxrdhan/au7h/compose.dev.yaml:37)
 
 ```yaml
   app:
+    cap_drop:
+      - ALL
     cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
       - NET_ADMIN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
 
   snort:
     user: root
+    cap_drop:
+      - ALL
     cap_add:
+      - DAC_OVERRIDE
       - NET_ADMIN
       - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
 ```
 
-`NET_ADMIN` pada `app` adalah konsekuensi langsung dari ACL berbasis `iptables`. Tanpa capability ini, [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) tidak bisa membuat chain `AU7H_INPUT` dan tidak bisa memasang aturan `ACCEPT`, `REJECT`, atau `DROP`.
+`CHOWN` pada `app` dibutuhkan karena entrypoint menyiapkan ownership direktori data dan MySQL volume saat container start. `DAC_OVERRIDE` dibutuhkan agar proses root di dalam container tetap bisa membaca private key TLS dari bind mount `./certs` yang di host bisa berpermission ketat, misalnya `600`. `SETGID` dan `SETUID` dibutuhkan agar proses internal seperti MySQL dan Apache bisa turun ke user layanan yang tepat. `NET_ADMIN` adalah konsekuensi langsung dari ACL berbasis `iptables`; tanpa capability ini, [docker/acl.sh](/home/fxrdhan/au7h/docker/acl.sh:1) tidak bisa membuat chain `AU7H_INPUT` dan tidak bisa memasang aturan `ACCEPT`, `REJECT`, atau `DROP`.
 
-`NET_ADMIN` dan `NET_RAW` pada `snort` dipakai untuk IDS sidecar. Snort membaca traffic dari interface `eth0` dan `lo`, lalu menulis alert ke `/var/log/snort`. Karena Snort menempel ke network namespace `app`, ia tidak menjadi container database atau web server terpisah.
+`DAC_OVERRIDE` pada `snort` dibutuhkan karena binary Snort di image resmi memiliki permission yang tidak bisa dieksekusi setelah seluruh capability default dijatuhkan. `NET_ADMIN` dan `NET_RAW` dipakai untuk IDS sidecar. Snort membaca traffic dari interface `eth0` dan `lo`, lalu menulis alert ke `/var/log/snort`. Karena Snort menempel ke network namespace `app`, ia tidak menjadi container database atau web server terpisah. Capability default lain tidak diberikan ulang.
+
+`no-new-privileges:true` dipasang pada kedua service agar proses di dalam container tidak bisa memperoleh privilege baru lewat mekanisme exec/setuid binary. Ini tidak menghilangkan kebutuhan bootstrap sebagai root, tetapi membatasi eskalasi privilege tambahan setelah container berjalan.
+
+Root filesystem `snort` dibuat `read_only: true` karena konfigurasi dan rule sudah di-mount read-only, sedangkan log IDS ditulis ke volume `snort-logs`. `tmpfs` kecil di `/tmp` disediakan agar proses tetap punya ruang sementara tanpa membuka root filesystem menjadi writable.
 
 **Langkah 2:**
 
 - Pisahkan pembacaan antara privilege container dan user proses internal.
 
-**Sumber:** [docker-entrypoint.sh:134](/home/fxrdhan/au7h/docker-entrypoint.sh:134), [Dockerfile:59](/home/fxrdhan/au7h/Dockerfile:59)
+**Sumber:** [docker-entrypoint.sh:134](/home/fxrdhan/au7h/docker-entrypoint.sh:134), [Dockerfile:60](/home/fxrdhan/au7h/Dockerfile:60)
 
 ```sh
 mysqld \
@@ -3824,11 +3892,11 @@ Container tetap start dengan privilege yang cukup untuk bootstrap Apache, MySQL,
 
 - Catat batasan produksi.
 
-Untuk demo tugas, `NET_ADMIN` pada `app` masih proporsional karena ACL memang dipasang dari dalam container. Untuk produksi yang lebih ketat, ACL idealnya dipasang oleh host firewall, reverse proxy, Kubernetes NetworkPolicy, atau layer orkestrator, lalu container aplikasi bisa berjalan tanpa capability tambahan. Snort juga sebaiknya memakai image dan mode operasi yang paling minimum sesuai deployment nyata.
+Untuk demo tugas, capability tambahan pada `app` masih proporsional karena container sengaja melakukan bootstrap multi-proses dan memasang ACL dari dalam container. Root filesystem `app` belum dibuat read-only karena entrypoint masih menulis `ports.conf`, render virtual host Apache, bootstrap MySQL, cert fallback, dan aturan ACL saat startup. Untuk produksi yang lebih ketat, ACL idealnya dipasang oleh host firewall, reverse proxy, Kubernetes NetworkPolicy, atau layer orkestrator, lalu container aplikasi bisa berjalan tanpa `NET_ADMIN`, dengan root filesystem read-only, dan dengan model proses yang lebih kecil. Snort juga sebaiknya memakai image dan mode operasi yang paling minimum sesuai deployment nyata.
 
 #### Hasil tahap
 
-Privilege runtime tidak lagi menjadi bagian yang tersirat. Laporan menjelaskan kenapa capability tinggi dipakai, apa batasannya, dan bagaimana membacanya secara jujur sebagai konfigurasi demo keamanan jaringan.
+Privilege runtime tidak lagi menjadi bagian yang tersirat. Laporan menjelaskan capability mana yang di-drop, capability mana yang ditambahkan ulang, `no-new-privileges`, root filesystem read-only untuk sidecar, kenapa capability tinggi masih dipakai, apa batasannya, dan bagaimana membacanya secara jujur sebagai konfigurasi demo keamanan jaringan.
 
 ### Tahap 22 - Memeriksa supply-chain image dan dependency container
 
@@ -3909,7 +3977,7 @@ Karena scan vulnerability belum menjadi gate wajib di workflow repo ini, laporan
 
 Supply-chain container sudah dibaca secara eksplisit: image utama memakai tag versi/rilis, dependency build memakai lockfile frozen, CI membangun image, scan Trivy manual sudah dilakukan, dan kekurangan digest pinning atau vulnerability gate dicatat sebagai batasan yang tidak dibesar-besarkan.
 
-### Tahap 23 - Menutup lifecycle secret dan least privilege database
+### Tahap 23 - Menutup lifecycle secret dan batas privilege database
 
 #### Tujuan
 
@@ -3988,6 +4056,73 @@ Untuk produksi, pola yang lebih ketat adalah memisahkan:
 #### Hasil tahap
 
 Lifecycle secret dan privilege database sudah tercatat penuh: secret dibuat runtime dan dipersist di volume, ignore file mencegah kebocoran lokal, privilege database dibatasi pada database aplikasi, dan batasan `GRANT ALL` untuk demo dijelaskan tanpa klaim berlebihan.
+
+### Tahap 24 - Menambahkan healthcheck container
+
+#### Tujuan
+
+Membuat status container tidak hanya berarti proses utama masih hidup, tetapi juga menunjukkan aplikasi HTTPS benar-benar bisa merespons dari dalam container.
+
+#### Analisis alur
+
+Pada container multi-proses demo ini, proses Apache bisa saja masih hidup sementara bootstrap database atau endpoint aplikasi bermasalah. Karena itu, healthcheck ditempatkan setelah entrypoint, HTTPS, database bootstrap, dan Compose selesai dijelaskan. Healthcheck cukup memanggil endpoint HTTPS lokal `127.0.0.1:${APP_PORT_HTTPS}` dari dalam container, sehingga ia ikut menguji Apache, PHP, session/bootstrap, dan koneksi database yang dipakai `initialize_database()`.
+
+#### Implementasi
+
+**Langkah 1:**
+
+- Tambahkan script healthcheck kecil berbasis PHP.
+- Abaikan verifikasi CA karena endpoint yang dicek adalah loopback internal container dan sertifikat lokal bisa berasal dari self-signed fallback atau mkcert.
+- Gagal jika endpoint HTTPS tidak mengembalikan HTTP 200.
+
+**Sumber:** [docker/healthcheck.php:1](/home/fxrdhan/au7h/docker/healthcheck.php:1)
+
+```php
+<?php
+
+declare(strict_types=1);
+
+$port = getenv('APP_PORT_HTTPS') ?: '8443';
+$url = 'https://127.0.0.1:' . $port . '/';
+$context = stream_context_create([
+    'http' => [
+        'timeout' => 3,
+    ],
+    'ssl' => [
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+    ],
+]);
+
+$body = @file_get_contents($url, false, $context);
+$statusLine = $http_response_header[0] ?? '';
+
+if ($body === false || !preg_match('/\AHTTP\/\S+\s+200\b/', $statusLine)) {
+    fwrite(STDERR, "AU7H HTTPS healthcheck failed for {$url}\n");
+    exit(1);
+}
+
+exit(0);
+```
+
+**Langkah 2:**
+
+- Salin script healthcheck ke image runtime.
+- Deklarasikan Docker `HEALTHCHECK` agar runtime container punya pemeriksaan readiness yang bisa dibaca lewat `docker ps` atau `docker inspect`.
+
+**Sumber:** [Dockerfile:49](/home/fxrdhan/au7h/Dockerfile:49), [Dockerfile:65](/home/fxrdhan/au7h/Dockerfile:65)
+
+```dockerfile
+COPY docker/healthcheck.php /usr/local/bin/au7h-healthcheck.php
+```
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD php /usr/local/bin/au7h-healthcheck.php
+```
+
+#### Hasil tahap
+
+Container aplikasi sekarang punya healthcheck internal. Jika Apache, PHP, HTTPS, atau bootstrap database gagal melayani halaman awal, status healthcheck akan berubah menjadi `unhealthy` sehingga demo tidak hanya bergantung pada status proses `Up`.
 
 ## 6. Alur Demo Singkat Saat Presentasi
 
@@ -4115,18 +4250,24 @@ docker compose -f compose.dev.yaml config
 sed -n '1,70p' Dockerfile
 sed -n '1,80p' .github/workflows/ci.yml
 docker compose -f compose.dev.yaml exec app sh -lc 'stat -c "%a %U:%G %n" /var/www/data/runtime-secrets.env'
+docker container inspect --format '{{json .State.Health}}' au7h-app-1
 ```
 
 Yang ditunjukkan:
 
-1. `app` hanya menambah `NET_ADMIN` untuk ACL,
-2. `snort` menambah `NET_ADMIN` dan `NET_RAW` untuk IDS,
-3. tidak ada `privileged: true`,
-4. image dan dependency build dibaca dari tag/lockfile yang jelas,
-5. `snort3:latest`, digest pinning, dan vulnerability scan dijelaskan sebagai batasan transparan,
-6. secret runtime berada di volume data dan tidak masuk Git/build context.
+1. `app` melakukan `cap_drop: ALL` lalu menambahkan ulang `CHOWN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SETGID`, dan `SETUID`,
+2. `snort` melakukan `cap_drop: ALL` lalu menambahkan ulang `DAC_OVERRIDE`, `NET_ADMIN`, dan `NET_RAW`,
+3. `no-new-privileges:true` aktif pada kedua service,
+4. root filesystem `snort` read-only dengan log tetap di volume,
+5. tidak ada `privileged: true`,
+6. image dan dependency build dibaca dari tag/lockfile yang jelas,
+7. `snort3:latest`, digest pinning, dan vulnerability scan dijelaskan sebagai batasan transparan,
+8. secret runtime berada di volume data dan tidak masuk Git/build context,
+9. healthcheck container tersedia dan dapat dibaca dari state Docker.
 
 ## 7. Urutan Verifikasi Setelah Implementasi
+
+Bukti visual ditempel langsung pada uji yang relevan, bukan dikumpulkan sebagai lampiran di akhir. Screenshot yang dipilih menunjukkan hasil final yang berhasil, termasuk uji positif dan uji negatif keamanan; uji yang tidak punya screenshot tersendiri tetap dicatat pada tabel hasil aktual. Screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final. Screenshot Trivy dicatat sebagai hasil scan manual supply-chain, bukan sebagai klaim bahwa workflow CI sudah memiliki vulnerability gate.
 
 ### Uji 1 - Container hidup
 
@@ -4143,6 +4284,16 @@ Yang harus terlihat:
 2. Apache listen di port HTTP/HTTPS,
 3. tidak ada error fatal PHP saat startup.
 
+#### Bukti visual Uji 1
+
+![Container app dan Snort aktif](assets/screenshots/01-compose-services.png)
+
+Gambar ini menunjukkan `docker compose -f compose.dev.yaml ps` dengan service `app` dan `snort` berstatus `Up`, serta port `10080->8080` dan `10443->8443` terpublish.
+
+![Build ulang container berhasil sebelum uji negatif](assets/screenshots/10-dev-up-build.png)
+
+Gambar ini menunjukkan `bun run dev:up` menjalankan `docker compose -f compose.dev.yaml up -d --build`, image `au7h` berhasil dibangun, dan container `au7h-app-1` serta `au7h-snort-1` berjalan.
+
 ### Uji 2 - HTTP redirect ke HTTPS
 
 Alur pengujian: kirim request HEAD ke endpoint HTTP untuk memastikan web server tidak melayani konten sensitif di kanal tidak terenkripsi.
@@ -4155,6 +4306,12 @@ Yang harus terlihat:
 
 1. status redirect,
 2. header `Location` menuju `https://localhost:10443/...`.
+
+#### Bukti visual Uji 2
+
+![HTTP redirect ke HTTPS](assets/screenshots/02-http-redirect.png)
+
+Gambar ini menunjukkan request `curl -k -I http://localhost:10080` menerima status `301 Moved Permanently` dan header `Location: https://localhost:10443/`.
 
 ### Uji 3 - Form tampil di browser
 
@@ -4169,6 +4326,12 @@ Yang harus terlihat:
 1. HTML form register/login,
 2. hidden field CSRF token,
 3. endpoint action menuju `/register.php` atau `/login.php`.
+
+#### Bukti visual Uji 3
+
+![Form register tampil di browser](assets/screenshots/03-register-form.png)
+
+Gambar ini menunjukkan halaman utama aplikasi dapat dibuka lewat `https://localhost:10443/` dan menampilkan form pendaftaran akun.
 
 ### Uji 4 - Register berhasil
 
@@ -4193,6 +4356,12 @@ Hasil yang harus muncul:
 1. redirect ke `/welcome.php`,
 2. teks `Welcome, <username>!`,
 3. session aktif.
+
+#### Bukti visual Uji 5
+
+![Login sukses ke welcome page](assets/screenshots/04-welcome-page.png)
+
+Gambar ini menunjukkan login berhasil dan user diarahkan ke `/welcome.php` dengan username tampil pada halaman welcome.
 
 ### Uji 6 - Login gagal
 
@@ -4221,6 +4390,12 @@ Yang harus terlihat:
 2. `password_hash` berformat hash Argon2id,
 3. `username_encrypted` berupa ciphertext, bukan username asli.
 
+#### Bukti visual Uji 7
+
+![Database tidak menyimpan kredensial plaintext](assets/screenshots/05-database-privacy.png)
+
+Gambar ini menunjukkan tabel `users` hanya memuat `username_lookup`, `username_encrypted`, dan `password_hash`. Nilai username tidak tampil sebagai plaintext, sedangkan password tersimpan sebagai hash Argon2id.
+
 ### Uji 8 - CSRF protection
 
 Cara uji:
@@ -4232,6 +4407,12 @@ Hasil yang harus muncul:
 
 1. status `403`,
 2. halaman error `Form ditolak`.
+
+#### Bukti visual Uji 8
+
+![CSRF tanpa token ditolak](assets/screenshots/11-csrf-403.png)
+
+Gambar ini menunjukkan request `POST` ke `/login.php` tanpa `csrf_token` menerima respons `HTTP/1.1 403 Forbidden`, sehingga integritas form benar-benar divalidasi di server.
 
 ### Uji 9 - SQL injection
 
@@ -4249,6 +4430,16 @@ Hasil yang diharapkan:
 2. login tetap gagal,
 3. tidak ada akun yang lolos secara ilegal.
 
+#### Bukti visual Uji 9
+
+![Payload SQL injection diisi pada form login](assets/screenshots/12a-sql-injection-payload.png)
+
+Gambar ini menunjukkan field username diisi payload `' OR 1=1 --` dan field password tetap diisi agar browser benar-benar mengirim request ke server, bukan berhenti pada validasi `required` di sisi browser.
+
+![Payload SQL injection tidak membypass login](assets/screenshots/12b-sql-injection-blocked.png)
+
+Gambar ini menunjukkan hasil setelah payload dikirim: aplikasi tetap menampilkan halaman `You are not registered yet`, sehingga payload tidak membypass autentikasi dan tidak membuka akun lain.
+
 ### Uji 10 - XSS
 
 Alur pengujian: masukkan payload script ke form register untuk melihat bahwa validasi input menghentikan nilai berbahaya bahkan sebelum output encoding dan CSP bekerja.
@@ -4264,6 +4455,12 @@ Hasil yang diharapkan:
 1. validasi username menolak input,
 2. jika suatu saat nilai itu lolos ke tampilan, `escape_html()` tetap mengubahnya menjadi teks aman,
 3. CSP tetap memberi lapisan tambahan.
+
+#### Bukti visual Uji 10
+
+![Payload XSS ditolak validasi input](assets/screenshots/13-xss-blocked.png)
+
+Gambar ini menunjukkan payload `<script>alert(1)</script>` pada username register ditolak dengan pesan `Username hanya boleh huruf, angka, spasi, titik, strip, atau underscore.`
 
 ### Uji 11 - Buffer overflow / oversized input
 
@@ -4285,6 +4482,12 @@ Yang harus terlihat:
 4. ukuran POST dibatasi oleh konfigurasi Apache PHP,
 5. tidak ada data oversized yang masuk ke tabel `users`.
 
+#### Bukti visual Uji 11
+
+![Oversized username ditolak](assets/screenshots/14-oversized-input-blocked.png)
+
+Gambar ini menunjukkan username panjang berlebih ditolak dengan pesan `Username harus 3-32 karakter.`, sehingga batas ukuran input berjalan di sisi server.
+
 ### Uji 12 - Rate limit
 
 Lakukan login gagal berulang kali sampai melewati batas.
@@ -4293,6 +4496,12 @@ Hasil yang diharapkan:
 
 1. request berikutnya menerima status `429`,
 2. halaman error menyatakan terlalu banyak percobaan.
+
+#### Bukti visual Uji 12
+
+![Rate limit login aktif](assets/screenshots/15-rate-limit-429.png)
+
+Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, lalu percobaan keenam menerima `HTTP 429` dengan pesan `Terlalu banyak percobaan`.
 
 ### Uji 13 - Snort IDS dan rule lokal
 
@@ -4309,6 +4518,16 @@ Yang harus terlihat:
 2. alert HTTP/HTTPS muncul saat browser atau `curl` mengakses aplikasi,
 3. alert MySQL atau SSH muncul saat ada percobaan akses langsung ke port `3306` atau `22`.
 
+#### Bukti visual Uji 13
+
+![Validasi konfigurasi Snort berhasil](assets/screenshots/07-snort-rules.png)
+
+Gambar ini menunjukkan `bun run snort:test-rules` berhasil memvalidasi konfigurasi Snort, memuat `644` rules, dan berakhir dengan `0 warnings`.
+
+![Alert Snort muncul saat traffic HTTPS](assets/screenshots/08-snort-alert.png)
+
+Gambar ini menunjukkan alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web server"` muncul setelah traffic HTTPS dikirim ke aplikasi.
+
 ### Uji 14 - ACL port jaringan
 
 Alur pengujian: tampilkan chain ACL dan pastikan port web diizinkan, sementara MySQL dan SSH ditolak.
@@ -4323,6 +4542,12 @@ Yang harus terlihat:
 2. port `8080` dan `8443` berstatus `ACCEPT`,
 3. port `3306` dan `22` berstatus `REJECT`,
 4. ICMP echo request berstatus `DROP` kecuali `ACL_ALLOW_ICMP=1`.
+
+#### Bukti visual Uji 14
+
+![ACL container aktif](assets/screenshots/09-acl-status.png)
+
+Gambar ini menunjukkan chain `AU7H_INPUT` aktif, port web `8080,8443` diizinkan, port MySQL `3306` dan SSH `22` ditolak, serta ICMP echo request di-drop.
 
 ### Uji 15 - Test otomatis helper keamanan
 
@@ -4339,9 +4564,15 @@ Yang harus terlihat:
 3. lookup username berupa HMAC 64 hex,
 4. username terenkripsi bisa didekripsi kembali hanya dengan key aplikasi,
 5. password hash menerima password benar dan menolak password salah,
-6. CSRF token bisa dibuat, dipakai ulang, dan dirotasi,
+6. CSRF token bisa dibuat, dipakai ulang, dirotasi, dan token kosong/format rusak ditolak,
 7. key rate limit berubah berdasarkan alamat klien dan subject normalisasi,
 8. output akhir `Auth security tests passed.`
+
+#### Bukti visual Uji 15
+
+![Unit security helper lulus](assets/screenshots/06-security-test.png)
+
+Gambar ini menunjukkan `bun run test` berhasil menjalankan test helper keamanan dan menghasilkan `Auth security tests passed.`
 
 ### Uji 16 - Hygiene secret dan build context
 
@@ -4363,7 +4594,7 @@ Yang harus terlihat:
 
 ### Uji 17 - Runtime privilege dan capability
 
-Alur pengujian: baca konfigurasi Compose final dan entrypoint untuk memastikan capability tinggi memang terbatas pada kebutuhan ACL dan IDS.
+Alur pengujian: baca konfigurasi Compose final dan entrypoint untuk memastikan capability default di-drop, capability tambahan terbatas pada kebutuhan bootstrap/ACL/IDS, dan `no-new-privileges` aktif.
 
 ```bash
 docker compose -f compose.dev.yaml config
@@ -4372,11 +4603,29 @@ sed -n '1,220p' docker-entrypoint.sh
 
 Yang harus terlihat:
 
-1. service `app` hanya menambahkan capability `NET_ADMIN`,
-2. service `snort` menambahkan `NET_ADMIN` dan `NET_RAW`,
-3. tidak ada `privileged: true`,
-4. MySQL dijalankan dengan `--user=mysql`,
-5. alasan capability dicatat sebagai kebutuhan `iptables` dan packet capture, bukan default produksi.
+1. service `app` memiliki `cap_drop: ALL`,
+2. service `app` hanya menambahkan ulang `CHOWN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SETGID`, dan `SETUID`,
+3. service `snort` memiliki `cap_drop: ALL`,
+4. service `snort` hanya menambahkan ulang `DAC_OVERRIDE`, `NET_ADMIN`, dan `NET_RAW`,
+5. kedua service memakai `security_opt: no-new-privileges:true`,
+6. service `snort` memakai `read_only: true` dan `tmpfs` untuk `/tmp`,
+7. tidak ada `privileged: true`,
+8. MySQL dijalankan dengan `--user=mysql`,
+9. alasan capability dicatat sebagai kebutuhan bootstrap, `iptables`, dan packet capture, bukan default produksi.
+
+#### Bukti visual Uji 17
+
+![Capability container aplikasi](assets/screenshots/17-app-runtime-capability.png)
+
+Gambar ini menunjukkan hasil inspeksi runtime untuk service `app`. Service aplikasi menjatuhkan capability default dengan `cap_drop: ALL`, menambahkan ulang capability bootstrap/ACL yang diperlukan, mengaktifkan `no-new-privileges`, dan tetap tidak dibuat read-only karena entrypoint masih merender konfigurasi Apache, bootstrap MySQL/cert fallback, dan memasang ACL saat startup.
+
+![Capability Snort IDS](assets/screenshots/18-snort-runtime-capability.png)
+
+Gambar ini menunjukkan hasil inspeksi runtime dan cuplikan Compose untuk service `snort`. Snort berjalan sebagai sidecar dengan `cap_drop: ALL`, menambahkan ulang hanya `DAC_OVERRIDE`, `NET_ADMIN`, dan `NET_RAW`, mengaktifkan `no-new-privileges`, memakai root filesystem read-only, menjalankan binary Snort pada interface `eth0` dan `lo`, memakai image `ciscotalos/snort3:latest`, serta berbagi network namespace aplikasi lewat `network_mode: service:app`.
+
+![Mount konfigurasi dan log Snort](assets/screenshots/19-snort-volume-namespace.png)
+
+Gambar ini menunjukkan lanjutan konfigurasi service `snort`: file `snort.lua` dan direktori `security/snort/rules` dipasang read-only, log Snort disimpan pada volume `snort-logs`, dan service tetap berada pada network namespace `app`.
 
 ### Uji 18 - Supply-chain image dan dependency
 
@@ -4402,6 +4651,16 @@ Jika scanner tersedia, hardening lanjutan dapat diuji dengan:
 trivy image --scanners vuln --severity HIGH,CRITICAL --timeout 20m au7h
 ```
 
+#### Bukti visual Uji 18
+
+![Build image dan sumber supply-chain](assets/screenshots/16-build-image-supply-chain.png)
+
+Gambar ini menunjukkan `docker compose -f compose.dev.yaml up -d --build` berhasil membangun image `au7h`. Output build juga memperlihatkan sumber image builder `oven/bun:1.3.6`, runtime `ubuntu:25.10`, penggunaan `.dockerignore`, `bun install --frozen-lockfile`, dan container `app` serta `snort` berhasil start.
+
+![Hasil Trivy vulnerability scan manual](assets/screenshots/22-trivy-scan-result.png)
+
+Gambar ini menunjukkan `trivy image --scanners vuln --severity HIGH,CRITICAL --timeout 20m au7h` selesai dijalankan. Hasilnya menemukan `1` vulnerability severity `HIGH` dan `0` severity `CRITICAL` pada image `au7h (ubuntu 25.10)`, yaitu `CVE-2025-68973` pada paket `gpgv` dengan fixed version `2.4.8-2ubuntu2.1`.
+
 ### Uji 19 - Lifecycle secret dan privilege database
 
 Alur pengujian: periksa file secret runtime, ignore file, dan grant database untuk memastikan secret dan privilege database tidak hanya dijelaskan secara abstrak.
@@ -4419,6 +4678,42 @@ Yang harus terlihat:
 4. grant user aplikasi dibatasi ke database aplikasi,
 5. `GRANT ALL` pada database aplikasi dijelaskan sebagai tradeoff bootstrap demo, bukan least-privilege produksi penuh.
 
+#### Bukti visual Uji 19
+
+![Lifecycle secret runtime disamarkan](assets/screenshots/20-secret-lifecycle-hidden.png)
+
+Gambar ini menunjukkan file `/var/www/data/runtime-secrets.env` memiliki permission `600` dan dimiliki `www-data:www-data`. Nilai `PEPPER_SECRET`, `MYSQL_ROOT_PASSWORD`, dan `MYSQL_APP_PASSWORD` sengaja disamarkan menjadi `<hidden>` agar bukti lifecycle secret tidak membocorkan isi secret.
+
+![Grant database aplikasi](assets/screenshots/21-database-grants.png)
+
+Gambar ini menunjukkan `SHOW GRANTS FOR 'au7h_app'@'127.0.0.1'`. User aplikasi memiliki `USAGE` global dan `GRANT ALL PRIVILEGES` hanya pada database `au7h_auth.*`, sehingga haknya tidak diberikan ke seluruh server MySQL. Bagian ini tetap dicatat sebagai tradeoff bootstrap demo, bukan least-privilege produksi penuh.
+
+### Uji 20 - Healthcheck container
+
+Alur pengujian: periksa Dockerfile dan status container untuk memastikan aplikasi punya pemeriksaan kesehatan internal, bukan hanya status proses hidup.
+
+```bash
+sed -n '44,68p' Dockerfile
+php -l docker/healthcheck.php
+docker image inspect --format '{{json .Config.Healthcheck}}' au7h
+docker container inspect --format '{{json .State.Health}}' au7h-app-1
+```
+
+Yang harus terlihat:
+
+1. Dockerfile menyalin `docker/healthcheck.php` ke `/usr/local/bin/au7h-healthcheck.php`,
+2. Dockerfile mendeklarasikan `HEALTHCHECK` dengan perintah `php /usr/local/bin/au7h-healthcheck.php`,
+3. `php -l docker/healthcheck.php` tidak menemukan syntax error,
+4. image config memuat `Test` berisi `php /usr/local/bin/au7h-healthcheck.php`,
+5. ketika container sudah berjalan cukup lama melewati `start-period`, status healthcheck menjadi `healthy`,
+6. jika endpoint HTTPS lokal gagal merespons HTTP 200, healthcheck mengembalikan exit code `1`.
+
+#### Bukti visual Uji 20
+
+![Healthcheck container sehat](assets/screenshots/23-healthcheck-container.png)
+
+Gambar ini menunjukkan `docker image inspect` membaca metadata healthcheck pada image `au7h`, `docker container inspect` membaca state healthcheck container `au7h-app-1` dengan status `healthy`, dan `docker compose -f compose.dev.yaml ps` menampilkan service aplikasi `Up ... (healthy)` bersama sidecar Snort yang aktif.
+
 ### Hasil Verifikasi Aktual
 
 Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya rencana uji.
@@ -4426,7 +4721,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Area yang diuji | Perintah atau cara uji | Hasil aktual |
 | --- | --- | --- |
 | Unit security helper | `bun run test` | `Auth security tests passed.` |
-| Cakupan test helper keamanan | Review `tests/AuthSecurityTest.php` | test mencakup validasi input, normalisasi username, HMAC lookup, enkripsi/dekripsi username, hashing/verifikasi password, CSRF token, dan key/policy rate limit |
+| Cakupan test helper keamanan | Review `tests/AuthSecurityTest.php` | test mencakup validasi input, normalisasi username, HMAC lookup, enkripsi/dekripsi username, hashing/verifikasi password, CSRF token termasuk token kosong/format rusak, dan key/policy rate limit |
 | Container app + Snort | `docker compose -f compose.dev.yaml up -d --build` lalu `docker compose -f compose.dev.yaml ps` | service `app` dan `snort` berstatus `Up`; port `10080->8080` dan `10443->8443` terpublish |
 | Redirect HTTP ke HTTPS | `curl -k -I http://localhost:10080` | `HTTP/1.1 301 Moved Permanently`, `Location: https://localhost:10443/` |
 | Form dan CSRF | `curl -k -s https://localhost:10443/` | HTML memuat form `POST`, action `/register.php`, dan hidden field `csrf_token` |
@@ -4449,152 +4744,11 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Hygiene Docker build context | Review `.dockerignore` | `data/`, `certs/`, `.git/`, `.github/`, cache lokal, dan artefak pendukung tidak dikirim ke build context |
 | CI check keamanan dasar | Review `.github/workflows/ci.yml` | workflow menjalankan PHP syntax lint, `bun run test:php`, dan `docker build -t au7h-ci .` |
 | Threat model containering/security | Review Tahap 0A | ancaman jaringan, database leak, SQLi, XSS, CSRF, brute force, oversized input, ACL, Snort, secret leak, privilege container, dan supply-chain sudah dipetakan ke tahap penutup |
-| Runtime privilege dan capability | `docker compose -f compose.dev.yaml config` dan review entrypoint | `app` memakai `NET_ADMIN` untuk ACL; `snort` memakai `NET_ADMIN`/`NET_RAW` untuk IDS; tidak ada `privileged: true`; MySQL dijalankan dengan `--user=mysql` |
+| Runtime privilege dan capability | `docker compose -f compose.dev.yaml config` dan review entrypoint | `app` dan `snort` memakai `cap_drop: ALL`; `app` menambahkan ulang `CHOWN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SETGID`, dan `SETUID`; `snort` menambahkan ulang `DAC_OVERRIDE`/`NET_ADMIN`/`NET_RAW`; `no-new-privileges:true` aktif; root filesystem `snort` read-only; tidak ada `privileged: true`; MySQL dijalankan dengan `--user=mysql` |
 | Supply-chain image dan dependency | Review `Dockerfile`, `compose.dev.yaml`, `bun.lock`, dan CI | builder memakai `oven/bun:1.3.6`, runtime memakai `ubuntu:25.10`, dependency memakai `--frozen-lockfile`, CI build image berjalan; `snort3:latest` dicatat sebagai tradeoff demo |
 | Trivy vulnerability scan manual | `trivy image --scanners vuln --severity HIGH,CRITICAL --timeout 20m au7h` | scan selesai; ditemukan `1` HIGH dan `0` CRITICAL pada paket `gpgv` (`CVE-2025-68973`), status `fixed`, fixed version `2.4.8-2ubuntu2.1` |
 | Lifecycle secret dan privilege database | Review `docker-entrypoint.sh`, ignore file, dan bootstrap SQL | secret dibuat runtime di `/var/www/data`, `data/` dan `certs/` dikecualikan dari Git/build context, grant user aplikasi dibatasi ke database aplikasi, `GRANT ALL` dijelaskan sebagai tradeoff bootstrap demo |
-
-### Bukti Screenshot Verifikasi
-
-Bagian ini melampirkan bukti visual dari verifikasi aktual yang sudah dijalankan. Screenshot yang dipilih menunjukkan hasil final yang berhasil, termasuk uji positif dan uji negatif keamanan; screenshot percobaan database yang masih menghasilkan `Access denied` tidak dimasukkan karena bukan bukti final. Screenshot Trivy dicatat sebagai hasil scan manual supply-chain, bukan sebagai klaim bahwa workflow CI sudah memiliki vulnerability gate.
-
-#### Screenshot 1 - Container app dan Snort aktif
-
-![Container app dan Snort aktif](assets/screenshots/01-compose-services.png)
-
-Gambar ini menunjukkan `docker compose -f compose.dev.yaml ps` dengan service `app` dan `snort` berstatus `Up`, serta port `10080->8080` dan `10443->8443` terpublish.
-
-#### Screenshot 2 - HTTP redirect ke HTTPS
-
-![HTTP redirect ke HTTPS](assets/screenshots/02-http-redirect.png)
-
-Gambar ini menunjukkan request `curl -k -I http://localhost:10080` menerima status `301 Moved Permanently` dan header `Location: https://localhost:10443/`.
-
-#### Screenshot 3 - Form register tampil di browser
-
-![Form register tampil di browser](assets/screenshots/03-register-form.png)
-
-Gambar ini menunjukkan halaman utama aplikasi dapat dibuka lewat `https://localhost:10443/` dan menampilkan form pendaftaran akun.
-
-#### Screenshot 4 - Login sukses ke welcome page
-
-![Login sukses ke welcome page](assets/screenshots/04-welcome-page.png)
-
-Gambar ini menunjukkan login berhasil dan user diarahkan ke `/welcome.php` dengan username tampil pada halaman welcome.
-
-#### Screenshot 5 - Database tidak menyimpan kredensial plaintext
-
-![Database tidak menyimpan kredensial plaintext](assets/screenshots/05-database-privacy.png)
-
-Gambar ini menunjukkan tabel `users` hanya memuat `username_lookup`, `username_encrypted`, dan `password_hash`. Nilai username tidak tampil sebagai plaintext, sedangkan password tersimpan sebagai hash Argon2id.
-
-#### Screenshot 6 - Unit security helper lulus
-
-![Unit security helper lulus](assets/screenshots/06-security-test.png)
-
-Gambar ini menunjukkan `bun run test` berhasil menjalankan test helper keamanan dan menghasilkan `Auth security tests passed.`
-
-#### Screenshot 7 - Validasi konfigurasi Snort berhasil
-
-![Validasi konfigurasi Snort berhasil](assets/screenshots/07-snort-rules.png)
-
-Gambar ini menunjukkan `bun run snort:test-rules` berhasil memvalidasi konfigurasi Snort, memuat `644` rules, dan berakhir dengan `0 warnings`.
-
-#### Screenshot 8 - Alert Snort muncul saat traffic HTTPS
-
-![Alert Snort muncul saat traffic HTTPS](assets/screenshots/08-snort-alert.png)
-
-Gambar ini menunjukkan alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web server"` muncul setelah traffic HTTPS dikirim ke aplikasi.
-
-#### Screenshot 9 - ACL container aktif
-
-![ACL container aktif](assets/screenshots/09-acl-status.png)
-
-Gambar ini menunjukkan chain `AU7H_INPUT` aktif, port web `8080,8443` diizinkan, port MySQL `3306` dan SSH `22` ditolak, serta ICMP echo request di-drop.
-
-#### Screenshot 10 - Build ulang container berhasil sebelum uji negatif
-
-![Build ulang container berhasil sebelum uji negatif](assets/screenshots/10-dev-up-build.png)
-
-Gambar ini menunjukkan `bun run dev:up` menjalankan `docker compose -f compose.dev.yaml up -d --build`, image `au7h` berhasil dibangun, dan container `au7h-app-1` serta `au7h-snort-1` berjalan.
-
-#### Screenshot 11 - CSRF tanpa token ditolak
-
-![CSRF tanpa token ditolak](assets/screenshots/11-csrf-403.png)
-
-Gambar ini menunjukkan request `POST` ke `/login.php` tanpa `csrf_token` menerima respons `HTTP/1.1 403 Forbidden`, sehingga integritas form benar-benar divalidasi di server.
-
-#### Screenshot 12a - Payload SQL injection diisi pada form login
-
-![Payload SQL injection diisi pada form login](assets/screenshots/12a-sql-injection-payload.png)
-
-Gambar ini menunjukkan field username diisi payload `' OR 1=1 --` dan field password tetap diisi agar browser benar-benar mengirim request ke server, bukan berhenti pada validasi `required` di sisi browser.
-
-#### Screenshot 12b - Payload SQL injection tidak membypass login
-
-![Payload SQL injection tidak membypass login](assets/screenshots/12b-sql-injection-blocked.png)
-
-Gambar ini menunjukkan hasil setelah payload dikirim: aplikasi tetap menampilkan halaman `You are not registered yet`, sehingga payload tidak membypass autentikasi dan tidak membuka akun lain.
-
-#### Screenshot 13 - Payload XSS ditolak validasi input
-
-![Payload XSS ditolak validasi input](assets/screenshots/13-xss-blocked.png)
-
-Gambar ini menunjukkan payload `<script>alert(1)</script>` pada username register ditolak dengan pesan `Username hanya boleh huruf, angka, spasi, titik, strip, atau underscore.`
-
-#### Screenshot 14 - Oversized username ditolak
-
-![Oversized username ditolak](assets/screenshots/14-oversized-input-blocked.png)
-
-Gambar ini menunjukkan username panjang berlebih ditolak dengan pesan `Username harus 3-32 karakter.`, sehingga batas ukuran input berjalan di sisi server.
-
-#### Screenshot 15 - Rate limit login aktif
-
-![Rate limit login aktif](assets/screenshots/15-rate-limit-429.png)
-
-Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, lalu percobaan keenam menerima `HTTP 429` dengan pesan `Terlalu banyak percobaan`.
-
-#### Screenshot 16 - Build image dan sumber supply-chain
-
-![Build image dan sumber supply-chain](assets/screenshots/16-build-image-supply-chain.png)
-
-Gambar ini menunjukkan `docker compose -f compose.dev.yaml up -d --build` berhasil membangun image `au7h`. Output build juga memperlihatkan sumber image builder `oven/bun:1.3.6`, runtime `ubuntu:25.10`, penggunaan `.dockerignore`, `bun install --frozen-lockfile`, dan container `app` serta `snort` berhasil start.
-
-#### Screenshot 17 - Capability container aplikasi
-
-![Capability container aplikasi](assets/screenshots/17-app-runtime-capability.png)
-
-Gambar ini menunjukkan hasil `docker compose -f compose.dev.yaml config` untuk service `app`. Service aplikasi hanya menambahkan capability `NET_ADMIN`, mengaktifkan environment ACL, memetakan port HTTP/HTTPS, dan memasang volume aplikasi, data, MySQL, serta sertifikat lokal.
-
-#### Screenshot 18 - Capability Snort IDS
-
-![Capability Snort IDS](assets/screenshots/18-snort-runtime-capability.png)
-
-Gambar ini menunjukkan service `snort` pada Compose final. Snort berjalan sebagai sidecar dengan `NET_ADMIN` dan `NET_RAW`, menjalankan binary Snort pada interface `eth0` dan `lo`, memakai image `ciscotalos/snort3:latest`, serta berbagi network namespace aplikasi lewat `network_mode: service:app`.
-
-#### Screenshot 19 - Mount konfigurasi dan log Snort
-
-![Mount konfigurasi dan log Snort](assets/screenshots/19-snort-volume-namespace.png)
-
-Gambar ini menunjukkan lanjutan konfigurasi service `snort`: file `snort.lua` dan direktori `security/snort/rules` dipasang read-only, log Snort disimpan pada volume `snort-logs`, dan service tetap berada pada network namespace `app`.
-
-#### Screenshot 20 - Lifecycle secret runtime disamarkan
-
-![Lifecycle secret runtime disamarkan](assets/screenshots/20-secret-lifecycle-hidden.png)
-
-Gambar ini menunjukkan file `/var/www/data/runtime-secrets.env` memiliki permission `600` dan dimiliki `www-data:www-data`. Nilai `PEPPER_SECRET`, `MYSQL_ROOT_PASSWORD`, dan `MYSQL_APP_PASSWORD` sengaja disamarkan menjadi `<hidden>` agar bukti lifecycle secret tidak membocorkan isi secret.
-
-#### Screenshot 21 - Grant database aplikasi
-
-![Grant database aplikasi](assets/screenshots/21-database-grants.png)
-
-Gambar ini menunjukkan `SHOW GRANTS FOR 'au7h_app'@'127.0.0.1'`. User aplikasi memiliki `USAGE` global dan `GRANT ALL PRIVILEGES` hanya pada database `au7h_auth.*`, sehingga haknya tidak diberikan ke seluruh server MySQL. Bagian ini tetap dicatat sebagai tradeoff bootstrap demo, bukan least-privilege produksi penuh.
-
-#### Screenshot 22 - Hasil Trivy vulnerability scan manual
-
-![Hasil Trivy vulnerability scan manual](assets/screenshots/22-trivy-scan-result.png)
-
-Gambar ini menunjukkan `trivy image --scanners vuln --severity HIGH,CRITICAL --timeout 20m au7h` selesai dijalankan. Hasilnya menemukan `1` vulnerability severity `HIGH` dan `0` severity `CRITICAL` pada image `au7h (ubuntu 25.10)`, yaitu `CVE-2025-68973` pada paket `gpgv` dengan fixed version `2.4.8-2ubuntu2.1`.
+| Healthcheck container | `docker image inspect --format '{{json .Config.Healthcheck}}' au7h`, `docker container inspect --format '{{json .State.Health}}' au7h-app-1`, dan `docker compose -f compose.dev.yaml ps` | metadata image memuat `Test:["CMD-SHELL","php /usr/local/bin/au7h-healthcheck.php"]`; container `au7h-app-1` berstatus `healthy`; Compose menampilkan `Up ... (healthy)` |
 
 ## 8. Pemetaan Requirement Tugas Ke Tahap Implementasi
 
@@ -4620,7 +4774,8 @@ Gambar ini menunjukkan `trivy image --scanners vuln --severity HIGH,CRITICAL --t
 | Secret lokal tidak masuk Git/build context | Tahap 20 |
 | Runtime privilege dan capability container | Tahap 21 |
 | Supply-chain image dan dependency | Tahap 22 |
-| Lifecycle secret dan least privilege database | Tahap 23 |
+| Lifecycle secret dan batas privilege database | Tahap 23 |
+| Healthcheck container | Tahap 24 |
 
 ## 9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
@@ -4633,8 +4788,8 @@ Gambar ini menunjukkan `trivy image --scanners vuln --severity HIGH,CRITICAL --t
 7. HTTPS lokal memakai file sertifikat dari `./certs`. Jika file itu berasal dari local CA seperti `mkcert` dan root CA-nya sudah dipercaya browser, browser dapat menampilkan `Certificate is valid`. Jika file tidak tersedia, entrypoint membuat self-signed fallback untuk pembuktian HTTPS, tetapi browser bisa menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
 8. Test otomatis di tahap ini memeriksa helper keamanan yang deterministik. Test itu tidak menggantikan uji browser, Snort live alert, atau ACL container, sehingga verifikasi manual tetap dicatat terpisah.
 9. `.gitignore` dan `.dockerignore` adalah kontrol hygiene, bukan pengganti secret manager produksi. Untuk demo lokal, keduanya mencegah data runtime dan private key sertifikat lokal ikut tersimpan atau terkirim ke build context.
-10. `NET_ADMIN` pada container aplikasi dipakai untuk memasang ACL `iptables`. Ini adalah privilege tinggi yang diterima untuk kebutuhan demo jaringan, bukan rekomendasi default produksi.
-11. Snort berjalan sebagai root dengan `NET_ADMIN` dan `NET_RAW` karena IDS perlu akses packet capture. Ini dibatasi pada sidecar IDS dan dicatat sebagai tradeoff eksplisit.
+10. Container aplikasi menjatuhkan capability default lalu menambahkan ulang capability bootstrap/ACL yang diperlukan. `NET_ADMIN` tetap privilege tinggi karena dipakai untuk memasang ACL `iptables`, bukan rekomendasi default produksi. Root filesystem `app` belum read-only karena entrypoint masih menulis konfigurasi runtime dan bootstrap data.
+11. Snort berjalan sebagai root dengan capability default di-drop, lalu hanya `DAC_OVERRIDE`, `NET_ADMIN`, dan `NET_RAW` ditambahkan ulang karena image perlu mengeksekusi binary Snort dan IDS perlu akses packet capture. Root filesystem Snort dibuat read-only dan penulisan alert diarahkan ke volume log.
 12. Image utama memakai tag versi/rilis dan dependency memakai lockfile frozen, tetapi belum semua image dipin ke digest. `ciscotalos/snort3:latest` tetap dicatat sebagai tradeoff demo.
 13. User database aplikasi mendapat `GRANT ALL PRIVILEGES` pada database aplikasi agar bootstrap schema demo bisa otomatis. Untuk produksi, hak runtime sebaiknya dipersempit dan dipisah dari user migration.
 
@@ -4678,14 +4833,17 @@ Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebe
 [x] HTTP/HTTPS diizinkan ACL
 [x] MySQL 3306 dan SSH 22 ditolak ACL
 [x] test helper keamanan otomatis tersedia
-[x] test mencakup validasi input, CSRF, HMAC, enkripsi username, hash password, dan rate limit
+[x] test mencakup validasi input, CSRF termasuk token kosong/format rusak, HMAC, enkripsi username, hash password, dan rate limit
 [x] .gitignore mengecualikan data runtime dan certs lokal
 [x] .dockerignore mengecualikan data, certs, .git, .github, dan cache lokal
 [x] CI menjalankan PHP syntax lint
 [x] CI menjalankan test helper keamanan
 [x] CI membangun Docker image dari build context yang dibatasi
 [x] threat model containering dan security dipetakan ke tahap implementasi
-[x] capability app dan Snort dijelaskan beserta alasannya
+[x] capability default app dan Snort di-drop lewat cap_drop ALL
+[x] capability app dan Snort ditambahkan ulang secara eksplisit beserta alasannya
+[x] no-new-privileges aktif pada app dan Snort
+[x] root filesystem Snort read-only dan log tetap memakai volume
 [x] tidak ada klaim bahwa capability tinggi adalah pola produksi ideal
 [x] supply-chain image dan dependency dicatat transparan
 [x] lockfile dependency dipakai dengan frozen install
@@ -4693,6 +4851,8 @@ Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebe
 [x] status digest pinning dan CI vulnerability gate tidak dibesar-besarkan
 [x] lifecycle secret runtime dijelaskan
 [x] privilege database aplikasi dijelaskan sebagai tradeoff bootstrap demo
+[x] Dockerfile memiliki HEALTHCHECK internal ke endpoint HTTPS lokal
+[x] script healthcheck valid secara sintaks
 ```
 
 ## 11. Ringkasan Strategi Dari Nol
@@ -4710,7 +4870,8 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 9. tambahkan test otomatis untuk helper keamanan yang paling rawan regresi,
 10. amankan hygiene repo agar data runtime dan private key lokal tidak ikut Git atau build context,
 11. jelaskan privilege container, supply-chain image, lifecycle secret, dan batas privilege database,
-12. tutup dengan uji manual dan uji negatif,
-13. cocokkan satu per satu dengan requirement.
+12. tambahkan healthcheck container agar status runtime bisa dipantau,
+13. tutup dengan uji manual dan uji negatif,
+14. cocokkan satu per satu dengan requirement.
 
 Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat alasan teknisnya perlu dipertanggungjawabkan di sesi evaluasi.
