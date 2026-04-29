@@ -3,10 +3,10 @@
 ## Daftar Isi
 
 - [1. Pendahuluan](#1-pendahuluan)
-- [2. Requirement](#2-requirement)
-- [3. Decision Log Dari Nol](#3-decision-log-dari-nol)
-- [4. Blueprint Struktur Proyek Dari Nol](#4-blueprint-struktur-proyek-dari-nol)
-- [5. Tahapan Implementasi Bertahap](#5-tahapan-implementasi-bertahap)
+- [2. Target](#2-target)
+- [3. Decision Logs](#3-decision-logs)
+- [4. Blueprint](#4-blueprint)
+- [5. Tahapan Implementasi](#5-tahapan-implementasi)
   - [Tahap 0 - Membuat folder kosong dan baseline tooling](#tahap-0---membuat-folder-kosong-dan-baseline-tooling)
   - [Tahap 1 - Menentukan image dasar dan isi container](#tahap-1---menentukan-image-dasar-dan-isi-container)
   - [Tahap 2 - Menetapkan environment inti container](#tahap-2---menetapkan-environment-inti-container)
@@ -26,6 +26,8 @@
   - [Tahap 16 - Menambahkan rate limiting login dan register](#tahap-16---menambahkan-rate-limiting-login-dan-register)
   - [Tahap 17 - Menyiapkan Docker Compose untuk development dan demo](#tahap-17---menyiapkan-docker-compose-untuk-development-dan-demo)
   - [Tahap 18 - Menambahkan Snort IDS dan ACL Jaringan](#tahap-18---menambahkan-snort-ids-dan-acl-jaringan)
+  - [Tahap 19 - Menulis test otomatis untuk helper keamanan](#tahap-19---menulis-test-otomatis-untuk-helper-keamanan)
+  - [Tahap 20 - Mengamankan hygiene repo dan build context](#tahap-20---mengamankan-hygiene-repo-dan-build-context)
 - [6. Alur Demo Singkat Saat Presentasi](#6-alur-demo-singkat-saat-presentasi)
 - [7. Urutan Verifikasi Setelah Implementasi](#7-urutan-verifikasi-setelah-implementasi)
   - [Uji 1 - Container hidup](#uji-1---container-hidup)
@@ -38,10 +40,12 @@
   - [Uji 8 - CSRF protection](#uji-8---csrf-protection)
   - [Uji 9 - SQL injection](#uji-9---sql-injection)
   - [Uji 10 - XSS](#uji-10---xss)
-  - [Uji 11 - Buffer overflow / oversized input](#uji-11---buffer-overflow--oversized-input)
+  - [Uji 11 - Buffer overflow / oversized input](#uji-11---buffer-overflow-oversized-input)
   - [Uji 12 - Rate limit](#uji-12---rate-limit)
   - [Uji 13 - Snort IDS dan rule lokal](#uji-13---snort-ids-dan-rule-lokal)
   - [Uji 14 - ACL port jaringan](#uji-14---acl-port-jaringan)
+  - [Uji 15 - Test otomatis helper keamanan](#uji-15---test-otomatis-helper-keamanan)
+  - [Uji 16 - Hygiene secret dan build context](#uji-16---hygiene-secret-dan-build-context)
   - [Hasil Verifikasi Aktual](#hasil-verifikasi-aktual)
   - [Bukti Screenshot Verifikasi](#bukti-screenshot-verifikasi)
 - [8. Pemetaan Requirement Tugas Ke Tahap Implementasi](#8-pemetaan-requirement-tugas-ke-tahap-implementasi)
@@ -261,11 +265,16 @@ Jika struktur folder tidak dipatok di awal, file keamanan, runtime, dan endpoint
 mkdir -p au7h/{docker,config,src/Infrastructure,src/Security,src/Support,src/Presentation,public,certs}
 cd au7h
 touch Dockerfile docker-entrypoint.sh compose.dev.yaml
-touch docker/apache-global.conf docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini
+touch docker/apache-global.conf docker/apache-http.conf.template docker/apache-ssl.conf.template docker/php.ini docker/acl.sh
 touch config/bootstrap.php
-touch src/Infrastructure/Database.php src/Security/Auth.php src/Support/Config.php src/Support/Http.php src/Presentation/Views.php
+touch src/Infrastructure/Database.php src/Security/Auth.php src/Security/RateLimiter.php src/Support/Config.php src/Support/Http.php src/Presentation/Views.php src/Presentation/Components.php
 touch public/index.php public/register.php public/login.php public/welcome.php public/not-registered.php public/logout.php
+mkdir -p tests security/snort/rules scripts .github/workflows
+touch tests/AuthSecurityTest.php security/snort/snort.lua security/snort/rules/au7h.rules security/snort/rules/local.rules security/snort/rules/community.rules
+touch .gitignore .dockerignore .github/workflows/ci.yml package.json
 ```
+
+Tambahan pada skeleton ini sengaja dibatasi ke file yang berhubungan dengan keamanan dan verifikasi: `RateLimiter.php`, `acl.sh`, direktori Snort, test helper keamanan, hygiene ignore file, dan workflow CI. File visual/UI tidak dibesarkan di tahap ini karena bukan inti kontrol keamanan.
 
 ### Tahap 1 - Menentukan image dasar dan isi container
 
@@ -3383,6 +3392,307 @@ Hasil yang dapat ditunjukkan saat demo:
 5. request HTTP/HTTPS tetap berhasil,
 6. akses langsung ke MySQL `3306` dan SSH `22` ditolak.
 
+### Tahap 19 - Menulis test otomatis untuk helper keamanan
+
+#### Tujuan
+
+Memastikan kontrol keamanan inti tidak hanya dijelaskan, tetapi juga bisa dicek ulang dengan satu perintah.
+
+#### Analisis alur
+
+Setelah validasi input, CSRF, enkripsi username, hashing password, lookup HMAC, dan rate limit dibuat, risiko berikutnya adalah regresi. Perubahan kecil pada helper bisa membuat proteksi melemah tanpa langsung terlihat dari halaman browser. Karena itu, test otomatis ditempatkan setelah seluruh helper keamanan stabil.
+
+Test ini tidak menggantikan uji manual browser, Snort, atau ACL. Fungsinya adalah menjaga unit keamanan yang bisa diuji tanpa container penuh: validasi input, normalisasi, kriptografi aplikasi, CSRF token, dan pembentukan key rate limit.
+
+#### Referensi
+
+Tahap ini tidak menambah referensi internet baru. Test otomatis langsung memverifikasi kontrol yang sudah dirujuk pada tahap sebelumnya: input validation, CSRF token, cryptographic storage, password storage, dan rate limiting.
+
+#### Implementasi
+
+**Langkah 1:**
+
+- Buat test runner PHP sederhana tanpa framework tambahan.
+- Pakai direktori data sementara agar test tidak menyentuh data demo.
+- Pakai secret test eksplisit agar output kriptografi tidak bergantung pada secret runtime container.
+
+**Sumber:** [tests/AuthSecurityTest.php:5](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:5)
+
+**Alur kode:** test membuat `APP_DATA_DIR` sementara, mengisi `PEPPER_SECRET` dan `ENCRYPTION_KEY` khusus test, lalu memuat helper keamanan yang akan diverifikasi.
+
+```php
+const APP_ROOT = __DIR__ . '/..';
+
+$testDataDir = sys_get_temp_dir() . '/au7h-test-data-' . getmypid();
+putenv('APP_DATA_DIR=' . $testDataDir);
+putenv('PEPPER_SECRET=test-pepper-secret');
+putenv('ENCRYPTION_KEY=test-encryption-key');
+
+require_once APP_ROOT . '/src/Support/Config.php';
+require_once APP_ROOT . '/src/Support/Http.php';
+require_once APP_ROOT . '/src/Security/Auth.php';
+require_once APP_ROOT . '/src/Security/RateLimiter.php';
+require_once APP_ROOT . '/src/Presentation/Views.php';
+```
+
+Blok ini penting secara keamanan karena test tidak memakai secret asli, tidak menulis ke database demo, dan tidak membutuhkan container berjalan untuk memeriksa helper inti.
+
+**Langkah 2:**
+
+- Siapkan assertion kecil yang berhenti pada kegagalan pertama.
+- Buat output gagal eksplisit agar kesalahan security helper mudah ditemukan.
+
+**Sumber:** [tests/AuthSecurityTest.php:24](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:24)
+
+```php
+function fail_test(string $message): never
+{
+    fwrite(STDERR, "FAIL: {$message}\n");
+    exit(1);
+}
+
+function assert_true(bool $actual, string $message): void
+{
+    if (!$actual) {
+        fail_test($message);
+    }
+}
+```
+
+Assertion sederhana ini cukup untuk proyek kecil karena test yang dibutuhkan adalah pemeriksaan deterministik terhadap helper keamanan, bukan suite aplikasi besar.
+
+**Langkah 3:**
+
+- Uji validasi username dan password.
+- Pastikan input pendek, panjang berlebih, dan karakter berbahaya ditolak.
+- Pastikan password lemah gagal sebelum masuk hashing atau database.
+
+**Sumber:** [tests/AuthSecurityTest.php:58](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:58)
+
+```php
+$validUsername = validate_username(' Alice_1 ');
+assert_true($validUsername['ok'], 'valid username should pass');
+assert_same('Alice_1', $validUsername['value'] ?? null, 'username should be trimmed');
+assert_false(validate_username('ab')['ok'], 'short username should fail');
+assert_false(validate_username(str_repeat('a', 33))['ok'], 'long username should fail');
+assert_false(validate_username('bad<script>')['ok'], 'username with disallowed characters should fail');
+
+assert_true(validate_password('StrongPass123')['ok'], 'strong password should pass');
+assert_false(validate_password('Short1A')['ok'], 'short password should fail');
+assert_false(validate_password('lowercase12345')['ok'], 'password without uppercase should fail');
+assert_false(validate_password('NoNumberPassword')['ok'], 'password without number should fail');
+```
+
+Test ini menutup dua requirement sekaligus: input oversized ditolak dan payload XSS sederhana tidak lolos allowlist username.
+
+**Langkah 4:**
+
+- Uji normalisasi username dan lookup HMAC.
+- Pastikan lookup tidak berubah hanya karena huruf besar-kecil atau spasi.
+- Pastikan hasil lookup bukan username plaintext.
+
+**Sumber:** [tests/AuthSecurityTest.php:70](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:70)
+
+```php
+assert_same('alice', normalize_username(' Alice '), 'username normalization should trim and lowercase');
+assert_same(username_lookup(' Alice '), username_lookup('alice'), 'username lookup should use normalized value');
+assert_same(64, strlen(username_lookup('alice')), 'username lookup should be a sha256 hex digest');
+```
+
+Blok ini memastikan jalur pencarian login tetap stabil tanpa menyimpan username asli sebagai indeks database.
+
+**Langkah 5:**
+
+- Uji enkripsi username.
+- Pastikan ciphertext tidak sama dengan plaintext.
+- Pastikan payload bisa didekripsi kembali menjadi username asli.
+
+**Sumber:** [tests/AuthSecurityTest.php:74](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:74)
+
+```php
+$cipherText = encrypt_username('Alice');
+assert_not_same('Alice', $cipherText, 'encrypted username should not equal plaintext');
+assert_same(3, count(explode('.', $cipherText)), 'encrypted username payload should contain iv, tag, and cipher text');
+assert_same('Alice', decrypt_username($cipherText), 'encrypted username should decrypt to original value');
+```
+
+Ini membuktikan keputusan privasi username bekerja dari dua sisi: database tidak menyimpan plaintext, tetapi halaman welcome tetap bisa menampilkan username setelah login valid.
+
+**Langkah 6:**
+
+- Uji hashing password dan verifikasi password.
+- Pastikan password benar diterima dan password salah ditolak.
+
+**Sumber:** [tests/AuthSecurityTest.php:79](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:79)
+
+```php
+$passwordHash = hash_password_for_storage('StrongPass123');
+assert_true(verify_stored_password('StrongPass123', $passwordHash), 'stored password hash should verify the original password');
+assert_false(verify_stored_password('WrongPass123', $passwordHash), 'stored password hash should reject another password');
+```
+
+Test ini memastikan password tetap one-way hash dan jalur login memakai `password_verify()`, bukan membandingkan plaintext.
+
+**Langkah 7:**
+
+- Uji lifecycle token CSRF.
+- Pastikan token session dipakai ulang sampai dirotasi.
+- Pastikan token hasil rotasi diterima oleh verifier.
+
+**Sumber:** [tests/AuthSecurityTest.php:83](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:83)
+
+```php
+$_SESSION = [];
+$csrfToken = csrf_token();
+assert_same($csrfToken, csrf_token(), 'csrf_token should reuse the session token');
+$regeneratedToken = regenerate_csrf_token();
+assert_not_same($csrfToken, $regeneratedToken, 'regenerate_csrf_token should rotate the token');
+verify_csrf_or_fail($regeneratedToken);
+```
+
+Blok ini menjaga integritas form register, login, dan logout karena token benar-benar berada di session dan bisa dirotasi setelah login.
+
+**Langkah 8:**
+
+- Uji key rate limit.
+- Pastikan subject username dinormalisasi.
+- Pastikan alamat klien ikut membedakan bucket throttling.
+- Pastikan policy register lebih ketat daripada default.
+
+**Sumber:** [tests/AuthSecurityTest.php:90](/home/fxrdhan/au7h/tests/AuthSecurityTest.php:90)
+
+```php
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+$rateKey = auth_rate_limit_key('login', ' Alice ');
+assert_same($rateKey, auth_rate_limit_key('login', 'alice'), 'rate-limit key should normalize username subject');
+$_SERVER['REMOTE_ADDR'] = '203.0.113.11';
+assert_not_same($rateKey, auth_rate_limit_key('login', 'alice'), 'rate-limit key should include client address');
+
+assert_same(
+    ['max_attempts' => 3, 'window_seconds' => 900],
+    auth_rate_limit_policy('register'),
+    'register policy should match configured throttle'
+);
+```
+
+Rate limit dicek pada level helper supaya perubahan formula key atau policy langsung ketahuan sebelum diuji manual lewat browser.
+
+**Langkah 9:**
+
+- Tambahkan script test ke `package.json`.
+- Jadikan perintah test keamanan singkat dan konsisten.
+
+**Sumber:** [package.json:21](/home/fxrdhan/au7h/package.json:21)
+
+```json
+"test": "bun run test:php",
+"test:php": "php tests/AuthSecurityTest.php"
+```
+
+Dengan script ini, verifikasi helper keamanan cukup dijalankan lewat:
+
+```bash
+bun run test
+```
+
+#### Hasil tahap
+
+Helper keamanan inti sudah punya test otomatis untuk validasi input, lookup HMAC, enkripsi/dekripsi username, hashing/verifikasi password, CSRF token, dan rate limit.
+
+### Tahap 20 - Mengamankan hygiene repo dan build context
+
+#### Tujuan
+
+Mencegah secret, data runtime, cache lokal, dan artefak tidak relevan ikut masuk Git atau Docker build context.
+
+#### Analisis alur
+
+Security proyek tidak berhenti di kode login. Secret yang tidak sengaja masuk Git atau ikut tersalin ke Docker image bisa merusak seluruh kontrol yang sudah dibangun. Karena itu, tahap terakhir menutup sisi operasional: file lokal yang sensitif diabaikan oleh Git, build context Docker dipersempit, dan CI menjalankan pemeriksaan dasar yang berkaitan langsung dengan keamanan aplikasi.
+
+#### Referensi
+
+Tahap ini memakai prinsip yang sudah dipakai sebelumnya: config dan secret harus dipisahkan dari kode, build context Docker harus dikendalikan, dan verifikasi harus bisa diulang. Karena fokusnya hygiene repo lokal, bukti utama di tahap ini adalah isi `.gitignore`, `.dockerignore`, dan workflow CI proyek.
+
+#### Implementasi
+
+**Langkah 1:**
+
+- Abaikan dependency lokal, data runtime, sertifikat lokal, artefak browser test, backup, dan catatan privat.
+- Pastikan secret demo lokal tidak tersimpan ke repository.
+
+**Sumber:** [.gitignore:1](/home/fxrdhan/au7h/.gitignore:1)
+
+```gitignore
+node_modules/
+data/
+certs/
+.playwright-cli/
+output/playwright/
+.DS_Store
+npm-debug.log*
+*.bak
+docs/DOSEN_QA_PRIVATE.md
+```
+
+Baris `data/` melindungi state runtime seperti data aplikasi lokal, sedangkan `certs/` mencegah private key sertifikat lokal masuk Git. Catatan privat dosen juga dikecualikan agar materi internal tidak tercampur dengan laporan final.
+
+**Langkah 2:**
+
+- Persempit Docker build context.
+- Jangan kirim `.git`, CI metadata, data runtime, sertifikat, cache browser, dan dokumen pendukung yang tidak dibutuhkan image runtime.
+
+**Sumber:** [.dockerignore:1](/home/fxrdhan/au7h/.dockerignore:1)
+
+```dockerignore
+node_modules/
+data/
+certs/
+.git/
+.github/
+.playwright-cli/
+output/
+
+.DS_Store
+npm-debug.log*
+
+DOCUMENTATION.md
+REFERENCES.md
+PETA_TUTORIAL_PROYEK.md
+LAPORAN_RANCANG_PROYEK_DARI_NOL.md
+*.bak
+STATUS_AUDIT_KUTIPAN_SCRAPE.md
+```
+
+Bagian ini penting karena Docker build tidak perlu menerima private key lokal, data database, history Git, atau dokumen kerja. Image final tetap mendapatkan file aplikasi lewat `COPY` eksplisit di Dockerfile, bukan lewat build context yang terlalu longgar.
+
+**Langkah 3:**
+
+- Tambahkan CI yang menjalankan lint sintaks PHP.
+- Jalankan test helper keamanan.
+- Pastikan image Docker tetap bisa dibuild dari konteks yang sudah dibatasi.
+
+**Sumber:** [.github/workflows/ci.yml:33](/home/fxrdhan/au7h/.github/workflows/ci.yml:33)
+
+```yaml
+- name: Lint PHP syntax
+  run: |
+    while IFS= read -r file; do
+      php -l "$file"
+    done < <(find config public src tests -type f -name '*.php' | sort)
+
+- name: Run PHP tests
+  run: bun run test:php
+
+- name: Build Docker image
+  run: docker build -t au7h-ci .
+```
+
+CI ini menjaga tiga hal yang paling dekat dengan keamanan: file PHP tidak punya syntax error, helper keamanan lulus test otomatis, dan Docker image tetap bisa dibangun tanpa membawa data lokal yang seharusnya dikecualikan.
+
+#### Hasil tahap
+
+Repository lebih aman untuk dibagikan dan dibuild ulang: secret lokal tidak masuk Git, data runtime tidak ikut Docker context, helper keamanan punya test otomatis, dan CI mengulang pemeriksaan dasar pada setiap push atau pull request.
+
 ## 6. Alur Demo Singkat Saat Presentasi
 
 Bagian ini adalah contekan demo cepat. Detail uji lengkap tetap ada pada bagian verifikasi setelahnya, tetapi urutan berikut lebih enak dipakai saat sesi evaluasi meminta bukti langsung.
@@ -3485,6 +3795,22 @@ Yang ditunjukkan:
 3. chain `AU7H_INPUT` aktif,
 4. HTTP/HTTPS diizinkan,
 5. MySQL `3306`, SSH `22`, dan ICMP dibatasi sesuai ACL.
+
+### 6.8. Demo test keamanan dan hygiene secret
+
+```bash
+bun run test
+git status --short
+sed -n '1,40p' .gitignore
+sed -n '1,40p' .dockerignore
+```
+
+Yang ditunjukkan:
+
+1. test helper keamanan lulus,
+2. `data/` dan `certs/` tidak masuk Git,
+3. Docker build context mengecualikan `data/`, `certs/`, `.git/`, dan cache lokal,
+4. CI punya langkah lint PHP, test PHP, dan build image.
 
 ## 7. Urutan Verifikasi Setelah Implementasi
 
@@ -3684,6 +4010,43 @@ Yang harus terlihat:
 3. port `3306` dan `22` berstatus `REJECT`,
 4. ICMP echo request berstatus `DROP` kecuali `ACL_ALLOW_ICMP=1`.
 
+### Uji 15 - Test otomatis helper keamanan
+
+Alur pengujian: jalankan test helper keamanan untuk memastikan kontrol security yang bisa diuji tanpa browser tetap konsisten.
+
+```bash
+bun run test
+```
+
+Yang harus terlihat:
+
+1. validasi username menolak input pendek, panjang berlebih, dan karakter berbahaya,
+2. validasi password menolak password lemah,
+3. lookup username berupa HMAC 64 hex,
+4. username terenkripsi bisa didekripsi kembali hanya dengan key aplikasi,
+5. password hash menerima password benar dan menolak password salah,
+6. CSRF token bisa dibuat, dipakai ulang, dan dirotasi,
+7. key rate limit berubah berdasarkan alamat klien dan subject normalisasi,
+8. output akhir `Auth security tests passed.`
+
+### Uji 16 - Hygiene secret dan build context
+
+Alur pengujian: periksa file ignore dan workflow CI agar data lokal, private key sertifikat, cache, dan metadata Git tidak ikut tersimpan atau terkirim ke image.
+
+```bash
+sed -n '1,80p' .gitignore
+sed -n '1,100p' .dockerignore
+sed -n '1,120p' .github/workflows/ci.yml
+```
+
+Yang harus terlihat:
+
+1. `.gitignore` mengecualikan `data/`, `certs/`, backup, dan catatan privat,
+2. `.dockerignore` mengecualikan `data/`, `certs/`, `.git/`, `.github/`, cache lokal, dan artefak yang tidak dibutuhkan image,
+3. CI menjalankan PHP syntax lint,
+4. CI menjalankan `bun run test:php`,
+5. CI membangun image Docker sebagai validasi build context.
+
 ### Hasil Verifikasi Aktual
 
 Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya rencana uji.
@@ -3691,6 +4054,7 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Area yang diuji | Perintah atau cara uji | Hasil aktual |
 | --- | --- | --- |
 | Unit security helper | `bun run test` | `Auth security tests passed.` |
+| Cakupan test helper keamanan | Review `tests/AuthSecurityTest.php` | test mencakup validasi input, normalisasi username, HMAC lookup, enkripsi/dekripsi username, hashing/verifikasi password, CSRF token, dan key/policy rate limit |
 | Container app + Snort | `docker compose -f compose.dev.yaml up -d --build` lalu `docker compose -f compose.dev.yaml ps` | service `app` dan `snort` berstatus `Up`; port `10080->8080` dan `10443->8443` terpublish |
 | Redirect HTTP ke HTTPS | `curl -k -I http://localhost:10080` | `HTTP/1.1 301 Moved Permanently`, `Location: https://localhost:10443/` |
 | Form dan CSRF | `curl -k -s https://localhost:10443/` | HTML memuat form `POST`, action `/register.php`, dan hidden field `csrf_token` |
@@ -3709,6 +4073,9 @@ Bagian ini mencatat hasil uji yang sudah dijalankan pada proyek, bukan hanya ren
 | Snort live alert | `curl -k -s -o /dev/null https://localhost:10443/` lalu baca `/var/log/snort/alert_fast.txt` | alert `[1:1000002:3] "AU7H HTTP/HTTPS connection to web server"` muncul untuk traffic ke port `8443` |
 | ACL container | `bun run acl:status` | chain `AU7H_INPUT` aktif; HTTP/HTTPS `ACCEPT`; MySQL `3306` dan SSH `22` `REJECT`; ICMP echo request `DROP` |
 | Batas satu container | Review `Dockerfile` dan `compose.dev.yaml` | container `app` memuat Apache/PHP/MySQL; `snort` adalah sidecar IDS, bukan pemisahan web/database |
+| Hygiene Git untuk secret lokal | Review `.gitignore` | `data/`, `certs/`, backup, dan catatan privat dikecualikan dari Git |
+| Hygiene Docker build context | Review `.dockerignore` | `data/`, `certs/`, `.git/`, `.github/`, cache lokal, dan artefak pendukung tidak dikirim ke build context |
+| CI check keamanan dasar | Review `.github/workflows/ci.yml` | workflow menjalankan PHP syntax lint, `bun run test:php`, dan `docker build -t au7h-ci .` |
 
 ### Bukti Screenshot Verifikasi
 
@@ -3822,13 +4189,15 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 | Login gagal ke belum terdaftar | Tahap 13, 14 |
 | HTTPS | Tahap 4 |
 | Algoritma enkripsi web server boleh default | Tahap 1, 3, 4 |
-| Integritas form | Tahap 9, 12, 13, 15 |
-| Privasi data di database | Tahap 8, 9 |
-| Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 + Decision Log 5.4 |
-| SQL injection | Tahap 10 |
-| XSS | Tahap 5, 9, 11, 14 |
+| Integritas form | Tahap 9, 12, 13, 15, 19 |
+| Privasi data di database | Tahap 8, 9, 19, 20 |
+| Buffer overflow | Tahap 6 + pilihan stack pada Tahap 1 + Decision Log 3.4 + Tahap 19 |
+| SQL injection | Tahap 10, 19 |
+| XSS | Tahap 5, 9, 11, 14, 19 |
 | Snort IDS + rule lokal | Tahap 18 |
 | ACL ICMP dan port | Tahap 18 |
+| Test keamanan otomatis | Tahap 19 |
+| Secret lokal tidak masuk Git/build context | Tahap 20 |
 
 ## 9. Catatan Transparansi Tentang Bagian Yang Sengaja Tidak Dibesar-besarkan
 
@@ -3839,6 +4208,8 @@ Gambar ini menunjukkan lima percobaan login gagal pertama menerima `HTTP 302`, l
 5. Username tidak cukup di-hash karena landing page perlu menampilkan nilai asli setelah login.
 6. Snort berjalan sebagai sidecar IDS untuk kebutuhan monitoring jaringan; ini tidak mengubah fakta bahwa web server, aplikasi PHP, dan database MySQL tetap berada dalam satu container aplikasi.
 7. HTTPS lokal memakai file sertifikat dari `./certs`. Jika file itu berasal dari local CA seperti `mkcert` dan root CA-nya sudah dipercaya browser, browser dapat menampilkan `Certificate is valid`. Jika file tidak tersedia, entrypoint membuat self-signed fallback untuk pembuktian HTTPS, tetapi browser bisa menampilkan warning trust. Untuk host publik, sertifikat dari CA tepercaya lebih tepat.
+8. Test otomatis di tahap ini memeriksa helper keamanan yang deterministik. Test itu tidak menggantikan uji browser, Snort live alert, atau ACL container, sehingga verifikasi manual tetap dicatat terpisah.
+9. `.gitignore` dan `.dockerignore` adalah kontrol hygiene, bukan pengganti secret manager produksi. Untuk demo lokal, keduanya mencegah data runtime dan private key sertifikat lokal ikut tersimpan atau terkirim ke build context.
 
 ## 10. Checklist Final Sebelum Presentasi
 
@@ -3879,6 +4250,13 @@ Catatan pembacaan: checklist ini dipakai sebagai pemeriksaan terakhir tepat sebe
 [x] acl:status menampilkan chain AU7H_INPUT
 [x] HTTP/HTTPS diizinkan ACL
 [x] MySQL 3306 dan SSH 22 ditolak ACL
+[x] test helper keamanan otomatis tersedia
+[x] test mencakup validasi input, CSRF, HMAC, enkripsi username, hash password, dan rate limit
+[x] .gitignore mengecualikan data runtime dan certs lokal
+[x] .dockerignore mengecualikan data, certs, .git, .github, dan cache lokal
+[x] CI menjalankan PHP syntax lint
+[x] CI menjalankan test helper keamanan
+[x] CI membangun Docker image dari build context yang dibatasi
 ```
 
 ## 11. Ringkasan Strategi Dari Nol
@@ -3892,7 +4270,9 @@ Strategi pembangunan yang paling aman dan paling mudah dipertanggungjawabkan unt
 5. implementasikan login/register paling kecil dulu,
 6. pasang proteksi CSRF, session, hashing, enkripsi, SQLi, XSS, dan rate limit,
 7. tambahkan Snort IDS dan ACL untuk kontrol jaringan,
-8. tutup dengan uji manual dan uji negatif,
-9. cocokkan satu per satu dengan requirement.
+8. tambahkan test otomatis untuk helper keamanan yang paling rawan regresi,
+9. amankan hygiene repo agar data runtime dan private key lokal tidak ikut Git atau build context,
+10. tutup dengan uji manual dan uji negatif,
+11. cocokkan satu per satu dengan requirement.
 
 Urutan ini menghasilkan proyek yang tidak hanya “jalan”, tetapi juga mudah dijelaskan saat alasan teknisnya perlu dipertanggungjawabkan di sesi evaluasi.
